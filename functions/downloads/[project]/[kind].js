@@ -1,6 +1,7 @@
 const PROJECTS = {
   bilibili: {
     repo: 'HiiragiNemu/Bilibili-Follower-Snapshot',
+    mode: 'latest',
     kinds: {
       android: /\.apk$/i,
       userscript: /\.user\.js$/i,
@@ -8,9 +9,19 @@ const PROJECTS = {
   },
   netease: {
     repo: 'HiiragiNemu/netease-cloudmusic-delisted-exporter',
+    mode: 'latest',
     kinds: {
       windows: /windows-x64\.zip$/i,
       python: /-python\.zip$/i,
+    },
+  },
+  exedra: {
+    repo: 'HiiragiNemu/MagiaExedraTWTools',
+    mode: 'scan',
+    kinds: {
+      'tw-xapk': /^tw\.sonet\.magiaexedra-.*\.xapk$/i,
+      'jp-xapk': /^com\.aniplex\.magia\.exedra\.jp-.*\.xapk$/i,
+      tools: /^MagiaExedraTWJPTools-v.*\.zip$/i,
     },
   },
 };
@@ -19,7 +30,7 @@ function githubHeaders(token, accept = 'application/vnd.github+json') {
   return {
     Accept: accept,
     Authorization: `Bearer ${token}`,
-    'User-Agent': 'MadeInMagius-Site/1.0',
+    'User-Agent': 'MadeInMagius-Site/2.0',
     'X-GitHub-Api-Version': '2022-11-28',
   };
 }
@@ -35,14 +46,30 @@ function error(message, status) {
   });
 }
 
+async function githubJson(url, token) {
+  const response = await fetch(url, { headers: githubHeaders(token) });
+  if (!response.ok) throw new Error(`GitHub lookup failed: ${response.status}`);
+  return response.json();
+}
+
 async function getAsset(config, kind, token) {
-  const releaseResponse = await fetch(
-    `https://api.github.com/repos/${config.repo}/releases/latest`,
-    { headers: githubHeaders(token) },
-  );
-  if (!releaseResponse.ok) throw new Error(`release lookup failed: ${releaseResponse.status}`);
-  const release = await releaseResponse.json();
   const matcher = config.kinds[kind];
+  if (config.mode === 'scan') {
+    const releases = await githubJson(
+      `https://api.github.com/repos/${config.repo}/releases?per_page=30`,
+      token,
+    );
+    for (const release of releases) {
+      const found = (release.assets || []).find(candidate => matcher.test(candidate.name));
+      if (found) return found;
+    }
+    throw new Error(`asset not found: ${kind}`);
+  }
+
+  const release = await githubJson(
+    `https://api.github.com/repos/${config.repo}/releases/latest`,
+    token,
+  );
   const asset = (release.assets || []).find(candidate => matcher.test(candidate.name));
   if (!asset) throw new Error(`asset not found: ${kind}`);
   return asset;
@@ -82,9 +109,7 @@ async function handle(context, headOnly = false) {
   try {
     const asset = await getAsset(config, kind, token);
     const range = context.request?.headers?.get('range') || null;
-    const binaryResponse = headOnly
-      ? null
-      : await getBinary(asset, token, range);
+    const binaryResponse = headOnly ? null : await getBinary(asset, token, range);
 
     if (binaryResponse && !(binaryResponse.ok || binaryResponse.status === 206)) {
       if (binaryResponse.status === 416) return error('Requested range is not satisfiable.', 416);

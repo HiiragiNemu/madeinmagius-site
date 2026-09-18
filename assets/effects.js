@@ -5,6 +5,7 @@ export function setupCrtEffects(options) {
   const noiseCanvas = options.noiseCanvas;
   const warpImage = options.warpImage;
   const reducedMotion = options.reducedMotion;
+  const displacement = document.getElementById('curve-displacement');
 
   let pointerEnergy = 0;
   let lastPointer = { x: innerWidth / 2, y: innerHeight / 2, t: performance.now() };
@@ -13,9 +14,18 @@ export function setupCrtEffects(options) {
   let noiseTimer = 0;
   let rollTimer = 0;
 
+  const mobileCurve = matchMedia('(max-width: 767px)');
+  const appleWebKit = /AppleWebKit/i.test(navigator.userAgent) && !/Chrome|Chromium|Edg/i.test(navigator.userAgent);
+  root.dataset.crtEngine = appleWebKit ? 'webkit-svg' : 'svg';
+
+  function updateCurveScale() {
+    if (!displacement) return;
+    displacement.setAttribute('scale', mobileCurve.matches ? '38' : '50');
+  }
+
   function createWarpMap() {
     const canvas = document.createElement('canvas');
-    const size = 384;
+    const size = 512;
     canvas.width = canvas.height = size;
     const ctx = canvas.getContext('2d');
     if (!ctx || !warpImage) return;
@@ -25,19 +35,21 @@ export function setupCrtEffects(options) {
       for (let x = 0; x < size; x += 1) {
         const nx = x / (size - 1) * 2 - 1;
         const ny = y / (size - 1) * 2 - 1;
-        const r2 = Math.min(1.4, nx * nx + ny * ny);
-        const edgeWeight = Math.pow(r2, 1.55);
+        const radial = nx * nx + ny * ny;
         const i = (y * size + x) * 4;
 
-        pixels.data[i] = Math.max(0, Math.min(255, Math.round(128 + nx * edgeWeight * 72)));
-        pixels.data[i + 1] = Math.max(0, Math.min(255, Math.round(128 + ny * edgeWeight * 72)));
+        // Exact reader lens map. Curvature is fixed geometry and is never
+        // rewritten by hover/click/glitch interactions.
+        pixels.data[i] = Math.round(128 + nx * radial * 45);
+        pixels.data[i + 1] = Math.round(128 + ny * radial * 45);
         pixels.data[i + 2] = 128;
         pixels.data[i + 3] = 255;
       }
     }
 
     ctx.putImageData(pixels, 0, 0);
-    warpImage.setAttribute('href', canvas.toDataURL());
+    warpImage.setAttribute('href', canvas.toDataURL('image/png'));
+    warpImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
   }
 
   function triggerSyncBurst(strength = 1) {
@@ -45,8 +57,8 @@ export function setupCrtEffects(options) {
 
     root.style.setProperty('--tear-y', String(Math.round(10 + Math.random() * 78)) + '%');
     root.style.setProperty('--tear-h', String(1 + Math.round(Math.random() * 4 * strength)) + 'px');
-    root.style.setProperty('--tear-x', String(Math.round((Math.random() - .5) * 34 * strength)) + 'px');
-    root.style.setProperty('--tear-o', String(Math.min(.78, .38 + strength * .22)));
+    root.style.setProperty('--tear-x', String(Math.round((Math.random() - .5) * 30 * strength)) + 'px');
+    root.style.setProperty('--tear-o', String(Math.min(.72, .34 + strength * .22)));
 
     signal.dataset.burst = 'true';
     setTimeout(function() {
@@ -58,24 +70,24 @@ export function setupCrtEffects(options) {
   function signalTick() {
     if (reducedMotion.matches) return;
 
-    const base = .24;
-    const motion = Math.min(1.2, pointerEnergy * .58);
+    const base = .20;
+    const motion = Math.min(1.0, pointerEnergy * .5);
     const x = (Math.random() - .5) * (base + motion);
-    const y = (Math.random() - .5) * (.14 + motion * .22);
+    const y = (Math.random() - .5) * (.11 + motion * .18);
 
     root.style.setProperty('--jitter-x', x.toFixed(2) + 'px');
     root.style.setProperty('--jitter-y', y.toFixed(2) + 'px');
-    root.style.setProperty('--flicker', (.985 + Math.random() * .026).toFixed(3));
+    root.style.setProperty('--flicker', (.988 + Math.random() * .021).toFixed(3));
 
     pointerEnergy *= .9;
 
-    if (Math.random() < .034) triggerSyncBurst(.65 + Math.random() * .55);
+    if (Math.random() < .03) triggerSyncBurst(.62 + Math.random() * .5);
 
-    if (Math.random() < .0045) {
+    if (Math.random() < .0035) {
       signal.dataset.drop = 'true';
       setTimeout(function() {
         signal.dataset.drop = 'false';
-      }, 24 + Math.random() * 58);
+      }, 22 + Math.random() * 50);
     }
   }
 
@@ -83,8 +95,8 @@ export function setupCrtEffects(options) {
     if (reducedMotion.matches || !noiseCanvas) return;
 
     const rect = screen.getBoundingClientRect();
-    const width = Math.max(170, Math.floor(rect.width * .19));
-    const height = Math.max(110, Math.floor(rect.height * .19));
+    const width = Math.max(170, Math.floor(rect.width * .18));
+    const height = Math.max(110, Math.floor(rect.height * .18));
 
     if (noiseCanvas.width !== width || noiseCanvas.height !== height) {
       noiseCanvas.width = width;
@@ -96,19 +108,19 @@ export function setupCrtEffects(options) {
 
     const image = ctx.createImageData(width, height);
     for (let i = 0; i < image.data.length; i += 4) {
-      const bright = Math.random() > .955;
-      const value = bright ? 210 + Math.random() * 45 : Math.random() * 100;
+      const bright = Math.random() > .965;
+      const value = bright ? 220 + Math.random() * 35 : Math.random() * 100;
       image.data[i] = value;
       image.data[i + 1] = value;
       image.data[i + 2] = value;
-      image.data[i + 3] = bright ? 26 : 7;
+      image.data[i + 3] = bright ? 23 : 6;
     }
     ctx.putImageData(image, 0, 0);
   }
 
   function moveRoll() {
     if (reducedMotion.matches) return;
-    roll += .34;
+    roll += .26;
     if (roll > 112) roll = -26;
     root.style.setProperty('--roll-y', roll.toFixed(1) + '%');
   }
@@ -122,24 +134,26 @@ export function setupCrtEffects(options) {
     const dt = Math.max(12, now - lastPointer.t);
     const velocity = Math.hypot(event.clientX - lastPointer.x, event.clientY - lastPointer.y) / dt;
 
-    pointerEnergy = Math.min(1.5, pointerEnergy * .72 + velocity * .2);
+    pointerEnergy = Math.min(1.35, pointerEnergy * .72 + velocity * .18);
     lastPointer = { x: event.clientX, y: event.clientY, t: now };
   }
 
   createWarpMap();
+  updateCurveScale();
   noiseFrame();
 
   screen.addEventListener('pointermove', onPointerMove, { passive: true });
   addEventListener('resize', noiseFrame, { passive: true });
+  mobileCurve.addEventListener?.('change', updateCurveScale);
 
   jitterTimer = setInterval(signalTick, 34);
-  noiseTimer = setInterval(noiseFrame, 96);
-  rollTimer = setInterval(moveRoll, 48);
+  noiseTimer = setInterval(noiseFrame, 104);
+  rollTimer = setInterval(moveRoll, 50);
 
   return {
     pulse: triggerSyncBurst,
     addEnergy: function(amount) {
-      pointerEnergy = Math.min(1.5, pointerEnergy + amount);
+      pointerEnergy = Math.min(1.35, pointerEnergy + amount);
     },
     destroy: function() {
       clearInterval(jitterTimer);
@@ -147,6 +161,7 @@ export function setupCrtEffects(options) {
       clearInterval(rollTimer);
       screen.removeEventListener('pointermove', onPointerMove);
       removeEventListener('resize', noiseFrame);
+      mobileCurve.removeEventListener?.('change', updateCurveScale);
     }
   };
 }

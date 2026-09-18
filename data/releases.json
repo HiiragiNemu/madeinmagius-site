@@ -1,0 +1,47 @@
+{
+  "schema": "madeinmagius-release-snapshot/v1",
+  "generated_at": "2026-09-19T00:00:00Z",
+  "source": "github-connector-snapshot",
+  "projects": {
+    "bilibili": {
+      "tag": "v0.1.9",
+      "name": "B站粉丝快照伴侣 v0.1.9 · 固定面板与启动备份",
+      "published_at": "2026-09-16T13:08:36Z",
+      "release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/tag/v0.1.9",
+      "assets": {
+        "android": {
+          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.9.apk",
+          "size": 2467189,
+          "digest": "sha256:33e6413c1f344fe5b1cf474e468bb1e04a944332742850cb1eee0eddeec954af",
+          "browser_download_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/download/v0.1.9/Bilibili-Follower-Snapshot-Companion-v0.1.9.apk"
+        },
+        "userscript": {
+          "name": "bilibili-follower-snapshot-v0.2.9.user.js",
+          "size": 138434,
+          "digest": "sha256:74449434b775fa53a1973558cc5bd8f0dae7a0017af8a61d7dd714e675ae2fae",
+          "browser_download_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/download/v0.1.9/bilibili-follower-snapshot-v0.2.9.user.js"
+        }
+      }
+    },
+    "netease": {
+      "tag": "v2.1.0",
+      "name": "网易云音乐歌单完整曲名导出器 v2.1.0",
+      "published_at": "2026-08-23T23:38:37Z",
+      "release_url": "https://github.com/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/tag/v2.1.0",
+      "assets": {
+        "windows": {
+          "name": "NeteasePlaylistExporter-v2.1.0-windows-x64.zip",
+          "size": 17526648,
+          "digest": "sha256:94f09d26ceb6250dab50e0f64aff7a1ab328139e5c66e12b34fa95d4320a770e",
+          "browser_download_url": "https://github.com/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/download/v2.1.0/NeteasePlaylistExporter-v2.1.0-windows-x64.zip"
+        },
+        "python": {
+          "name": "NeteasePlaylistExporter-v2.1.0-python.zip",
+          "size": 103556,
+          "digest": "sha256:383078bf469379c14eeac27aaa306f89b0251569f8c6685ece778b2ec8c211d6",
+          "browser_download_url": "https://github.com/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/download/v2.1.0/NeteasePlaylistExporter-v2.1.0-python.zip"
+        }
+      }
+    }
+  }
+}

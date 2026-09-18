@@ -227,7 +227,7 @@ export function renderContent(programId, subId, data) {
       return '<p class="content-kicker">BILIBILI / F12 CONSOLE</p><h2>F12 CONSOLE</h2>' +
         '<p>桌面浏览器临时运行入口，不安装扩展。先登录 B站并打开自己的个人空间，再打开开发者工具的 Console。</p>' +
         '<div class="quick-links">' +
-        '<button class="terminal-copy-button" type="button" data-copy-url="' + escapeHtml(scriptUrl) + '">COPY FULL SCRIPT</button>' +
+        '<button class="terminal-copy-button" type="button" data-copy-url="' + escapeHtml(scriptUrl) + '" data-copy-fallback="' + escapeHtml(textUrl) + '">COPY FULL SCRIPT</button>' +
         '<a href="' + escapeHtml(textUrl) + '" target="_blank" rel="noreferrer">OPEN PLAIN TEXT ↗</a>' +
         '</div>' +
         '<ol><li>按 F12，切换到 Console。</li><li>复制完整脚本并粘贴后回车运行。</li><li>读取并保存快照；需要比较时导入旧记录。</li></ol>';

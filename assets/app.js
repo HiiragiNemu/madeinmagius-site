@@ -304,6 +304,41 @@ function keyboardNavigation(event) {
   }
 }
 
+contentPanel.addEventListener('click', async event => {
+  const button = event.target.closest('[data-copy-url]');
+  if (!button) return;
+
+  const url = button.dataset.copyUrl;
+  const fallback = button.dataset.copyFallback || url;
+  const original = button.textContent;
+
+  button.disabled = true;
+  button.textContent = 'READING...';
+
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) throw new Error('download failed');
+    const source = await response.text();
+
+    if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+    await navigator.clipboard.writeText(source);
+
+    button.textContent = 'COPIED ✓';
+    statusLine.textContent = 'BILIBILI // CONSOLE SCRIPT COPIED';
+    setTimeout(() => {
+      button.textContent = original;
+      button.disabled = false;
+    }, 1600);
+  } catch {
+    button.textContent = 'OPEN TEXT ↗';
+    button.disabled = false;
+    window.open(fallback, '_blank', 'noopener,noreferrer');
+    setTimeout(() => {
+      button.textContent = original;
+    }, 1600);
+  }
+});
+
 async function loadData() {
   try {
     const response = await fetch('./data/releases.json', { cache: 'no-cache' });

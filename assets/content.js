@@ -7,7 +7,9 @@ export const PROGRAMS = {
   bilibili: { subs: [
     { id: 'android', label: 'ANDROID APK', note: '伴侣应用' },
     { id: 'userscript', label: 'USERSCRIPT', note: '浏览器脚本' },
-    { id: 'bili-guide', label: 'USAGE', note: '使用说明' }
+    { id: 'console', label: 'F12 CONSOLE', note: '桌面临时运行' },
+    { id: 'source', label: 'SOURCE ZIP', note: '完整工程' },
+    { id: 'bili-guide', label: 'USAGE', note: '完整使用说明' }
   ]},
   netease: { subs: [
     { id: 'windows', label: 'WINDOWS X64', note: '免安装包' },
@@ -200,20 +202,55 @@ export function renderContent(programId, subId, data) {
   if (programId === 'bilibili') {
     if (subId === 'android') {
       return '<p class="content-kicker">BILIBILI / ANDROID</p><h2>粉丝快照伴侣</h2>' +
-        '<p>Android 伴侣保留完整快照、比较与导出能力。APK 下载入口已恢复。</p>' +
+        '<p>Android 10+ 独立伴侣。无需 root、ADB、Frida 或 Tampermonkey；在伴侣内登录后读取粉丝页并使用同一套快照逻辑。</p>' +
         '<div class="download-stack">' +
-        downloadCard(data, 'bilibili', 'android', 'ANDROID APK', 'B站粉丝快照伴侣', './downloads/bilibili/android') +
-        '</div><div class="quick-links"><a href="https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot" target="_blank" rel="noreferrer">SOURCE ↗</a></div>';
+        downloadCard(data, 'bilibili', 'android', 'ANDROID APK', '签名 Android 伴侣', './downloads/bilibili/android') +
+        '</div>' +
+        '<p>安装后可选择保存目录；默认启动备份会把快照、账本及已有比较/待处理 JSON 写入 Download。退出或换号不会删除历史快照和导出文件。</p>';
     }
     if (subId === 'userscript') {
       return '<p class="content-kicker">BILIBILI / USERSCRIPT</p><h2>USERSCRIPT</h2>' +
-        '<p>浏览器用户脚本入口。</p><div class="download-stack">' +
-        downloadCard(data, 'bilibili', 'userscript', 'BILIBILI USERSCRIPT', '浏览器脚本', './downloads/bilibili/userscript') +
+        '<p>适用于 Chrome、Edge、Firefox 以及支持用户脚本扩展的手机浏览器。</p><div class="download-stack">' +
+        downloadCard(data, 'bilibili', 'userscript', 'BILIBILI USERSCRIPT', 'Tampermonkey 用户脚本', './downloads/bilibili/userscript') +
+        '</div>' +
+        '<p>安装 Tampermonkey 后打开自己的 B站空间，进入“粉丝快照”，完成读取后保存 JSON / CSV；以后可以导入旧快照比较。</p>';
+    }
+    if (subId === 'console') {
+      const project = data.releases && data.releases.projects ? data.releases.projects.bilibili : null;
+      const assets = project && project.assets ? project.assets : {};
+      const scriptUrl = assets.consoleScript && assets.consoleScript.browser_download_url
+        ? assets.consoleScript.browser_download_url
+        : 'https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.js';
+      const textUrl = assets.consoleText && assets.consoleText.browser_download_url
+        ? assets.consoleText.browser_download_url
+        : 'https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.txt';
+      return '<p class="content-kicker">BILIBILI / F12 CONSOLE</p><h2>F12 CONSOLE</h2>' +
+        '<p>桌面浏览器临时运行入口，不安装扩展。先登录 B站并打开自己的个人空间，再打开开发者工具的 Console。</p>' +
+        '<div class="quick-links">' +
+        '<button class="terminal-copy-button" type="button" data-copy-url="' + escapeHtml(scriptUrl) + '">COPY FULL SCRIPT</button>' +
+        '<a href="' + escapeHtml(textUrl) + '" target="_blank" rel="noreferrer">OPEN PLAIN TEXT ↗</a>' +
+        '</div>' +
+        '<ol><li>按 F12，切换到 Console。</li><li>复制完整脚本并粘贴后回车运行。</li><li>读取并保存快照；需要比较时导入旧记录。</li></ol>';
+    }
+    if (subId === 'source') {
+      return '<p class="content-kicker">BILIBILI / SOURCE</p><h2>SOURCE ZIP</h2>' +
+        '<p>完整工程包含 Android 工程、用户脚本、Console 与测试；不包含签名私钥、账户凭据或个人快照。</p>' +
+        '<div class="download-stack">' +
+        downloadCard(data, 'bilibili', 'sourceZip', 'FULL SOURCE ZIP', 'v0.1.9 / userscript v0.2.9', '') +
         '</div>';
     }
     return '<p class="content-kicker">BILIBILI / USAGE</p><h2>使用说明</h2>' +
-      '<p>安装用户脚本或 Android 伴侣后，在 B站粉丝页读取当前粉丝列表并保存快照。后续读取可与旧快照比较，查看新增与关系消失候选。</p>' +
-      '<p>Android 伴侣支持启动备份、保存快照与结果查看。</p>' +
+      '<h3>v0.1.9 新操作方式</h3>' +
+      '<ol>' +
+      '<li><strong>底部固定面板。</strong>右下角“粉丝快照 ↑”随时展开，“向下收起 ↓”随时折叠；名单单独滚动，读取、保存、导入按钮固定可见。</li>' +
+      '<li><strong>名单直接操作。</strong>点击昵称打开对方主页；每条记录均可复制 UID 或主页链接。Android 优先打开官方 B站 APP，未接收时打开网页。</li>' +
+      '<li><strong>默认启动备份。</strong>每次启动读取一次，并依次把快照、账本及已有比较/待处理 JSON 保存到 Download。设置中可关闭，或选择仅手动、每日一次。手动保存仍遵循原选定目录。</li>' +
+      '<li><strong>保留完整性判断。</strong>部分读取照常保存，但不把未返回的账号判为消失；只有已确认候选标记为关系消失。</li>' +
+      '</ol>' +
+      '<h3>Android 伴侣</h3><ol><li>安装并打开，首次进入可先选择保存目录。</li><li>使用应用提供的登录入口登录账号。</li><li>在快照面板读取，查看覆盖与完整性状态，保存本次结果或导入旧记录比较。</li></ol>' +
+      '<h3>油猴脚本</h3><ol><li>启用 Tampermonkey 并安装脚本。</li><li>保持登录并打开自己的 B站空间。</li><li>读取后保存 JSON / CSV；以后导入旧快照比较。</li></ol>' +
+      '<h3>F12 Console</h3><ol><li>桌面浏览器登录 B站并打开自己的个人空间。</li><li>按 F12 切换到 Console。</li><li>粘贴完整脚本并回车运行。</li></ol>' +
+      '<p><strong>比较结果：</strong>只有两份快照都通过完整性检查时才输出精确差集。覆盖存在缺口时，未返回账号保持“未分类”，不会直接判定关系消失；超过 1000 人同样按实际唯一 UID 与接口报告总数判断。</p>' +
       '<div class="quick-links"><a href="https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot#readme" target="_blank" rel="noreferrer">完整 README ↗</a></div>';
   }
 

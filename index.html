@@ -57,6 +57,9 @@
   </svg>
 
   <div id="boot" class="boot" aria-live="polite">
+    <div class="boot__raster" aria-hidden="true"></div>
+    <div class="boot__grain" aria-hidden="true"></div>
+    <div class="boot__roll" aria-hidden="true"></div>
     <div class="boot__signal">
       <img class="boot__mark" src="./assets/magius-mark.svg" alt="">
       <div class="boot__name">MAGIUS<br><span>LINK</span></div>
@@ -75,7 +78,7 @@
         <div class="tear-band" aria-hidden="true"></div>
 
         <header class="masthead">
-          <div class="masthead__bar"><span></span><b>▣</b></div>
+          <div class="masthead__bar"><span></span><button id="home-jump" class="home-jump" type="button" aria-label="返回 MAGIUS LINK 主页" title="HOME">▣</button></div>
           <div class="masthead__row">
             <span class="masthead__node">MAGIUS LINK / NODE 01</span>
             <h1>MADE IN MAGIUS</h1>

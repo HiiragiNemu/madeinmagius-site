@@ -151,8 +151,7 @@ body::before {
   transform:
     translate3d(var(--jitter-x),var(--jitter-y),0)
     scale(1.001);
-  filter: brightness(var(--signal-brightness)) saturate(.92);
-  animation: tube-breathe 5.8s ease-in-out infinite;
+  filter: brightness(var(--signal-brightness)) saturate(.92) blur(.08px);
 }
 .terminal::before {
   content:"";
@@ -172,14 +171,15 @@ body::before {
   pointer-events:none;
   z-index:31;
   opacity:.36;
+  animation: tube-breathe 5.8s ease-in-out infinite;
   background:
     linear-gradient(90deg,transparent 48%,rgba(222,255,228,.018) 50%,transparent 52%),
     linear-gradient(180deg,rgba(255,255,255,.018),transparent 8%,transparent 91%,rgba(0,0,0,.24));
 }
 @keyframes tube-breathe {
-  0%,100% { filter: brightness(calc(var(--signal-brightness) * .97)) saturate(.9); }
-  48% { filter: brightness(calc(var(--signal-brightness) * 1.025)) saturate(.96); }
-  51% { filter: brightness(calc(var(--signal-brightness) * .99)) saturate(.91); }
+  0%,100% { opacity:.30; }
+  48% { opacity:.43; }
+  51% { opacity:.33; }
 }
 
 .header {
@@ -380,11 +380,11 @@ body::before {
 .boot__scan span::after { content:""; position:absolute; inset:1px; transform-origin:left; background:var(--ink); animation:boot-progress 1.7s steps(17,end) forwards; }
 @keyframes boot-progress { from { transform:scaleX(0); } to { transform:scaleX(1); } }
 
-body[data-dropout="true"] .terminal { opacity:.76; filter:brightness(.66) contrast(1.34); }
+body[data-dropout="true"] .terminal { opacity:.76; filter:brightness(.66) contrast(1.34) blur(.22px); }
 body[data-dropout="true"] .fx-phosphor { opacity:.32; }
 body[data-hard-sync="true"] .terminal { transform:translate3d(calc(var(--jitter-x) + 7px),var(--jitter-y),0) skewX(-.1deg) scale(1.002); }
 body[data-hard-sync="true"] .fx-tear { --tear-opacity:.78; }
-body[data-signal-flash="true"] .terminal { filter:brightness(1.16) contrast(1.04); }
+body[data-signal-flash="true"] .terminal { filter:brightness(1.16) contrast(1.04) blur(.04px); }
 
 @media (max-width: 980px) {
   .terminal { width:calc(100vw - 18px); min-height:calc(100vh - 18px); margin:9px auto; border-radius:16px / 12px; }

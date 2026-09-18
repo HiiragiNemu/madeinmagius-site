@@ -1,0 +1,303 @@
+{
+  "schema": "magiuslink-exedra-integrity/v1",
+  "source_repository": "HiiragiNemu/MagiaExedraTWTools",
+  "files": {
+    "twManifest": {
+      "path": "manifests/known-releases.json",
+      "content": {
+        "schemaVersion": 1,
+        "verifiedAt": "2026-09-12",
+        "packageName": "tw.sonet.magiaexedra",
+        "source": "Hash-pinned original XAPK mirrored in this repository's GitHub Releases",
+        "latestVersion": "1.1.3",
+        "latestEndpoint": "https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/v1.1.3/tw.sonet.magiaexedra-1.1.3-26082020.xapk",
+        "upstreamVerification": {
+          "googlePlayLastUpdated": "2026-08-27",
+          "latestObservedVersion": "1.1.3",
+          "result": "android-1.1.3-downloaded-splits-and-original-signature-verified",
+          "googlePlayUrl": "https://play.google.com/store/apps/details?id=tw.sonet.magiaexedra&hl=en_US&gl=TW",
+          "sourcePage": "https://apkpure.net/%E9%AD%94%E6%B3%95%E5%B0%91%E5%A5%B3%E5%B0%8F%E5%9C%93-magia-exedra/tw.sonet.magiaexedra/download/1.1.3",
+          "signatureContinuity": "all three APKs match the verified 1.1.2 publisher certificate"
+        },
+        "releases": [
+          {
+            "versionName": "1.1.3",
+            "versionCode": 26082020,
+            "length": 769647949,
+            "sha256": "e99d80c95c746c80258ec5682231861f0ca1dbbb9390b6d764c398ff1c4f5d95",
+            "splits": {
+              "base": {
+                "length": 15525983,
+                "sha256": "43d324fbd903cc726097f264eeb1c78834c9e057bcd586c8a86a45668b42e705"
+              },
+              "base_assets": {
+                "length": 522717141,
+                "sha256": "fd275d264aaf27157cb14b907d7bcbf1401700062d674e9ef3423c7c3a530abe"
+              },
+              "config.arm64_v8a": {
+                "length": 231103403,
+                "sha256": "5cd12269989c141f41886e329891c70d82740e5b41931482e660a489530f6cbb"
+              }
+            },
+            "signingCertificateSha256": "5cc7d069ae980bcc92129f1238d2e4377bb31f881b1a51635afe9bb1c4db57c9"
+          },
+          {
+            "versionName": "1.1.2",
+            "versionCode": 26072717,
+            "length": 769197299,
+            "sha256": "664dfbc307c5f6b640d01b1fc661de02fa30fc382a68426530abc657dc9e2d14",
+            "splits": {
+              "base": {
+                "length": 15521887,
+                "sha256": "ceafa5ba761b8d3996ce2718ff163b8b21707fdc1d304d6edc27b8582c93038e"
+              },
+              "base_assets": {
+                "length": 522274683,
+                "sha256": "0d21a05fd1007b31a1a6fa72561c6d6f2eeaa8353492913dd925465bc10d82ed"
+              },
+              "config.arm64_v8a": {
+                "length": 231099307,
+                "sha256": "19466690a93ae7ea84485b86453901c5ed7745aea2b2d0cd4098bb13b02c69c5"
+              }
+            }
+          },
+          {
+            "versionName": "1.0.5",
+            "versionCode": 26032510,
+            "length": 740843302,
+            "sha256": "9ed2f73182e0e6369f757124570b36cac3ba8dcd6a545a6e4e19881d53ff084a",
+            "splits": {
+              "base": {
+                "length": 15025708,
+                "sha256": "d1c09d6adfae4b0fafc2dd48e33859d4a5cbc2f922ae6c616c3c07581711f116"
+              },
+              "base_assets": {
+                "length": 500097648,
+                "sha256": "778083560acbdd510630e5db879bbeacbb5040dedbefda0ecb7d4c18b8aa1884"
+              },
+              "config.arm64_v8a": {
+                "length": 225713141,
+                "sha256": "812f4a0908c44622bb42c28a835f300a39c575d6343360498880b94f2fd709c4"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "jpManifest": {
+      "path": "manifests/jp-known-releases.json",
+      "content": {
+        "schemaVersion": 1,
+        "verifiedAt": "2026-09-13",
+        "packageName": "com.aniplex.magia.exedra.jp",
+        "source": "Hash-pinned original JP XAPK mirrored in this repository's GitHub Releases",
+        "latestVersion": "3.18.0",
+        "latestEndpoint": "https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/jp-v3.18.0/com.aniplex.magia.exedra.jp-3.18.0.xapk",
+        "releases": [
+          {
+            "versionName": "3.18.0",
+            "versionCode": 26090311,
+            "length": 923195400,
+            "sha256": "43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514",
+            "minSdk": 28,
+            "splits": {
+              "base": {
+                "length": 16839758,
+                "sha256": "adb1b0d8169207510763d4729a47c56114d18aca0854d657a75adab0c085063d"
+              },
+              "base_assets": {
+                "length": 582993441,
+                "sha256": "96ebff642f104eb934254b9b016003284b3c089a63506bec7ab5965dd32cdff4"
+              },
+              "config.arm64_v8a": {
+                "length": 323357685,
+                "sha256": "8204abbafeebc9334a71d260798c6e290a57f672be4cf57bd58b15b24a1a0fd0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "twSums": {
+      "path": "mobile/SHA256SUMS-tw-1.1.3.txt",
+      "content": "e99d80c95c746c80258ec5682231861f0ca1dbbb9390b6d764c398ff1c4f5d95  tw.sonet.magiaexedra-1.1.3-26082020.xapk\n43d324fbd903cc726097f264eeb1c78834c9e057bcd586c8a86a45668b42e705  base.apk\nfd275d264aaf27157cb14b907d7bcbf1401700062d674e9ef3423c7c3a530abe  split_base_assets.apk\n5cd12269989c141f41886e329891c70d82740e5b41931482e660a489530f6cbb  split_config.arm64_v8a.apk\n"
+    },
+    "jpSums": {
+      "path": "mobile/SHA256SUMS-jp-3.18.0.txt",
+      "content": "43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514  com.aniplex.magia.exedra.jp-3.18.0.xapk\nadb1b0d8169207510763d4729a47c56114d18aca0854d657a75adab0c085063d  com.aniplex.magia.exedra.jp.apk\n96ebff642f104eb934254b9b016003284b3c089a63506bec7ab5965dd32cdff4  base_assets.apk\n8204abbafeebc9334a71d260798c6e290a57f672be4cf57bd58b15b24a1a0fd0  config.arm64_v8a.apk\n"
+    },
+    "twVerification": {
+      "path": "docs/TW_CLIENT_1.1.3_VERIFICATION.json",
+      "content": {
+        "schemaVersion": 1,
+        "verifiedAt": "2026-09-12",
+        "packageName": "tw.sonet.magiaexedra",
+        "versionName": "1.1.3",
+        "versionCode": 26082020,
+        "xapk": {
+          "length": 769647949,
+          "sha256": "e99d80c95c746c80258ec5682231861f0ca1dbbb9390b6d764c398ff1c4f5d95"
+        },
+        "splits": [
+          {
+            "role": "base",
+            "length": 15525983,
+            "sha256": "43d324fbd903cc726097f264eeb1c78834c9e057bcd586c8a86a45668b42e705",
+            "versionCode": 26082020
+          },
+          {
+            "role": "base_assets",
+            "length": 522717141,
+            "sha256": "fd275d264aaf27157cb14b907d7bcbf1401700062d674e9ef3423c7c3a530abe",
+            "versionCode": 26082020
+          },
+          {
+            "role": "config.arm64_v8a",
+            "length": 231103403,
+            "sha256": "5cd12269989c141f41886e329891c70d82740e5b41931482e660a489530f6cbb",
+            "versionCode": 26082020
+          }
+        ],
+        "signature": {
+          "tool": "Android SDK Build Tools 36.0.0 apksigner",
+          "command": "apksigner verify --verbose --print-certs APK_PATH",
+          "allThreeSplitsExitCode": 0,
+          "publisherCertificateSha256": "5cc7d069ae980bcc92129f1238d2e4377bb31f881b1a51635afe9bb1c4db57c9",
+          "samePublisherAsVerified112": true,
+          "publisherCertificateSha1": "f9d496da40dc6d1ba36b8315dbfe2c5a53d6c2c6",
+          "literalOutputs": [
+            {
+              "role": "base.apk",
+              "exitCode": 0,
+              "stdout": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): false\nVerified using v3 scheme (APK Signature Scheme v3): true\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: true\nNumber of signers: 1\nSigner #1 certificate DN: C=TW, ST=Taiwan, L=Taipei, O=Sonet Entertainment Taiwan, OU=GDB, CN=Slime Meteor\nSigner #1 certificate SHA-256 digest: 5cc7d069ae980bcc92129f1238d2e4377bb31f881b1a51635afe9bb1c4db57c9\nSigner #1 certificate SHA-1 digest: f9d496da40dc6d1ba36b8315dbfe2c5a53d6c2c6\nSigner #1 certificate MD5 digest: b3160b57c152d7f635c758b143af0b7d\nSigner #1 key algorithm: RSA\nSigner #1 key size (bits): 2048\nSigner #1 public key SHA-256 digest: dbf13173733ab5486f95508a00c3ddc1533c5d4458cd569f3ee0624e12e2eb4b\nSigner #1 public key SHA-1 digest: 5877879f697f4e61cd6bea29abe4178881e42477\nSigner #1 public key MD5 digest: 9087b7a8ec204768d09b0725062ff9df\nSource Stamp Signer certificate DN: CN=Android, OU=Android, O=Google Inc., L=Mountain View, ST=California, C=US\nSource Stamp Signer certificate SHA-256 digest: 3257d599a49d2c961a471ca9843f59d341a405884583fc087df4237b733bbd6d\nSource Stamp Signer certificate SHA-1 digest: b1af3a0bf998aeede1a8716a539e5a59da1d86d6\nSource Stamp Signer certificate MD5 digest: 577b8a9fbc7e308321aec6411169d2fb\nSource Stamp Signer key algorithm: RSA\nSource Stamp Signer key size (bits): 4096\nSource Stamp Signer public key SHA-256 digest: 4c53c1d28f2ecceadcb1351603f0b702615b3454b6e30070de759359f241b802\nSource Stamp Signer public key SHA-1 digest: 188b067a9ee881bde55dabe0f8f7ecb320b1a091\nSource Stamp Signer public key MD5 digest: 965afac83f033aa037a54482eb6922d5\nSource Stamp Timestamp: 1787794433\n",
+              "stderr": ""
+            },
+            {
+              "role": "split_base_assets.apk",
+              "exitCode": 0,
+              "stdout": "Verifies\nVerified using v1 scheme (JAR signing): true\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): true\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: true\nNumber of signers: 1\nSigner #1 certificate DN: C=TW, ST=Taiwan, L=Taipei, O=Sonet Entertainment Taiwan, OU=GDB, CN=Slime Meteor\nSigner #1 certificate SHA-256 digest: 5cc7d069ae980bcc92129f1238d2e4377bb31f881b1a51635afe9bb1c4db57c9\nSigner #1 certificate SHA-1 digest: f9d496da40dc6d1ba36b8315dbfe2c5a53d6c2c6\nSigner #1 certificate MD5 digest: b3160b57c152d7f635c758b143af0b7d\nSigner #1 key algorithm: RSA\nSigner #1 key size (bits): 2048\nSigner #1 public key SHA-256 digest: dbf13173733ab5486f95508a00c3ddc1533c5d4458cd569f3ee0624e12e2eb4b\nSigner #1 public key SHA-1 digest: 5877879f697f4e61cd6bea29abe4178881e42477\nSigner #1 public key MD5 digest: 9087b7a8ec204768d09b0725062ff9df\nSource Stamp Signer certificate DN: CN=Android, OU=Android, O=Google Inc., L=Mountain View, ST=California, C=US\nSource Stamp Signer certificate SHA-256 digest: 3257d599a49d2c961a471ca9843f59d341a405884583fc087df4237b733bbd6d\nSource Stamp Signer certificate SHA-1 digest: b1af3a0bf998aeede1a8716a539e5a59da1d86d6\nSource Stamp Signer certificate MD5 digest: 577b8a9fbc7e308321aec6411169d2fb\nSource Stamp Signer key algorithm: RSA\nSource Stamp Signer key size (bits): 4096\nSource Stamp Signer public key SHA-256 digest: 4c53c1d28f2ecceadcb1351603f0b702615b3454b6e30070de759359f241b802\nSource Stamp Signer public key SHA-1 digest: 188b067a9ee881bde55dabe0f8f7ecb320b1a091\nSource Stamp Signer public key MD5 digest: 965afac83f033aa037a54482eb6922d5\nSource Stamp Timestamp: 1787794439\n",
+              "stderr": ""
+            },
+            {
+              "role": "split_config.arm64_v8a.apk",
+              "exitCode": 0,
+              "stdout": "Verifies\nVerified using v1 scheme (JAR signing): true\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): true\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: true\nNumber of signers: 1\nSigner #1 certificate DN: C=TW, ST=Taiwan, L=Taipei, O=Sonet Entertainment Taiwan, OU=GDB, CN=Slime Meteor\nSigner #1 certificate SHA-256 digest: 5cc7d069ae980bcc92129f1238d2e4377bb31f881b1a51635afe9bb1c4db57c9\nSigner #1 certificate SHA-1 digest: f9d496da40dc6d1ba36b8315dbfe2c5a53d6c2c6\nSigner #1 certificate MD5 digest: b3160b57c152d7f635c758b143af0b7d\nSigner #1 key algorithm: RSA\nSigner #1 key size (bits): 2048\nSigner #1 public key SHA-256 digest: dbf13173733ab5486f95508a00c3ddc1533c5d4458cd569f3ee0624e12e2eb4b\nSigner #1 public key SHA-1 digest: 5877879f697f4e61cd6bea29abe4178881e42477\nSigner #1 public key MD5 digest: 9087b7a8ec204768d09b0725062ff9df\nSource Stamp Signer certificate DN: CN=Android, OU=Android, O=Google Inc., L=Mountain View, ST=California, C=US\nSource Stamp Signer certificate SHA-256 digest: 3257d599a49d2c961a471ca9843f59d341a405884583fc087df4237b733bbd6d\nSource Stamp Signer certificate SHA-1 digest: b1af3a0bf998aeede1a8716a539e5a59da1d86d6\nSource Stamp Signer certificate MD5 digest: 577b8a9fbc7e308321aec6411169d2fb\nSource Stamp Signer key algorithm: RSA\nSource Stamp Signer key size (bits): 4096\nSource Stamp Signer public key SHA-256 digest: 4c53c1d28f2ecceadcb1351603f0b702615b3454b6e30070de759359f241b802\nSource Stamp Signer public key SHA-1 digest: 188b067a9ee881bde55dabe0f8f7ecb320b1a091\nSource Stamp Signer public key MD5 digest: 965afac83f033aa037a54482eb6922d5\nSource Stamp Timestamp: 1787794434\n",
+              "stderr": ""
+            }
+          ]
+        },
+        "source": {
+          "sourcePage": "https://apkpure.net/%E9%AD%94%E6%B3%95%E5%B0%91%E5%A5%B3%E5%B0%8F%E5%9C%93-magia-exedra/tw.sonet.magiaexedra/download/1.1.3",
+          "downloadEndpoint": "https://d.apkpure.net/b/XAPK/tw.sonet.magiaexedra?version=latest",
+          "versionName": "1.1.3",
+          "versionCode": 26082020,
+          "length": 769647949,
+          "sha256": "e99d80c95c746c80258ec5682231861f0ca1dbbb9390b6d764c398ff1c4f5d95",
+          "upstreamPublishedSha256": null,
+          "verificationRequired": "APK signature continuity against pinned 1.1.2",
+          "resumedFrom": 685768704
+        },
+        "googlePlay": {
+          "checkedAt": "2026-09-12",
+          "url": "https://play.google.com/store/apps/details?id=tw.sonet.magiaexedra&hl=en_US&gl=TW",
+          "androidVersionName": "1.1.3",
+          "googlePlayUpdatedOn": "2026-08-27",
+          "packageName": "tw.sonet.magiaexedra"
+        },
+        "installerVerification": {
+          "baselineManifestRejects113": true,
+          "updatedManifestAccepts113": true,
+          "newApkSignatureAndSplitValidation": "PASS",
+          "realDeviceInstalled": true,
+          "nonTaiwanAccountLiveLogin": "NOT_TESTED",
+          "fixtureMeaning": "Fake ADB confirms installer command/version/backup/rollback logic, not server login",
+          "tests": {
+            "command": "python -m pytest -q",
+            "exitCode": 0,
+            "stdout": "............................                                           [100%]\n28 passed, 2 subtests passed in 15.70s",
+            "realDevice": false
+          },
+          "mumuUpgrades": [
+            {
+              "model": "SM_S9280",
+              "mode": "in-place update",
+              "fromVersion": "1.1.2",
+              "versionName": "1.1.3",
+              "versionCode": 26082020,
+              "exitCode": 0,
+              "splitCount": 3,
+              "installerPackageName": "com.android.vending",
+              "oldApkBackupAvailable": true,
+              "uninstallExecuted": false,
+              "clearDataExecuted": false,
+              "launchAttempted": false,
+              "stoppedVerified": true
+            },
+            {
+              "model": "ABR_AL80",
+              "mode": "in-place update",
+              "fromVersion": "1.1.2",
+              "versionName": "1.1.3",
+              "versionCode": 26082020,
+              "exitCode": 0,
+              "splitCount": 3,
+              "installerPackageName": "com.android.vending",
+              "oldApkBackupAvailable": true,
+              "uninstallExecuted": false,
+              "clearDataExecuted": false,
+              "launchAttempted": false,
+              "stoppedVerified": true
+            },
+            {
+              "model": "SM_S9110",
+              "mode": "in-place update",
+              "fromVersion": "1.1.2",
+              "versionName": "1.1.3",
+              "versionCode": 26082020,
+              "exitCode": 0,
+              "splitCount": 3,
+              "installerPackageName": "com.android.vending",
+              "oldApkBackupAvailable": true,
+              "uninstallExecuted": false,
+              "clearDataExecuted": false,
+              "launchAttempted": false,
+              "stoppedVerified": true
+            }
+          ]
+        },
+        "preservation": {
+          "apkPatched": false,
+          "apkResigned": false,
+          "accountRegionChanged": false,
+          "realDeviceTouched": true,
+          "systemNetworkChanged": false,
+          "deviceWriteScope": "User-approved in-place update on three MuMu instances; APK backups; no uninstall or data clear; original adbd privilege restored"
+        }
+      }
+    },
+    "jpVerification": {
+      "path": "docs/JP_CLIENT_3.18.0_VERIFICATION.json",
+      "content": {
+        "schemaVersion": 1,
+        "platform": "android-jp",
+        "packageName": "com.aniplex.magia.exedra.jp",
+        "versionName": "3.18.0",
+        "versionCode": 26090311,
+        "xapk": {
+          "length": 923195400,
+          "sha256": "43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514",
+          "members": [
+            "com.aniplex.magia.exedra.jp.apk",
+            "base_assets.apk",
+            "config.arm64_v8a.apk",
+            "manifest.json"
+          ]
+        },
+        "sourceEvidence": "MagiaExedraJPClientSource/reports/xapk-inventory.json and reports/verification.md",
+        "installation": "Direct split installation through ADB/MuMu; Google Play region switching is not required for download or installation.",
+        "loginAcceptance": "Game login and service availability are separate runtime conditions and are not implied by package verification.",
+        "verifiedAt": "2026-09-13"
+      }
+    }
+  }
+}

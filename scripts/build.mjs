@@ -2,13 +2,13 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
 const checkOnly = process.argv.includes('--check');
-const required = ['index.html','assets/styles.css','assets/app.js','data/releases.json'];
+const required = ['index.html','assets/styles.css','assets/app.js','assets/content.js','assets/effects.js','assets/magius-mark.svg','data/releases.json','data/exedra-docs.json'];
 for (const path of required) {
   if (!existsSync(path)) throw new Error(`Missing required site file: ${path}`);
 }
 
 const index = await readFile('index.html','utf8');
-for (const token of ['./assets/styles.css','./assets/app.js','PROGRAM INDEX','BILIBILI SNAPSHOT','NETEASE EXPORTER']) {
+for (const token of ['./assets/styles.css','./assets/app.js','FOLDERS','BILIBILI','NETEASE','EXEDRA TW / JP','MADE IN MAGIUS']) {
   if (!index.includes(token)) throw new Error(`index.html missing required token: ${token}`);
 }
 for (const rejected of ['独立分发','HTTPS 直链','本站直链','版本可核对']) {

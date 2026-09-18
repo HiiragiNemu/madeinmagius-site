@@ -21,7 +21,10 @@ export const PROGRAMS = {
     { id: 'jp-android', label: 'JP · ANDROID / MUMU', note: '完整教程' },
     { id: 'steam', label: 'STEAM WINDOWS', note: '安装与网络' },
     { id: 'tw-client-113', label: 'TW CLIENT 1.1.3', note: '版本说明' },
-    { id: 'tw-demo', label: 'MUMU DEMO SCRIPT', note: '演示脚本' }
+    { id: 'tw-demo', label: 'MUMU DEMO SCRIPT', note: '演示脚本' },
+    { id: 'tw-mumu-en', label: 'TW · WINDOWS / MUMU (EN)', note: 'English guide' },
+    { id: 'tw-phone-en', label: 'TW · ANDROID PHONE (EN)', note: 'English guide' },
+    { id: 'troubleshoot', label: 'TROUBLESHOOT', note: '常见问题' }
   ]},
   about: { subs: [
     { id: 'profile', label: 'PROFILE', note: 'MadeInMagius' },
@@ -242,6 +245,17 @@ export function renderContent(programId, subId, data) {
         '<a href="https://mme.so-net.tw/" target="_blank" rel="noreferrer">TW OFFICIAL ↗</a>' +
         '<a href="https://www.madoka-exedra.com/" target="_blank" rel="noreferrer">JP OFFICIAL ↗</a>' +
         '</div>';
+    }
+    if (subId === 'troubleshoot') {
+      return '<p class="content-kicker">EXEDRA / HELP</p><h2>TROUBLESHOOT</h2>' +
+        '<h3>没有台区或日区 Google 账号，也能下载安装吗？</h3>' +
+        '<p>可以。公开下载与原版 split 安装不要求 Google Play 账号改区。TW 与 JP 都从发布资产获取完整 XAPK；游戏登录和服务状态在启动后单独判断。</p>' +
+        '<h3>游戏提示“应用程序已推出新版本”</h3>' +
+        '<p>这是 Android 客户端升级提示。下载当前 XAPK 后原位升级，不要先卸载或清除游戏资料。</p>' +
+        '<h3>安装失败、签名冲突或 split 缺失</h3>' +
+        '<p>使用完整的同版本 XAPK，一次安装全部三个 APK。若显示 INSTALL_FAILED_UPDATE_INCOMPATIBLE，先检查现有客户端签名来源，不要通过卸载来试错。</p>' +
+        '<h3>安装成功之后仍有网络或登录问题</h3>' +
+        '<p>安装、网络与账号登录需要分别判断。保留错误文字与版本信息；工具不会修改 VPN、代理、DNS 或游戏账号。</p>';
     }
     const doc = data.docs.get(subId);
     if (!doc) return '<p>DOCUMENT LOADING...</p>';

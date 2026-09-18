@@ -862,3 +862,181 @@ body[data-wake="true"] .signal{animation:wake .28s steps(7,end) both}
   .edge-curve--left{left:5px;top:5%;bottom:5%;width:18px}
   .edge-curve--right{right:5px;top:5%;bottom:5%;width:18px}
 }
+
+
+/* === 2026-09-19 optical correction pass ===
+   Keep physical CRT curvature static. Interaction may glitch signal content,
+   but must never change screen geometry. */
+.screen{
+  border-radius:9.5% / 5.2%;
+  clip-path:inset(0 round 9.5% 5.2%);
+}
+.signal{
+  inset:0;
+  transform:translate3d(var(--jitter-x),var(--jitter-y),0);
+  filter:brightness(var(--flicker)) contrast(1.035) saturate(.94);
+  will-change:transform,opacity;
+}
+.signal[data-burst="true"]{
+  filter:brightness(1.025) contrast(1.055) saturate(.95);
+}
+.signal[data-drop="true"]{
+  opacity:.76;
+  filter:brightness(.8) contrast(1.18) saturate(.86) blur(.08px);
+}
+
+/* Static glass geometry: these curves never respond to clicks or pointer motion. */
+.edge-curve{opacity:.72}
+.edge-curve--top{
+  left:5.5%;right:5.5%;top:7px;height:24px;
+  border-top:2px solid rgba(106,255,151,.18);
+  border-radius:50% 50% 0 0 / 100% 100% 0 0;
+}
+.edge-curve--bottom{
+  left:5.5%;right:5.5%;bottom:7px;height:24px;
+  border-bottom:2px solid rgba(106,255,151,.16);
+  border-radius:0 0 50% 50% / 0 0 100% 100%;
+}
+.edge-curve--left{
+  top:5%;bottom:5%;left:7px;width:24px;
+  border-left:2px solid rgba(106,255,151,.13);
+  border-radius:100% 0 0 100% / 50% 0 0 50%;
+}
+.edge-curve--right{
+  top:5%;bottom:5%;right:7px;width:24px;
+  border-right:2px solid rgba(106,255,151,.13);
+  border-radius:0 100% 100% 0 / 0 50% 50% 0;
+}
+
+/* The reference is noisy, but its text remains readable. Effects live around
+   glyphs instead of cutting every glyph into horizontal slices. */
+.noise{opacity:.055}
+.scanlines{
+  opacity:.28;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,.34) 0 1px,
+    rgba(0,0,0,.035) 1px 2px,
+    rgba(75,255,123,.012) 2px 3px
+  );
+}
+.phosphor-grid{
+  opacity:.045;
+  background:repeating-linear-gradient(
+    90deg,
+    rgba(255,40,70,.08) 0 1px,
+    rgba(20,255,80,.05) 1px 2px,
+    rgba(60,170,255,.07) 2px 3px,
+    transparent 3px 4px
+  );
+}
+.rolling-band{opacity:.27;filter:blur(.45px)}
+.mouse-glow{opacity:.38}
+
+.masthead__node,.masthead__clock,.section-label{color:#8bd9a2}
+.menu-node{color:#c9f7d4;border-color:rgba(33,228,94,.48)}
+.menu-node__copy small{color:#9edab0;opacity:.92}
+.sub-node{color:#f0fff4;border-color:rgba(37,232,99,.43)}
+.sub-node small{color:#a5dfb5}
+.content-panel{
+  background:rgba(0,25,9,.24);
+  border-color:rgba(31,226,94,.52);
+}
+.content-panel::before{
+  height:5px;
+  background:rgba(0,243,106,.58);
+}
+.content-inner{
+  color:#f5fff7;
+  text-shadow:none;
+}
+.content-inner p,.content-inner li{
+  font-family:"Microsoft YaHei UI","PingFang SC","Noto Sans CJK SC","Segoe UI",sans-serif;
+  font-size:14px;
+  line-height:1.78;
+  font-weight:500;
+  letter-spacing:.01em;
+}
+.content-inner h2,.content-inner h3,
+.menu-node__copy b,.sub-node b,.download-button{
+  text-shadow:
+    -.28px 0 rgba(255,70,105,.25),
+    .32px 0 rgba(70,235,255,.23),
+    0 0 1px rgba(255,255,255,.08);
+}
+.content-kicker,.meta-line{color:#8bd5a1}
+
+/* Watermark stays behind the menu system rather than occupying a panel. */
+.brand-watermark{
+  opacity:.13;
+  filter:blur(.22px);
+}
+.brand-watermark img{
+  filter:
+    drop-shadow(-1px 0 0 rgba(255,66,99,.42))
+    drop-shadow(1px 0 0 rgba(75,233,255,.4))
+    drop-shadow(0 0 7px rgba(0,255,96,.26));
+}
+
+@media(max-width:760px){
+  .screen{
+    border-radius:10.5% / 3.2%;
+    clip-path:inset(0 round 10.5% 3.2%);
+  }
+  .signal{
+    position:relative;
+    inset:auto;
+    min-height:calc(100svh - 14px);
+    transform:translate3d(var(--jitter-x),var(--jitter-y),0);
+  }
+  .noise{opacity:.038}
+  .scanlines{opacity:.2}
+  .phosphor-grid{opacity:.03}
+  .rolling-band{opacity:.18}
+  .mouse-glow{opacity:.25}
+
+  .masthead__node,.masthead__clock{color:#9ee4b1;font-size:10px}
+  .section-label{color:#96dfaa}
+  .menu-node{color:#e0fbe7;border-color:rgba(38,232,101,.55)}
+  .menu-node__copy b{font-size:13px}
+  .menu-node__copy small{font-size:10px;color:#b0e5be;opacity:.96}
+  .sub-node{color:#f7fff9;border-color:rgba(39,232,102,.5)}
+  .sub-node b{font-size:14px}
+  .sub-node small{color:#b5e8c2}
+  .content-inner{color:#fbfffc}
+  .content-inner p,.content-inner li{
+    font-size:15px;
+    line-height:1.8;
+    font-weight:500;
+  }
+  .content-inner h2{font-size:clamp(29px,8.2vw,40px)}
+  .content-inner h3{font-size:18px}
+  .content-panel{background:rgba(0,22,8,.17)}
+
+  /* Persistent background mark on mobile. It remains behind subsystem/content
+     panels while the page scrolls. */
+  .brand-watermark{
+    position:fixed;
+    left:50%;
+    top:57%;
+    right:auto;
+    bottom:auto;
+    width:min(76vw,390px);
+    height:auto;
+    min-height:330px;
+    transform:translate(-50%,-50%);
+    opacity:.12;
+    z-index:0;
+  }
+  .brand-watermark img{width:min(62vw,310px)}
+  .brand-watermark strong{
+    margin-top:5px;
+    font-size:min(10vw,48px);
+    opacity:.76;
+  }
+  .subsystem,.content-panel{position:relative;z-index:3}
+  .edge-curve--top{top:4px;left:8%;right:8%;height:18px}
+  .edge-curve--bottom{bottom:4px;left:8%;right:8%;height:18px}
+  .edge-curve--left{left:4px;top:3.5%;bottom:3.5%;width:18px}
+  .edge-curve--right{right:4px;top:3.5%;bottom:3.5%;width:18px}
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { onRequestGet as releases } from '../functions/api/releases.js';
-import { onRequestGet as download } from '../functions/downloads/[project]/[kind].js';
+import { onRequestGet as download, onRequestHead as headDownload } from '../functions/downloads/[project]/[kind].js';
 
 const originalFetch = globalThis.fetch;
 const fixtures = {
@@ -22,7 +22,7 @@ const fixtures = {
   },
 };
 
-globalThis.fetch = async (input) => {
+globalThis.fetch = async (input, init = {}) => {
   const url = String(input);
   const latest = url.match(/repos\/(.+)\/releases\/latest$/);
   if (latest) {
@@ -35,7 +35,24 @@ globalThis.fetch = async (input) => {
   const asset = url.match(/api\.github\.test\/assets\/(\d+)$/);
   if (asset) return new Response(null,{status:302,headers:{location:`https://objects.test/${asset[1]}`}});
   const object = url.match(/objects\.test\/(\d+)$/);
-  if (object) return new Response(new Uint8Array([1,2,3]),{status:200,headers:{'content-type':'application/octet-stream'}});
+  if (object) {
+    const range = new Headers(init.headers || {}).get('range');
+    if (range === 'bytes=0-1') {
+      return new Response(new Uint8Array([1,2]),{
+        status:206,
+        headers:{
+          'content-type':'application/octet-stream',
+          'content-range':'bytes 0-1/3',
+          'content-length':'2',
+          'accept-ranges':'bytes',
+        },
+      });
+    }
+    return new Response(new Uint8Array([1,2,3]),{
+      status:200,
+      headers:{'content-type':'application/octet-stream','accept-ranges':'bytes'},
+    });
+  }
   return new Response('unexpected',{status:500});
 };
 
@@ -52,14 +69,36 @@ try {
   const binary = await download({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},
     params:{project:'bilibili',kind:'android'},
+    request:new Request('https://site.test/downloads/bilibili/android'),
   });
   assert.equal(binary.status,200);
   assert.match(binary.headers.get('content-disposition') || '',/Bilibili-Follower-Snapshot-Companion/);
   assert.equal(binary.headers.get('x-release-digest'),'sha256:aaa');
+  assert.equal(binary.headers.get('content-length'),'3');
+  assert.equal(binary.headers.get('accept-ranges'),'bytes');
+
+  const partial = await download({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'bilibili',kind:'android'},
+    request:new Request('https://site.test/downloads/bilibili/android',{headers:{Range:'bytes=0-1'}}),
+  });
+  assert.equal(partial.status,206);
+  assert.equal(partial.headers.get('content-range'),'bytes 0-1/3');
+  assert.equal(partial.headers.get('content-length'),'2');
+
+  const head = await headDownload({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'netease',kind:'windows'},
+    request:new Request('https://site.test/downloads/netease/windows',{method:'HEAD'}),
+  });
+  assert.equal(head.status,200);
+  assert.equal(head.headers.get('content-length'),'5');
+  assert.equal(await head.text(),'');
 
   const missing = await download({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},
     params:{project:'bad',kind:'bad'},
+    request:new Request('https://site.test/downloads/bad/bad'),
   });
   assert.equal(missing.status,404);
 

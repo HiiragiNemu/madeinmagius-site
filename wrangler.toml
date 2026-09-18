@@ -1,0 +1,6 @@
+name = "madeinmagius-site"
+compatibility_date = "2026-09-19"
+pages_build_output_dir = "dist"
+
+# Deployment is intentionally not performed from this repository setup pass.
+# Configure GITHUB_RELEASES_TOKEN as an encrypted Cloudflare Pages secret.

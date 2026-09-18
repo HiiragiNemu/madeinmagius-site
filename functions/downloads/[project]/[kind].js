@@ -15,7 +15,7 @@ const PROJECTS = {
   },
 };
 
-function headers(token, accept = 'application/vnd.github+json') {
+function githubHeaders(token, accept = 'application/vnd.github+json') {
   return {
     Accept: accept,
     Authorization: `Bearer ${token}`,
@@ -38,7 +38,7 @@ function error(message, status) {
 async function getAsset(config, kind, token) {
   const releaseResponse = await fetch(
     `https://api.github.com/repos/${config.repo}/releases/latest`,
-    { headers: headers(token) },
+    { headers: githubHeaders(token) },
   );
   if (!releaseResponse.ok) throw new Error(`release lookup failed: ${releaseResponse.status}`);
   const release = await releaseResponse.json();
@@ -48,7 +48,29 @@ async function getAsset(config, kind, token) {
   return asset;
 }
 
-export async function onRequestGet(context) {
+async function getBinary(asset, token, range) {
+  const apiHeaders = githubHeaders(token, 'application/octet-stream');
+  if (range) apiHeaders.Range = range;
+  const assetResponse = await fetch(asset.url, {
+    headers: apiHeaders,
+    redirect: 'manual',
+  });
+
+  if (assetResponse.status >= 300 && assetResponse.status < 400) {
+    const location = assetResponse.headers.get('location');
+    if (!location) throw new Error('asset redirect missing location');
+    const headers = range ? { Range: range } : undefined;
+    return fetch(location, { headers });
+  }
+  return assetResponse;
+}
+
+function copyHeader(target, source, name) {
+  const value = source.headers.get(name);
+  if (value) target.set(name, value);
+}
+
+async function handle(context, headOnly = false) {
   const token = context.env.GITHUB_RELEASES_TOKEN;
   if (!token) return error('Release mirror is not configured yet.', 503);
 
@@ -59,32 +81,53 @@ export async function onRequestGet(context) {
 
   try {
     const asset = await getAsset(config, kind, token);
-    const assetResponse = await fetch(asset.url, {
-      headers: headers(token, 'application/octet-stream'),
-      redirect: 'manual',
-    });
+    const range = context.request?.headers?.get('range') || null;
+    const binaryResponse = headOnly
+      ? null
+      : await getBinary(asset, token, range);
 
-    let binaryResponse = assetResponse;
-    if (assetResponse.status >= 300 && assetResponse.status < 400) {
-      const location = assetResponse.headers.get('location');
-      if (!location) throw new Error('asset redirect missing location');
-      binaryResponse = await fetch(location);
+    if (binaryResponse && !(binaryResponse.ok || binaryResponse.status === 206)) {
+      if (binaryResponse.status === 416) return error('Requested range is not satisfiable.', 416);
+      throw new Error(`asset fetch failed: ${binaryResponse.status}`);
     }
-    if (!binaryResponse.ok) throw new Error(`asset fetch failed: ${binaryResponse.status}`);
 
     const responseHeaders = new Headers();
-    responseHeaders.set('content-type', asset.content_type || binaryResponse.headers.get('content-type') || 'application/octet-stream');
-    responseHeaders.set('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(asset.name)}`);
-    responseHeaders.set('cache-control', 'public, max-age=300');
+    responseHeaders.set(
+      'content-type',
+      asset.content_type || binaryResponse?.headers.get('content-type') || 'application/octet-stream',
+    );
+    responseHeaders.set(
+      'content-disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(asset.name)}`,
+    );
+    responseHeaders.set('cache-control', 'public, max-age=300, s-maxage=300');
     responseHeaders.set('x-content-type-options', 'nosniff');
-    if (asset.size) responseHeaders.set('content-length', String(asset.size));
-    if (asset.digest) responseHeaders.set('x-release-digest', asset.digest);
+    responseHeaders.set('accept-ranges', binaryResponse?.headers.get('accept-ranges') || 'bytes');
+    if (asset.digest) {
+      responseHeaders.set('x-release-digest', asset.digest);
+      responseHeaders.set('etag', `"${asset.digest}"`);
+    }
 
-    return new Response(binaryResponse.body, {
-      status: 200,
+    if (binaryResponse?.status === 206) {
+      copyHeader(responseHeaders, binaryResponse, 'content-range');
+      copyHeader(responseHeaders, binaryResponse, 'content-length');
+    } else if (asset.size) {
+      responseHeaders.set('content-length', String(asset.size));
+    }
+
+    return new Response(headOnly ? null : binaryResponse.body, {
+      status: binaryResponse?.status || 200,
       headers: responseHeaders,
     });
   } catch (cause) {
     return error(cause instanceof Error ? cause.message : 'Release mirror error.', 502);
   }
+}
+
+export function onRequestGet(context) {
+  return handle(context, false);
+}
+
+export function onRequestHead(context) {
+  return handle(context, true);
 }

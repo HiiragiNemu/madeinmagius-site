@@ -1,0 +1,18 @@
+name: Probe legacy Bilibili downloads
+
+on:
+  push:
+    paths:
+      - ".github/workflows/probe-old-downloads.yml"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe legacy download routes
+        run: |
+          set +e
+          for url in             "https://bilibili-follower-snapshot.pages.dev/downloads/Bilibili-Follower-Snapshot-Companion-v0.1.9.apk"             "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot.user.js"             "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-v0.2.9.user.js"             "https://bilibili-follower-snapshot.pages.dev/downloads/RELEASE_MANIFEST.json"; do
+            echo "=== $url"
+            curl -L -sS -o /dev/null -D - "$url" | sed -n '1,12p'
+          done

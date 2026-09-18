@@ -98,7 +98,7 @@ try {
   assert.equal(data.projects.bilibili.tag,'v9.9.9');
   assert.equal(data.projects.netease.assets.windows.name,'NeteasePlaylistExporter-v8.8.8-windows-x64.zip');
   assert.equal(data.projects.bilibili.assets.android.download,'./downloads/bilibili/android');
-  assert.equal(data.projects.bilibili.assets.sourceZip.download,'./downloads/bilibili/sourceZip');
+  assert.equal(data.projects.bilibili.assets.sourceZip.download,'./downloads/bilibili/source');
   assert.equal(data.projects.bilibili.assets.consoleScript.download,'./downloads/bilibili-follower-snapshot-console.js');
   assert.equal(data.projects.bilibili.assets.consoleText.download,'./downloads/bilibili-follower-snapshot-console.txt');
   assert.equal(data.projects.exedra.assets.twXapk.name,'tw.sonet.magiaexedra-9.0.0-99999999.xapk');

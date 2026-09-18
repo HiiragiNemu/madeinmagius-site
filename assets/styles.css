@@ -1040,3 +1040,219 @@ body[data-wake="true"] .signal{animation:wake .28s steps(7,end) both}
   .edge-curve--left{left:4px;top:3.5%;bottom:3.5%;width:18px}
   .edge-curve--right{right:4px;top:3.5%;bottom:3.5%;width:18px}
 }
+
+
+/* === Reader-equivalent tube lens pass ===
+   The lens distorts one bounded viewport, exactly like magi-reader. */
+.signal{
+  inset:0;
+  transform:translate3d(var(--jitter-x),var(--jitter-y),0);
+  -webkit-transform:translate3d(var(--jitter-x),var(--jitter-y),0);
+  filter:url("#crt-warp") brightness(var(--flicker));
+  -webkit-filter:url("#crt-warp") brightness(var(--flicker));
+  transform-origin:center center;
+  -webkit-transform-origin:center center;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  will-change:transform,filter;
+}
+.signal[data-burst="true"]{
+  filter:url("#crt-warp") brightness(1.025);
+  -webkit-filter:url("#crt-warp") brightness(1.025);
+}
+.signal[data-drop="true"]{
+  opacity:.78;
+  filter:url("#crt-warp") brightness(.82) contrast(1.12);
+  -webkit-filter:url("#crt-warp") brightness(.82) contrast(1.12);
+}
+
+/* The physical glass shape is fixed and never changes during interaction. */
+.screen{
+  border-radius:clamp(24px,3.2vw,54px) / clamp(20px,2.7vh,40px);
+  clip-path:inset(0 round clamp(24px,3.2vw,54px) / clamp(20px,2.7vh,40px));
+}
+.screen::before{
+  background:
+    radial-gradient(ellipse at 50% 47%,transparent 37%,rgba(0,0,0,.025) 64%,rgba(0,0,0,.16) 92%,rgba(0,0,0,.34) 100%),
+    linear-gradient(90deg,rgba(0,0,0,.2),transparent 8% 92%,rgba(0,0,0,.22));
+  box-shadow:
+    inset 0 0 3px rgba(218,233,213,.22),
+    inset 0 0 17px rgba(0,0,0,.6),
+    inset 0 0 42px rgba(0,0,0,.28);
+}
+
+/* Reader-style phosphor raster and grain: visible, but below glyph contrast. */
+.scanlines{
+  opacity:.28;
+  mix-blend-mode:multiply;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(5,0,2,.52) 0 .6px,
+    transparent .6px 2px
+  );
+}
+.phosphor-grid{
+  opacity:.08;
+  mix-blend-mode:soft-light;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255,55,76,.13) 0 1px,
+      rgba(45,255,105,.08) 1px 2px,
+      rgba(85,170,255,.11) 2px 3px,
+      transparent 3px 4px);
+}
+.noise{
+  opacity:.075;
+  mix-blend-mode:screen;
+}
+.rolling-band{
+  opacity:.24;
+  filter:blur(.5px);
+}
+.mouse-glow{
+  opacity:.32;
+}
+
+/* Let the real phosphor filter provide the halo; local shadows only register
+   colour channels and keep thin strokes readable. */
+.menu-node__copy b,
+.sub-node b,
+.content-inner h2,
+.content-inner h3,
+.download-button,
+.masthead__row h1{
+  text-shadow:
+    -.032em 0 .012em rgba(255,232,82,.50),
+    .042em 0 .016em rgba(52,249,22,.48),
+    0 0 .10em rgba(166,247,82,.17);
+}
+.menu-node.is-selected,
+.sub-node.is-selected,
+.download-button{
+  box-shadow:
+    -1.15px 0 0 rgba(255,232,82,.50),
+    1.35px 0 .35px rgba(52,249,22,.48),
+    0 0 7px rgba(166,247,82,.52),
+    0 0 16px rgba(105,235,76,.22);
+}
+
+/* Keep the watermark as a passive phosphor image underneath all controls. */
+.brand-watermark{
+  opacity:.115;
+  filter:none;
+}
+.brand-watermark img{
+  filter:
+    drop-shadow(0 0 3px rgba(220,255,230,.24))
+    drop-shadow(0 0 12px rgba(89,255,131,.18));
+}
+
+/* iOS/WebKit: keep one fixed CRT viewport and scroll the UI inside it.
+   This prevents the displacement map from stretching over a tall document. */
+@media(max-width:760px){
+  html,body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    overscroll-behavior:none;
+  }
+  body{
+    min-height:100vh;
+    min-height:100dvh;
+  }
+  .bezel{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100vh;
+    height:100dvh;
+    min-height:0;
+    padding:7px;
+    overflow:hidden;
+  }
+  .screen{
+    width:100%;
+    height:100%;
+    min-height:0;
+    border-radius:clamp(25px,8vw,44px) / clamp(18px,3.6vh,34px);
+    clip-path:inset(0 round clamp(25px,8vw,44px) / clamp(18px,3.6vh,34px));
+  }
+  .signal{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+  }
+  .masthead{
+    position:absolute;
+    top:0;left:0;right:0;
+    height:96px;
+    z-index:8;
+  }
+  .terminal-ui{
+    position:absolute;
+    left:0;right:0;
+    top:96px;
+    bottom:40px;
+    height:auto;
+    min-height:0;
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
+    padding:0 12px 72px;
+    scrollbar-width:none;
+  }
+  .terminal-ui::-webkit-scrollbar{display:none}
+  .statusbar{
+    position:absolute;
+    left:12px;right:12px;bottom:7px;
+    z-index:12;
+    background:linear-gradient(180deg,transparent,rgba(0,10,3,.72) 38%,rgba(0,8,2,.9));
+  }
+  .brand-watermark{
+    position:fixed;
+    left:50%;
+    top:54%;
+    right:auto;
+    bottom:auto;
+    width:min(78vw,400px);
+    min-height:330px;
+    transform:translate(-50%,-50%);
+    z-index:0;
+    opacity:.105;
+    pointer-events:none;
+  }
+  .brand-watermark img{width:min(64vw,320px)}
+  .brand-watermark strong{font-size:min(10vw,50px)}
+  .folders,.stage,.subsystem,.content-panel{position:relative}
+  .folders,.stage,.subsystem,.content-panel{z-index:3}
+  .content-panel{margin-bottom:18px}
+
+  .scanlines{opacity:.25}
+  .phosphor-grid{opacity:.06}
+  .noise{opacity:.06}
+  .rolling-band{opacity:.2}
+
+  .menu-node__copy b,.sub-node b{
+    font-size:14px;
+  }
+  .menu-node__copy small,.sub-node small{
+    font-size:10px;
+    opacity:.92;
+  }
+  .content-inner p,.content-inner li{
+    font-size:15px;
+    line-height:1.8;
+    font-weight:500;
+  }
+}
+
+/* WebKit fallback if the SVG filter is disabled by the browser. The glass
+   remains curved and all raster/glow layers stay active; no geometry jumps. */
+html[data-crt-engine="webkit-svg"] .signal{
+  -webkit-filter:url("#crt-warp") brightness(var(--flicker));
+}

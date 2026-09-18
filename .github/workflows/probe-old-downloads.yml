@@ -9,10 +9,11 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe legacy download routes
+      - name: Inspect legacy site download links
         run: |
-          set +e
-          for url in             "https://bilibili-follower-snapshot.pages.dev/downloads/Bilibili-Follower-Snapshot-Companion-v0.1.9.apk"             "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot.user.js"             "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-v0.2.9.user.js"             "https://bilibili-follower-snapshot.pages.dev/downloads/RELEASE_MANIFEST.json"; do
-            echo "=== $url"
-            curl -L -sS -o /dev/null -D - "$url" | sed -n '1,12p'
-          done
+          set -e
+          curl -fsSL "https://bilibili-follower-snapshot.pages.dev/" -o /tmp/site.html
+          echo "=== DOWNLOAD HREFS ==="
+          grep -Eo 'href="[^"]+"' /tmp/site.html | grep -Ei 'download|apk|user\.js|zip' || true
+          echo "=== DOWNLOAD TEXT ==="
+          grep -Ein 'apk|userscript|download|下载' /tmp/site.html | head -n 80 || true

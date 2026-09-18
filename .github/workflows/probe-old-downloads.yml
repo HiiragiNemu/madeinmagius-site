@@ -9,11 +9,13 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect legacy site download links
+      - name: Inspect legacy Bilibili page
         run: |
           set -e
-          curl -fsSL "https://bilibili-follower-snapshot.pages.dev/" -o /tmp/site.html
-          echo "=== DOWNLOAD HREFS ==="
-          grep -Eo 'href="[^"]+"' /tmp/site.html | grep -Ei 'download|apk|user\.js|zip' || true
-          echo "=== DOWNLOAD TEXT ==="
-          grep -Ein 'apk|userscript|download|下载' /tmp/site.html | head -n 80 || true
+          curl -fsSL "https://bilibili-follower-snapshot.pages.dev/bilibili/" -o /tmp/bili.html
+          echo "=== HREFS ==="
+          grep -Eo 'href="[^"]+"' /tmp/bili.html | sed 's/^/LINK /'
+          echo "=== SCRIPT SOURCES ==="
+          grep -Eo 'src="[^"]+"' /tmp/bili.html | sed 's/^/SRC /'
+          echo "=== DOWNLOAD RELATED ==="
+          grep -Ein 'apk|user\.js|download|sha256|伴侣|脚本' /tmp/bili.html | head -n 120 || true

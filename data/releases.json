@@ -13,13 +13,25 @@
           "name": "Bilibili-Follower-Snapshot-Companion-v0.1.9.apk",
           "size": 2467189,
           "digest": "sha256:33e6413c1f344fe5b1cf474e468bb1e04a944332742850cb1eee0eddeec954af",
-          "browser_download_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/download/v0.1.9/Bilibili-Follower-Snapshot-Companion-v0.1.9.apk"
+          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili/v0.1.9/Bilibili-Follower-Snapshot-Companion-v0.1.9.apk",
+          "github_release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/download/v0.1.9/Bilibili-Follower-Snapshot-Companion-v0.1.9.apk"
         },
         "userscript": {
           "name": "bilibili-follower-snapshot-v0.2.9.user.js",
           "size": 138434,
           "digest": "sha256:74449434b775fa53a1973558cc5bd8f0dae7a0017af8a61d7dd714e675ae2fae",
-          "browser_download_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/download/v0.1.9/bilibili-follower-snapshot-v0.2.9.user.js"
+          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot.user.js",
+          "github_release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/download/v0.1.9/bilibili-follower-snapshot-v0.2.9.user.js"
+        },
+        "consoleText": {
+          "name": "bilibili-follower-snapshot-console.txt",
+          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.txt"
+        },
+        "sourceZip": {
+          "name": "Bilibili-Follower-Snapshot-v0.1.9-source.zip",
+          "size": 791040,
+          "digest": "sha256:089cda974dde761597d4d8e3e2c5dec8ef14dca8e221fb541dc2d453038c56e9",
+          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili/v0.1.9/Bilibili-Follower-Snapshot-v0.1.9-source.zip"
         }
       }
     },

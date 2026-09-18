@@ -11,6 +11,7 @@ const fixtures = {
     assets:[
       {id:11,name:'Bilibili-Follower-Snapshot-Companion-v9.9.9.apk',size:3,digest:'sha256:aaa',content_type:'application/vnd.android.package-archive',url:'https://api.github.test/assets/11'},
       {id:12,name:'bilibili-follower-snapshot-v9.9.9.user.js',size:4,digest:'sha256:bbb',content_type:'application/javascript',url:'https://api.github.test/assets/12'},
+      {id:13,name:'Bilibili-Follower-Snapshot-v9.9.9-source.zip',size:7,digest:'sha256:src',content_type:'application/zip',url:'https://api.github.test/assets/13'},
     ],
   },
   'HiiragiNemu/netease-cloudmusic-delisted-exporter': {
@@ -97,6 +98,9 @@ try {
   assert.equal(data.projects.bilibili.tag,'v9.9.9');
   assert.equal(data.projects.netease.assets.windows.name,'NeteasePlaylistExporter-v8.8.8-windows-x64.zip');
   assert.equal(data.projects.bilibili.assets.android.download,'./downloads/bilibili/android');
+  assert.equal(data.projects.bilibili.assets.sourceZip.download,'./downloads/bilibili/sourceZip');
+  assert.equal(data.projects.bilibili.assets.consoleScript.download,'./downloads/bilibili-follower-snapshot-console.js');
+  assert.equal(data.projects.bilibili.assets.consoleText.download,'./downloads/bilibili-follower-snapshot-console.txt');
   assert.equal(data.projects.exedra.assets.twXapk.name,'tw.sonet.magiaexedra-9.0.0-99999999.xapk');
   assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-9.0.0.xapk');
   assert.equal(data.projects.exedra.assets.tools.name,'MagiaExedraTWJPTools-v9.0.0.zip');
@@ -140,6 +144,15 @@ try {
   assert.equal(exedra.status,200);
   assert.match(exedra.headers.get('content-disposition') || '',/tw\.sonet\.magiaexedra/);
   assert.equal(exedra.headers.get('x-release-digest'),'sha256:ggg');
+
+  const sourceZip = await download({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'bilibili',kind:'source'},
+    request:new Request('https://site.test/downloads/bilibili/source'),
+  });
+  assert.equal(sourceZip.status,200);
+  assert.match(sourceZip.headers.get('content-disposition') || '',/source\.zip/);
+  assert.equal(sourceZip.headers.get('x-release-digest'),'sha256:src');
 
   const missing = await download({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},

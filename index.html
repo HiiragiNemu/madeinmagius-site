@@ -15,10 +15,10 @@
     <defs>
       <filter id="crt-warp" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
         <feImage id="crt-warp-map" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map"/>
-        <feDisplacementMap in="SourceGraphic" in2="map" scale="30" xChannelSelector="R" yChannelSelector="G" result="curved"/>
+        <feDisplacementMap in="SourceGraphic" in2="map" scale="15" xChannelSelector="R" yChannelSelector="G" result="curved"/>
         <feTurbulence id="signal-turbulence" type="fractalNoise" baseFrequency=".002 .018" numOctaves="1" seed="23" result="signalNoise"/>
-        <feDisplacementMap in="curved" in2="signalNoise" scale="1.7" xChannelSelector="R" yChannelSelector="G" result="analog"/>
-        <feGaussianBlur in="analog" stdDeviation=".16" result="softSignal"/>
+        <feDisplacementMap in="curved" in2="signalNoise" scale=".72" xChannelSelector="R" yChannelSelector="G" result="analog"/>
+        <feGaussianBlur in="analog" stdDeviation=".055" result="softSignal"/>
         <feComponentTransfer in="softSignal">
           <feFuncR type="gamma" amplitude="1.02" exponent=".97" offset="0"/>
           <feFuncG type="gamma" amplitude="1.02" exponent=".97" offset="0"/>
@@ -111,6 +111,10 @@
           <span class="controls">↑ ↓ SELECT&nbsp;&nbsp;&nbsp; ENTER CONFIRM&nbsp;&nbsp;&nbsp; ESC BACK</span>
         </footer>
       </div>
+      <div class="edge-curve edge-curve--top" aria-hidden="true"></div>
+      <div class="edge-curve edge-curve--right" aria-hidden="true"></div>
+      <div class="edge-curve edge-curve--bottom" aria-hidden="true"></div>
+      <div class="edge-curve edge-curve--left" aria-hidden="true"></div>
     </div>
   </div>
 

@@ -35,7 +35,8 @@ jobs:
           trap 'kill $SERVER_PID' EXIT
           sleep 1
           curl --fail --silent --show-error http://127.0.0.1:4173/ | grep -q "FOLDERS"
-          curl --fail --silent --show-error http://127.0.0.1:4173/data/releases.json | grep -q "madeinmagius-release-snapshot"\n          curl --fail --silent --show-error http://127.0.0.1:4173/data/exedra-docs.json | grep -q "magiuslink-exedra-docs"
+          curl --fail --silent --show-error http://127.0.0.1:4173/data/releases.json | grep -q "madeinmagius-release-snapshot"
+          curl --fail --silent --show-error http://127.0.0.1:4173/data/exedra-docs.json | grep -q "magiuslink-exedra-docs"
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:

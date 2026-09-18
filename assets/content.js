@@ -12,9 +12,12 @@ export const PROGRAMS = {
     { id: 'bili-guide', label: 'USAGE', note: '完整使用说明' }
   ]},
   netease: { subs: [
-    { id: 'windows', label: 'WINDOWS X64', note: '免安装包' },
-    { id: 'python', label: 'PYTHON', note: '跨平台' },
-    { id: 'netease-guide', label: 'USAGE', note: '使用说明' }
+    { id: 'android-full', label: 'ANDROID', note: '完整版 / 商店版 / AAB' },
+    { id: 'windows', label: 'WINDOWS X64', note: '免安装 ZIP' },
+    { id: 'python', label: 'PYTHON', note: 'ZIP / wheel' },
+    { id: 'netease-source', label: 'SOURCE', note: '源码包' },
+    { id: 'netease-verify', label: 'VERIFY', note: '清单 / 签名' },
+    { id: 'netease-guide', label: 'USAGE', note: '完整使用说明' }
   ]},
   exedra: { subs: [
     { id: 'exedra-downloads', label: 'DOWNLOADS', note: 'TW / JP / 工具' },
@@ -255,23 +258,81 @@ export function renderContent(programId, subId, data) {
   }
 
   if (programId === 'netease') {
-    if (subId === 'windows') {
-      return '<p class="content-kicker">NETEASE / WINDOWS</p><h2>WINDOWS X64</h2>' +
-        '<p>免安装 Windows 包，支持完整曲目、已下架记录、历史差异与断点续跑。</p>' +
+    if (subId === 'android-full') {
+      return '<p class="content-kicker">NETEASE / ANDROID / v2.5.1</p><h2>ANDROID</h2>' +
+        '<p>Android 8.0+。普通用户使用完整版；商店版移除刷新助手；Google Play 分发使用 AAB。</p>' +
         '<div class="download-stack">' +
-        downloadCard(data, 'netease', 'windows', 'WINDOWS X64 ZIP', 'Windows 免安装包', './downloads/netease/windows') +
+        downloadCard(data, 'netease', 'androidFull', '完整版 APK', 'Android 8.0+ · 推荐', '') +
+        downloadCard(data, 'netease', 'androidStore', '商店版 APK', 'Android 8.0+ · 商店包', '') +
+        downloadCard(data, 'netease', 'androidAab', 'GOOGLE PLAY AAB', 'Google Play 分发包', '') +
+        '</div>' +
+        '<p>完整版可由用户主动启用刷新助手处理长久未打开的歌单；商店版不含该助手，可先在网易云音乐中手动打开歌单。</p>';
+    }
+    if (subId === 'windows') {
+      return '<p class="content-kicker">NETEASE / WINDOWS / v2.5.1</p><h2>WINDOWS X64</h2>' +
+        '<p>免安装 ZIP。解压后双击“一键导出.cmd”，或直接运行 bin/NeteaseDelistedExporter.exe；运行程序不依赖本机 Python。</p>' +
+        '<div class="download-stack">' +
+        downloadCard(data, 'netease', 'windows', 'WINDOWS X64 ZIP', 'Windows x64 · 免安装', '') +
         '</div>';
     }
     if (subId === 'python') {
-      return '<p class="content-kicker">NETEASE / PYTHON</p><h2>PYTHON</h2>' +
-        '<p>跨平台 Python 包，适合 Android / Termux、macOS、Linux 与已有 Python 环境。</p>' +
+      return '<p class="content-kicker">NETEASE / PYTHON / v2.5.1</p><h2>PYTHON</h2>' +
+        '<p>Windows、macOS、Linux 均可使用。便携 ZIP 解压后安装 requirements.txt；wheel 可直接由 pip 安装。</p>' +
         '<div class="download-stack">' +
-        downloadCard(data, 'netease', 'python', 'PYTHON ZIP', '跨平台 Python 发行包', './downloads/netease/python') +
+        downloadCard(data, 'netease', 'python', 'PYTHON ZIP', 'Python 3 · 跨平台', '') +
+        downloadCard(data, 'netease', 'wheel', 'PYTHON WHEEL', 'py3-none-any', '') +
         '</div>';
     }
-    return '<p class="content-kicker">NETEASE / USAGE</p><h2>使用说明</h2>' +
-      '<p>工具可导出自建与收藏歌单中的完整歌曲，包含已下架项目；支持 TXT / CSV、去重、历史快照、差异报告和中断后继续。</p>' +
-      '<div class="quick-links"><a href="https://github.com/HiiragiNemu/netease-cloudmusic-delisted-exporter#readme" target="_blank" rel="noreferrer">完整 README ↗</a></div>';
+    if (subId === 'netease-source') {
+      return '<p class="content-kicker">NETEASE / SOURCE / v2.5.1</p><h2>SOURCE</h2>' +
+        '<p>完整源码与文档归档，适合审阅、开发或自行构建。</p>' +
+        '<div class="download-stack">' +
+        downloadCard(data, 'netease', 'source', 'SOURCE TAR.GZ', '完整源码包', '') +
+        '</div>';
+    }
+    if (subId === 'netease-verify') {
+      const project = data.releases && data.releases.projects ? data.releases.projects.netease : null;
+      const assets = project && project.assets ? project.assets : {};
+      function verificationLink(key, label) {
+        const item = assets[key];
+        if (!item) return '';
+        const href = item.download || item.browser_download_url || '#';
+        return '<a href="' + escapeHtml(href) + '" target="_blank" rel="noreferrer">' + escapeHtml(label) + ' ↗</a>';
+      }
+      return '<p class="content-kicker">NETEASE / VERIFY / v2.5.1</p><h2>清单与签名</h2>' +
+        '<p>公开资料只包含发布清单、SHA-256 与公钥/验证记录，不包含签名私钥或密码。</p>' +
+        '<div class="quick-links">' +
+        verificationLink('manifest','RELEASE_MANIFEST.json') +
+        verificationLink('sums','SHA256SUMS.txt') +
+        verificationLink('cert','公开上传证书') +
+        verificationLink('signature','签名验证记录') +
+        '</div>';
+    }
+    return '<p class="content-kicker">NETEASE / USAGE / v2.5.1</p><h2>使用说明</h2>' +
+      '<p>TXT 按来源歌单分组：歌单名称只写一次，下面只列完整曲名；CSV / JSON 保留完整字段。支持 Android、Windows、Python、固定基准和仅新增下架。</p>' +
+      '<h3>Android：日常无需 Root / ADB</h3><ol>' +
+      '<li>普通用户安装完整版 APK；日常登录、选择、比较和导出不需要电脑、Root 或 ADB。</li>' +
+      '<li>打开“网易云登录页”，完成登录后返回工具并点“检查登录”。</li>' +
+      '<li>选择歌单范围、曲目范围与重复策略；默认精确去重并保留全部来源歌单。</li>' +
+      '<li>勾选 TXT、CSV、JSON，选择普通文件、ZIP 或两者，并确认保存位置。</li>' +
+      '</ol>' +
+      '<h3>Windows x64</h3><ol>' +
+      '<li>解压 ZIP 并保留目录结构。</li><li>双击“一键导出.cmd”，或运行 bin/NeteaseDelistedExporter.exe。</li>' +
+      '<li>按菜单选择歌单、曲目、重复策略和 baseline 模式；直接回车采用默认去重。</li>' +
+      '<li>完整刷新已下架侧栏时需要连接 Android 并启用 ADB；仅读取当前曲目或缓存时可不连接。</li>' +
+      '</ol>' +
+      '<h3>Python ZIP / wheel / source</h3><ol>' +
+      '<li>ZIP：python -m pip install -r requirements.txt，然后 python run.py。</li>' +
+      '<li>wheel：python -m pip install 下载的 .whl，然后使用 netease-playlist-exporter。</li>' +
+      '<li>源码 tar.gz：包含完整源码和文档。</li>' +
+      '</ol>' +
+      '<h3>v2.5.1 基准版本</h3><ol>' +
+      '<li>“对比设置”列出每一次完整结果，并标注“上次完整”和“默认固定”。</li>' +
+      '<li>可选择任意完整版本作为本次比较基准，也可导出所选基准 JSON。</li>' +
+      '<li>设为默认固定后，日常完整运行不会覆盖它，直到再次明确设置。</li>' +
+      '<li>可只导出相对所选或默认固定基准的新下架曲目。</li>' +
+      '</ol>' +
+      '<p><strong>完整性保护：</strong>不完整采集不会新增完整版本，也不会替换“上次完整”或默认固定基准。</p>';
   }
 
   function renderIntegrityBlock(label, manifest, verification, sums) {

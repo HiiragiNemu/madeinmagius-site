@@ -32,6 +32,10 @@
           "size": 791040,
           "digest": "sha256:089cda974dde761597d4d8e3e2c5dec8ef14dca8e221fb541dc2d453038c56e9",
           "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili/v0.1.9/Bilibili-Follower-Snapshot-v0.1.9-source.zip"
+        },
+        "consoleScript": {
+          "name": "bilibili-follower-snapshot-console.js",
+          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.js"
         }
       }
     },

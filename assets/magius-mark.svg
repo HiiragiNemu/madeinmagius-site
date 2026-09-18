@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 132" role="img" aria-labelledby="title">
+  <title id="title">Magius wing mark</title>
+  <g fill="currentColor">
+    <path d="M76 4h8l5 18v37l10 13-4 22-8 20H73l-8-20-4-22 10-13V22z"/>
+    <path d="M8 49h56l7 14-10 19-14 12-15-5-13-12-8-14z"/>
+    <path d="M152 49H96l-7 14 10 19 14 12 15-5 13-12 8-14z"/>
+    <path d="M72 111h16l-2 8 7 6v3H67v-3l7-6z"/>
+  </g>
+  <g fill="#000">
+    <path d="M21 58h18l-8 15-11-8z"/>
+    <path d="M42 58h12l-5 23-11 4z"/>
+    <path d="M58 59h7l-2 13-9 12z"/>
+    <path d="M139 58h-18l8 15 11-8z"/>
+    <path d="M118 58h-12l5 23 11 4z"/>
+    <path d="M102 59h-7l2 13 9 12z"/>
+    <path d="M76 28h8v42h-8z"/>
+  </g>
+</svg>

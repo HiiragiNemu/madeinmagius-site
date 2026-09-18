@@ -3,6 +3,7 @@ import { onRequestGet as releases } from '../functions/api/releases.js';
 import { onRequestGet as download, onRequestHead as headDownload } from '../functions/downloads/[project]/[kind].js';
 
 const originalFetch = globalThis.fetch;
+
 const fixtures = {
   'HiiragiNemu/Bilibili-Follower-Snapshot': {
     tag_name:'v9.9.9', name:'Bilibili test', published_at:'2026-09-19T00:00:00Z',
@@ -22,8 +23,34 @@ const fixtures = {
   },
 };
 
+const exedraReleases = [
+  {
+    tag_name:'tw-jp-tools-v9.0.0', published_at:'2026-09-19T00:00:00Z',
+    assets:[
+      {id:31,name:'MagiaExedraTWJPTools-v9.0.0.zip',size:7,digest:'sha256:eee',content_type:'application/zip',url:'https://api.github.test/assets/31'},
+    ],
+  },
+  {
+    tag_name:'jp-v9.0.0', published_at:'2026-09-18T00:00:00Z',
+    assets:[
+      {id:32,name:'com.aniplex.magia.exedra.jp-9.0.0.xapk',size:8,digest:'sha256:fff',content_type:'application/octet-stream',url:'https://api.github.test/assets/32'},
+    ],
+  },
+  {
+    tag_name:'v9.0.0', published_at:'2026-09-17T00:00:00Z',
+    assets:[
+      {id:33,name:'tw.sonet.magiaexedra-9.0.0-99999999.xapk',size:9,digest:'sha256:ggg',content_type:'application/octet-stream',url:'https://api.github.test/assets/33'},
+    ],
+  },
+];
+
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input);
+
+  if (url.includes('HiiragiNemu/MagiaExedraTWTools/releases?per_page=30')) {
+    return new Response(JSON.stringify(exedraReleases),{status:200,headers:{'content-type':'application/json'}});
+  }
+
   const latest = url.match(/repos\/(.+)\/releases\/latest$/);
   if (latest) {
     const key = decodeURIComponent(latest[1]);
@@ -32,8 +59,12 @@ globalThis.fetch = async (input, init = {}) => {
       ? new Response(JSON.stringify(body),{status:200,headers:{'content-type':'application/json'}})
       : new Response('missing',{status:404});
   }
+
   const asset = url.match(/api\.github\.test\/assets\/(\d+)$/);
-  if (asset) return new Response(null,{status:302,headers:{location:`https://objects.test/${asset[1]}`}});
+  if (asset) {
+    return new Response(null,{status:302,headers:{location:`https://objects.test/${asset[1]}`}});
+  }
+
   const object = url.match(/objects\.test\/(\d+)$/);
   if (object) {
     const range = new Headers(init.headers || {}).get('range');
@@ -53,6 +84,7 @@ globalThis.fetch = async (input, init = {}) => {
       headers:{'content-type':'application/octet-stream','accept-ranges':'bytes'},
     });
   }
+
   return new Response('unexpected',{status:500});
 };
 
@@ -60,10 +92,15 @@ try {
   const metadata = await releases({env:{GITHUB_RELEASES_TOKEN:'fake-token'}});
   assert.equal(metadata.status,200);
   const data = await metadata.json();
+
   assert.equal(data.source,'cloudflare-live');
   assert.equal(data.projects.bilibili.tag,'v9.9.9');
   assert.equal(data.projects.netease.assets.windows.name,'NeteasePlaylistExporter-v8.8.8-windows-x64.zip');
   assert.equal(data.projects.bilibili.assets.android.download,'./downloads/bilibili/android');
+  assert.equal(data.projects.exedra.assets.twXapk.name,'tw.sonet.magiaexedra-9.0.0-99999999.xapk');
+  assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-9.0.0.xapk');
+  assert.equal(data.projects.exedra.assets.tools.name,'MagiaExedraTWJPTools-v9.0.0.zip');
+  assert.equal(data.projects.exedra.assets.tools.download,'./downloads/exedra/tools');
   assert.ok(!JSON.stringify(data).includes('fake-token'));
 
   const binary = await download({
@@ -94,6 +131,15 @@ try {
   assert.equal(head.status,200);
   assert.equal(head.headers.get('content-length'),'5');
   assert.equal(await head.text(),'');
+
+  const exedra = await download({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'exedra',kind:'tw-xapk'},
+    request:new Request('https://site.test/downloads/exedra/tw-xapk'),
+  });
+  assert.equal(exedra.status,200);
+  assert.match(exedra.headers.get('content-disposition') || '',/tw\.sonet\.magiaexedra/);
+  assert.equal(exedra.headers.get('x-release-digest'),'sha256:ggg');
 
   const missing = await download({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},

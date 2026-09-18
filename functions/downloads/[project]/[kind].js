@@ -5,6 +5,7 @@ const PROJECTS = {
     kinds: {
       android: /\.apk$/i,
       userscript: /\.user\.js$/i,
+      source: /source\.zip$/i,
     },
   },
   netease: {

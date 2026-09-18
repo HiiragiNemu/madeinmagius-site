@@ -8,38 +8,72 @@ const boot = document.getElementById('boot');
 const noiseCanvas = document.getElementById('noise');
 const programButtons = Array.from(document.querySelectorAll('.menu-node[data-program]'));
 const subMenu = document.getElementById('sub-menu');
+const subsystem = document.querySelector('.subsystem');
 const contentInner = document.getElementById('content-inner');
 const contentPanel = document.getElementById('content-panel');
 const stage = document.getElementById('stage');
+const terminalUi = document.querySelector('.terminal-ui');
 const connectorSvg = document.getElementById('connectors');
 const statusLine = document.getElementById('status-line');
 const clock = document.getElementById('clock');
+const homeJump = document.getElementById('home-jump');
 const warpImage = document.getElementById('crt-warp-map');
-const turbulence = document.getElementById('signal-turbulence');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const mobileMode = matchMedia('(max-width: 760px)');
 
-const data = { releases: null, docs: new Map() };
+const data = { releases: null, docs: new Map(), integrity: null };
 let programId = 'home';
 let subId = 'welcome';
 let hoverSubId = null;
 
+const contentAnchor = document.createComment('content-panel-anchor');
+contentPanel.parentNode.insertBefore(contentAnchor, contentPanel);
+
 const crt = setupCrtEffects({
-  signal: signal,
-  screen: screen,
-  noiseCanvas: noiseCanvas,
-  warpImage: warpImage,
-  turbulence: turbulence,
-  reducedMotion: reducedMotion
+  signal,
+  screen,
+  noiseCanvas,
+  warpImage,
+  reducedMotion
 });
 
 function selectedProgramButton() {
-  return programButtons.find(function(button) {
-    return button.dataset.program === programId;
-  });
+  return programButtons.find(button => button.dataset.program === programId);
+}
+
+function restoreContentPanel() {
+  if (contentPanel.parentNode !== stage) {
+    contentAnchor.parentNode.insertBefore(contentPanel, contentAnchor.nextSibling);
+  }
+}
+
+function placeContentPanel(scrollIntoView = false) {
+  if (!mobileMode.matches) {
+    restoreContentPanel();
+    return;
+  }
+
+  const selected = subMenu.querySelector('.sub-node.is-selected');
+  if (!selected) {
+    restoreContentPanel();
+    return;
+  }
+
+  selected.insertAdjacentElement('afterend', contentPanel);
+
+  if (scrollIntoView) {
+    requestAnimationFrame(() => {
+      selected.scrollIntoView({
+        behavior: reducedMotion.matches ? 'auto' : 'smooth',
+        block: 'start',
+        inline: 'nearest'
+      });
+    });
+  }
 }
 
 function syncProgramButtons() {
-  programButtons.forEach(function(button) {
+  programButtons.forEach(button => {
     const selected = button.dataset.program === programId;
     button.classList.toggle('is-selected', selected);
     button.setAttribute('aria-pressed', String(selected));
@@ -50,18 +84,22 @@ function animateRedraw() {
   contentInner.classList.remove('is-redrawing');
   void contentInner.offsetWidth;
   contentInner.classList.add('is-redrawing');
-  setTimeout(function() {
-    contentInner.classList.remove('is-redrawing');
-  }, 190);
+  setTimeout(() => contentInner.classList.remove('is-redrawing'), 190);
 }
 
 function renderCurrentContent() {
   contentInner.innerHTML = renderContent(programId, subId, data);
   contentPanel.scrollTop = 0;
   animateRedraw();
+  placeContentPanel(false);
 }
 
 function drawConnectors() {
+  if (mobileMode.matches) {
+    connectorSvg.innerHTML = '';
+    return;
+  }
+
   const activeProgram = selectedProgramButton();
   const subs = Array.from(subMenu.querySelectorAll('.sub-node'));
   if (!activeProgram || !subs.length) {
@@ -76,7 +114,7 @@ function drawConnectors() {
   const trunkX = 26;
   const lines = [];
 
-  subs.forEach(function(button) {
+  subs.forEach(button => {
     const rect = button.getBoundingClientRect();
     const endX = rect.left - stageRect.left - 11;
     const endY = rect.top + rect.height / 2 - stageRect.top;
@@ -85,6 +123,7 @@ function drawConnectors() {
       ' H ' + trunkX +
       ' V ' + endY.toFixed(1) +
       ' H ' + endX.toFixed(1);
+
     lines.push(
       '<path class="connector-path' + (hot ? ' is-hot' : '') + '" d="' + d + '"/>' +
       '<circle class="connector-dot' + (hot ? ' is-hot' : '') + '" cx="' +
@@ -100,98 +139,125 @@ function drawConnectors() {
 }
 
 function buildSubMenu() {
+  restoreContentPanel();
+
   const list = PROGRAMS[programId].subs;
-  if (!list.some(function(item) { return item.id === subId; })) {
+  if (!list.some(item => item.id === subId)) {
     subId = list[0].id;
   }
 
   subMenu.innerHTML = '';
-  list.forEach(function(item) {
+
+  list.forEach(item => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'sub-node' + (item.id === subId ? ' is-selected' : '');
     button.dataset.sub = item.id;
-    button.innerHTML = '<b>&gt;' + escapeHtml(item.label) + '</b><small>' +
-      escapeHtml(item.note || '') + '</small>';
+    button.setAttribute('aria-expanded', String(item.id === subId && mobileMode.matches));
+    button.innerHTML =
+      '<b>&gt;' + escapeHtml(item.label) + '</b><small>' + escapeHtml(item.note || '') + '</small>';
 
-    button.addEventListener('pointermove', function(event) {
+    button.addEventListener('pointermove', event => {
       setInteractiveGlow(button, event);
     });
-    button.addEventListener('pointerenter', function() {
+    button.addEventListener('pointerenter', () => {
       hoverSubId = item.id;
       crt.addEnergy(.4);
       drawConnectors();
     });
-    button.addEventListener('pointerleave', function() {
+    button.addEventListener('pointerleave', () => {
       hoverSubId = null;
       drawConnectors();
     });
-    button.addEventListener('click', function() {
+    button.addEventListener('click', () => {
       selectSub(item.id, true);
     });
+
     subMenu.append(button);
   });
 
+  placeContentPanel(false);
   requestAnimationFrame(drawConnectors);
 }
 
-function selectProgram(id, focusSub) {
+function scrollSubsystemIntoView() {
+  if (!mobileMode.matches) return;
+  requestAnimationFrame(() => {
+    subsystem.scrollIntoView({
+      behavior: reducedMotion.matches ? 'auto' : 'smooth',
+      block: 'start',
+      inline: 'nearest'
+    });
+  });
+}
+
+function selectProgram(id, focusSub = false, mobileScroll = true) {
   if (!PROGRAMS[id]) return;
+
   programId = id;
   subId = PROGRAMS[id].subs[0].id;
   syncProgramButtons();
   buildSubMenu();
   renderCurrentContent();
+
   statusLine.textContent = 'PROGRAM // ' + id.toUpperCase() + ' // SUBSYSTEM READY';
   history.replaceState(null, '', '#' + id + '/' + subId);
-  crt.pulse(1.15);
-  if (focusSub) {
-    requestAnimationFrame(function() {
-      const first = subMenu.querySelector('.sub-node');
-      if (first) first.focus();
-    });
+  crt.pulse(1.05);
+
+  if (mobileMode.matches && mobileScroll) {
+    scrollSubsystemIntoView();
+  }
+
+  if (focusSub && !mobileMode.matches) {
+    requestAnimationFrame(() => subMenu.querySelector('.sub-node')?.focus());
   }
 }
 
-function selectSub(id, focus) {
-  if (!PROGRAMS[programId].subs.some(function(item) { return item.id === id; })) return;
+function selectSub(id, focus = false) {
+  if (!PROGRAMS[programId].subs.some(item => item.id === id)) return;
+
   subId = id;
-  Array.from(subMenu.children).forEach(function(button) {
-    button.classList.toggle('is-selected', button.dataset.sub === id);
+
+  Array.from(subMenu.querySelectorAll('.sub-node')).forEach(button => {
+    const selected = button.dataset.sub === id;
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-expanded', String(selected && mobileMode.matches));
   });
+
   renderCurrentContent();
+  placeContentPanel(mobileMode.matches);
+
   statusLine.textContent = programId.toUpperCase() + ' // ' + id.toUpperCase();
   history.replaceState(null, '', '#' + programId + '/' + subId);
-  crt.pulse(.9);
+  crt.pulse(.78);
   drawConnectors();
-  if (focus) {
-    const button = subMenu.querySelector('[data-sub="' + CSS.escape(id) + '"]');
-    if (button) button.focus();
+
+  if (focus && !mobileMode.matches) {
+    subMenu.querySelector('[data-sub="' + CSS.escape(id) + '"]')?.focus();
   }
 }
 
 function parseHash() {
-  const parts = location.hash.slice(1).split('/');
-  const p = parts[0];
-  const s = parts[1];
+  const [p, s] = location.hash.slice(1).split('/');
   if (!PROGRAMS[p]) return;
+
   programId = p;
-  subId = PROGRAMS[p].subs.some(function(item) { return item.id === s; })
+  subId = PROGRAMS[p].subs.some(item => item.id === s)
     ? s
     : PROGRAMS[p].subs[0].id;
 }
 
 function setupProgramInteractions() {
-  programButtons.forEach(function(button) {
-    button.addEventListener('pointermove', function(event) {
+  programButtons.forEach(button => {
+    button.addEventListener('pointermove', event => {
       setInteractiveGlow(button, event);
     });
-    button.addEventListener('pointerenter', function() {
+    button.addEventListener('pointerenter', () => {
       crt.addEnergy(.3);
       statusLine.textContent = 'TARGET // ' + button.dataset.program.toUpperCase();
     });
-    button.addEventListener('click', function() {
-      selectProgram(button.dataset.program, false);
+    button.addEventListener('click', () => {
+      selectProgram(button.dataset.program, false, true);
     });
   });
 }
@@ -210,7 +276,7 @@ function keyboardNavigation(event) {
       programButtons[next].focus();
     } else if (event.key === 'Enter' || event.key === 'ArrowRight') {
       event.preventDefault();
-      selectProgram(active.dataset.program, true);
+      selectProgram(active.dataset.program, true, false);
     }
     return;
   }
@@ -224,19 +290,17 @@ function keyboardNavigation(event) {
     } else if (event.key === 'Enter' || event.key === 'ArrowRight') {
       event.preventDefault();
       selectSub(active.dataset.sub, false);
-      contentPanel.focus();
+      if (!mobileMode.matches) contentPanel.focus();
     } else if (event.key === 'Escape' || event.key === 'ArrowLeft') {
       event.preventDefault();
-      const selected = selectedProgramButton();
-      if (selected) selected.focus();
+      selectedProgramButton()?.focus();
     }
     return;
   }
 
   if (event.key === 'Escape') {
     event.preventDefault();
-    const selected = selectedProgramButton();
-    if (selected) selected.focus();
+    selectedProgramButton()?.focus();
   }
 }
 
@@ -244,7 +308,7 @@ async function loadData() {
   try {
     const response = await fetch('./data/releases.json', { cache: 'no-cache' });
     if (response.ok) data.releases = await response.json();
-  } catch (error) {}
+  } catch {}
 
   try {
     const live = await fetch('./api/releases', {
@@ -253,22 +317,25 @@ async function loadData() {
     });
     if (live.ok) {
       const payload = await live.json();
-      if (payload && payload.projects) {
+      if (payload?.projects) {
         if (!data.releases) data.releases = { projects: {} };
-        data.releases.projects = Object.assign({}, data.releases.projects, payload.projects);
+        data.releases.projects = { ...data.releases.projects, ...payload.projects };
       }
     }
-  } catch (error) {}
+  } catch {}
 
   try {
     const response = await fetch('./data/exedra-docs.json', { cache: 'no-cache' });
     if (response.ok) {
       const payload = await response.json();
-      data.docs = new Map((payload.docs || []).map(function(doc) {
-        return [doc.id, doc];
-      }));
+      data.docs = new Map((payload.docs || []).map(doc => [doc.id, doc]));
     }
-  } catch (error) {}
+  } catch {}
+
+  try {
+    const response = await fetch('./data/exedra-integrity.json', { cache: 'no-cache' });
+    if (response.ok) data.integrity = await response.json();
+  } catch {}
 
   renderCurrentContent();
 }
@@ -279,16 +346,28 @@ function updateClock() {
 
 function bootSequence() {
   const seen = sessionStorage.getItem('magius-link-booted');
-  const wait = reducedMotion.matches ? 100 : (seen ? 720 : 1650);
-  setTimeout(function() {
+  const wait = reducedMotion.matches ? 100 : (seen ? 760 : 1800);
+
+  setTimeout(() => {
     body.dataset.wake = 'true';
     boot.classList.add('is-hidden');
     sessionStorage.setItem('magius-link-booted', '1');
-    setTimeout(function() {
+
+    setTimeout(() => {
       body.dataset.wake = 'false';
-    }, 360);
+    }, 380);
   }, wait);
 }
+
+homeJump.addEventListener('click', () => {
+  selectProgram('home', false, false);
+  if (terminalUi) {
+    terminalUi.scrollTo({
+      top: 0,
+      behavior: reducedMotion.matches ? 'auto' : 'smooth'
+    });
+  }
+});
 
 parseHash();
 setupProgramInteractions();
@@ -301,15 +380,23 @@ bootSequence();
 
 setInterval(updateClock, 1000);
 addEventListener('keydown', keyboardNavigation);
-addEventListener('resize', function() {
+
+mobileMode.addEventListener?.('change', () => {
+  buildSubMenu();
+  renderCurrentContent();
+});
+
+addEventListener('resize', () => {
   requestAnimationFrame(drawConnectors);
 });
-addEventListener('hashchange', function() {
+
+addEventListener('hashchange', () => {
   parseHash();
   syncProgramButtons();
   buildSubMenu();
   renderCurrentContent();
 });
-addEventListener('pagehide', function() {
+
+addEventListener('pagehide', () => {
   crt.destroy();
 });

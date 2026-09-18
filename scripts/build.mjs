@@ -2,7 +2,7 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
 const checkOnly = process.argv.includes('--check');
-const required = ['index.html','assets/styles.css','assets/app.js','assets/content.js','assets/effects.js','assets/magius-mark.svg','data/releases.json','data/exedra-docs.json'];
+const required = ['index.html','assets/styles.css','assets/app.js','assets/content.js','assets/effects.js','assets/magius-mark.svg','data/releases.json','data/exedra-docs.json','data/exedra-integrity.json'];
 for (const path of required) {
   if (!existsSync(path)) throw new Error(`Missing required site file: ${path}`);
 }
@@ -14,7 +14,21 @@ for (const token of ['./assets/styles.css','./assets/app.js','FOLDERS','BILIBILI
 for (const rejected of ['独立分发','HTTPS 直链','本站直链','版本可核对']) {
   if (index.includes(rejected)) throw new Error(`rejected homepage copy returned: ${rejected}`);
 }
-JSON.parse(await readFile('data/releases.json','utf8'));
+const releaseData = JSON.parse(await readFile('data/releases.json','utf8'));
+const exedraDocs = JSON.parse(await readFile('data/exedra-docs.json','utf8'));
+const exedraIntegrity = JSON.parse(await readFile('data/exedra-integrity.json','utf8'));
+
+const requiredDocIds = ['tw-mumu','tw-phone','jp-android','steam','tw-client-113','tw-demo','tw-mumu-en','tw-phone-en'];
+const availableDocIds = new Set((exedraDocs.docs || []).map(item => item.id));
+for (const id of requiredDocIds) {
+  if (!availableDocIds.has(id)) throw new Error(`Missing migrated Exedra guide: ${id}`);
+}
+for (const key of ['twManifest','jpManifest','twSums','jpSums','twVerification','jpVerification']) {
+  if (!exedraIntegrity.files?.[key]?.content) throw new Error(`Missing Exedra integrity record: ${key}`);
+}
+for (const project of ['bilibili','netease','exedra']) {
+  if (!releaseData.projects?.[project]) throw new Error(`Missing release project: ${project}`);
+}
 
 if (checkOnly) {
   console.log('site source check: ok');
@@ -47,7 +61,7 @@ await writeFile('dist/_routes.json',JSON.stringify({
   exclude:['/assets/*','/data/*']
 },null,2)+'\n');
 
-for (const [route,hash] of [['tools/bilibili','bilibili'],['tools/netease','netease'],['about','about']]) {
+for (const [route,hash] of [['tools/bilibili','bilibili'],['tools/netease','netease'],['tools/exedra','exedra'],['about','about']]) {
   const dir=`dist/${route}`;
   await mkdir(dir,{recursive:true});
   await writeFile(`${dir}/index.html`,`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><script>location.replace('../../#${hash}')</script><a href="../../#${hash}">Open MadeInMagius Terminal</a>`);

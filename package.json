@@ -5,6 +5,6 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "node --check assets/app.js && node --check functions/api/releases.js && node --check 'functions/downloads/[project]/[kind].js' && node --check functions/downloads/bilibili-follower-snapshot.user.js.js && node scripts/build.mjs --check"
+    "check": "node --check assets/app.js && node --check functions/api/releases.js && node --check 'functions/downloads/[project]/[kind].js' && node --check functions/downloads/bilibili-follower-snapshot.user.js.js && node scripts/build.mjs --check && node scripts/test-functions.mjs"
   }
 }

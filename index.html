@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN" data-phosphor="green">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#020704">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="MadeInMagius personal terminal — software, tools and experiments.">
+  <title>MadeInMagius // Personal Terminal</title>
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+  <canvas id="signal-noise" class="fx fx-noise" aria-hidden="true"></canvas>
+  <div class="fx fx-scanlines" aria-hidden="true"></div>
+  <div class="fx fx-phosphor" aria-hidden="true"></div>
+  <div class="fx fx-roll" aria-hidden="true"></div>
+  <div class="fx fx-mouse" aria-hidden="true"></div>
+  <div class="fx fx-tear" aria-hidden="true"></div>
+  <div class="fx fx-vignette" aria-hidden="true"></div>
+
+  <div id="boot" class="boot" aria-live="polite">
+    <div class="boot__copy">
+      <p class="boot__brand">MADEIN MAGIUS PERSONAL SYSTEM</p>
+      <p>VIDEO BUS ................. <b>ONLINE</b></p>
+      <p>PHOSPHOR ARRAY ............ <b>LOCKED</b></p>
+      <p>SIGNAL SYNC ............... <b id="boot-sync">SEARCHING</b></p>
+      <p class="boot__scan">SCANNING PROGRAM TABLE <span></span></p>
+    </div>
+  </div>
+
+  <main id="terminal" class="terminal" data-program="home">
+    <header class="header">
+      <div class="brand">
+        <span class="brand__sigil" aria-hidden="true">M</span>
+        <div class="brand__copy">
+          <p>PERSONAL TERMINAL // NODE 01</p>
+          <h1>MADEIN<span>MAGIUS</span></h1>
+        </div>
+      </div>
+      <div class="header__status">
+        <span class="status-light"><i></i> LINK READY</span>
+        <span id="clock">--:--:--</span>
+        <button id="phosphor-toggle" class="phosphor-toggle" type="button" aria-label="切换荧光色">P</button>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="rail" aria-label="Program index">
+        <div class="rail__title">
+          <span>PROGRAM INDEX</span>
+          <small>↑ ↓ ENTER</small>
+        </div>
+        <nav id="program-nav" class="program-nav">
+          <button class="program is-active" type="button" data-program="home">
+            <span class="program__code">00</span>
+            <span class="program__label"><b>HOME NODE</b><small>system overview</small></span>
+            <span class="program__arrow">●</span>
+          </button>
+          <button class="program" type="button" data-program="bilibili">
+            <span class="program__code">01</span>
+            <span class="program__label"><b>BILIBILI SNAPSHOT</b><small>follower archive</small></span>
+            <span class="program__arrow">↳</span>
+          </button>
+          <button class="program" type="button" data-program="netease">
+            <span class="program__code">02</span>
+            <span class="program__label"><b>NETEASE EXPORTER</b><small>playlist archive</small></span>
+            <span class="program__arrow">↳</span>
+          </button>
+          <button class="program" type="button" data-program="about">
+            <span class="program__code">03</span>
+            <span class="program__label"><b>ABOUT / CONTACT</b><small>operator profile</small></span>
+            <span class="program__arrow">↳</span>
+          </button>
+          <div class="program program--reserved" aria-hidden="true">
+            <span class="program__code">04</span>
+            <span class="program__label"><b>UNASSIGNED</b><small>future program slot</small></span>
+            <span class="program__arrow">×</span>
+          </div>
+        </nav>
+
+        <div class="telemetry">
+          <div class="telemetry__line"><span>SIGNAL</span><b id="signal-value">94%</b></div>
+          <div class="telemetry__meter"><i></i></div>
+          <p>LOCAL DISPLAY BUS<br>LOW-FIDELITY MODE</p>
+        </div>
+      </aside>
+
+      <section class="deck" aria-live="polite">
+        <div class="deck__ruler deck__ruler--top" aria-hidden="true"><span>00</span><i></i><span>80</span></div>
+
+        <article class="panel is-active" data-panel="home">
+          <p class="panel__kicker">SYSTEM / HOME</p>
+          <div class="hero">
+            <div class="hero__copy">
+              <p class="hero__prefix">ACCESS GRANTED TO</p>
+              <h2>MADEIN<br><span>MAGIUS</span></h2>
+              <p class="hero__lede">个人工具、档案与实验的统一终端。这里不把部署方式包装成卖点，只留下真正可以进入和使用的程序。</p>
+            </div>
+            <div class="radar" aria-hidden="true">
+              <span class="radar__ring radar__ring--1"></span>
+              <span class="radar__ring radar__ring--2"></span>
+              <span class="radar__ring radar__ring--3"></span>
+              <span class="radar__cross radar__cross--h"></span>
+              <span class="radar__cross radar__cross--v"></span>
+              <span class="radar__sweep"></span>
+              <b>M</b>
+            </div>
+          </div>
+          <div class="readout-grid">
+            <div><span>AVAILABLE PROGRAMS</span><b>02</b></div>
+            <div><span>TERMINAL BUILD</span><b>ALPHA/01</b></div>
+            <div><span>DISPLAY PROFILE</span><b>CRT-LOFI</b></div>
+          </div>
+          <p class="command"><span>&gt;</span> SELECT A PROGRAM FROM THE INDEX</p>
+        </article>
+
+        <article class="panel" data-panel="bilibili">
+          <p class="panel__kicker">PROGRAM 01 / SOCIAL ARCHIVE</p>
+          <div class="tool-head">
+            <div><p>BILIBILI</p><h2>粉丝快照</h2></div>
+            <span class="tool-state" data-release-state="bilibili">SYNC WAIT</span>
+          </div>
+          <p class="tool-summary">保存当前粉丝完整快照并比较历史变化。桌面脚本、用户脚本与 Android 伴侣仍由原项目持续发布；本站负责统一入口与发布镜像。</p>
+          <dl class="tool-meta">
+            <div><dt>RELEASE</dt><dd data-release-version="bilibili">loading</dd></div>
+            <div><dt>ANDROID</dt><dd data-release-asset="bilibili-apk">mirror pending</dd></div>
+            <div><dt>USERSCRIPT</dt><dd data-release-asset="bilibili-userscript">mirror pending</dd></div>
+          </dl>
+          <div class="actions">
+            <a class="action" data-download="bilibili-apk" href="./downloads/bilibili/android">ANDROID APK</a>
+            <a class="action" data-download="bilibili-userscript" href="./downloads/bilibili/userscript">USERSCRIPT</a>
+            <a class="action action--secondary" href="https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot" target="_blank" rel="noreferrer">SOURCE</a>
+          </div>
+          <p class="integrity" data-release-digest="bilibili">release metadata pending</p>
+        </article>
+
+        <article class="panel" data-panel="netease">
+          <p class="panel__kicker">PROGRAM 02 / MUSIC ARCHIVE</p>
+          <div class="tool-head">
+            <div><p>NETEASE CLOUD MUSIC</p><h2>歌单导出器</h2></div>
+            <span class="tool-state" data-release-state="netease">SYNC WAIT</span>
+          </div>
+          <p class="tool-summary">导出歌单完整曲目与已下架记录，支持历史快照、差异报告与断点续跑。原项目继续负责程序本体，本站同步最新正式发布。</p>
+          <dl class="tool-meta">
+            <div><dt>RELEASE</dt><dd data-release-version="netease">loading</dd></div>
+            <div><dt>WINDOWS</dt><dd data-release-asset="netease-windows">mirror pending</dd></div>
+            <div><dt>PYTHON</dt><dd data-release-asset="netease-python">mirror pending</dd></div>
+          </dl>
+          <div class="actions">
+            <a class="action" data-download="netease-windows" href="./downloads/netease/windows">WINDOWS X64</a>
+            <a class="action" data-download="netease-python" href="./downloads/netease/python">PYTHON</a>
+            <a class="action action--secondary" href="https://github.com/HiiragiNemu/netease-cloudmusic-delisted-exporter" target="_blank" rel="noreferrer">SOURCE</a>
+          </div>
+          <p class="integrity" data-release-digest="netease">release metadata pending</p>
+        </article>
+
+        <article class="panel" data-panel="about">
+          <p class="panel__kicker">PROGRAM 03 / OPERATOR</p>
+          <div class="about">
+            <div class="about__copy">
+              <p class="hero__prefix">OPERATOR</p>
+              <h2>MadeInMagius</h2>
+              <p>个人项目、工具与实验的统一入口。视觉语言来自老式终端、低保真 CRT 与不稳定模拟信号，而不是传统软件目录或 SaaS 落地页。</p>
+            </div>
+            <div class="contacts">
+              <a href="https://space.bilibili.com/625821" target="_blank" rel="noreferrer"><span>01</span>BILIBILI</a>
+              <a href="https://github.com/HiiragiNemu" target="_blank" rel="noreferrer"><span>02</span>GITHUB</a>
+              <a href="https://www.ifdian.net/a/madeinmagius" target="_blank" rel="noreferrer"><span>03</span>爱发电</a>
+            </div>
+          </div>
+          <p class="command"><span>&gt;</span> MORE PROGRAMS WILL BE ATTACHED TO THIS NODE</p>
+        </article>
+
+        <div class="deck__ruler deck__ruler--bottom" aria-hidden="true"><span>SYNC</span><i></i><span>END</span></div>
+      </section>
+    </section>
+
+    <footer class="footer">
+      <span>MADEINMAGIUS / PERSONAL TERMINAL</span>
+      <span id="status-line">DISPLAY STABLE // INPUT READY</span>
+    </footer>
+  </main>
+
+  <noscript>此终端需要 JavaScript 才能启用程序切换与显示器效果。</noscript>
+  <script src="./assets/app.js" defer></script>
+</body>
+</html>

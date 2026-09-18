@@ -13,17 +13,45 @@
 <body>
   <svg class="svg-defs" aria-hidden="true" focusable="false">
     <defs>
-      <filter id="crt-warp" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
-        <feImage id="crt-warp-map" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map"/>
-        <feDisplacementMap in="SourceGraphic" in2="map" scale="15" xChannelSelector="R" yChannelSelector="G" result="curved"/>
-        <feTurbulence id="signal-turbulence" type="fractalNoise" baseFrequency=".002 .018" numOctaves="1" seed="23" result="signalNoise"/>
-        <feDisplacementMap in="curved" in2="signalNoise" scale=".72" xChannelSelector="R" yChannelSelector="G" result="analog"/>
-        <feGaussianBlur in="analog" stdDeviation=".055" result="softSignal"/>
-        <feComponentTransfer in="softSignal">
-          <feFuncR type="gamma" amplitude="1.02" exponent=".97" offset="0"/>
-          <feFuncG type="gamma" amplitude="1.02" exponent=".97" offset="0"/>
-          <feFuncB type="gamma" amplitude="1.02" exponent=".97" offset="0"/>
+      <filter id="crt-warp" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feImage id="crt-warp-map" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="lens"/>
+
+        <!-- Scene-wide registration, ported from the reader night CRT pass. -->
+        <feColorMatrix in="SourceGraphic" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1" result="reg-red"/>
+        <feOffset in="reg-red" dx="-.52" dy="-.18" result="reg-red-shift"/>
+        <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 0 1" result="reg-green"/>
+        <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 0 1" result="reg-blue"/>
+        <feOffset in="reg-blue" dx=".8" dy=".18" result="reg-blue-shift"/>
+        <feComposite in="reg-red-shift" in2="reg-green" operator="arithmetic" k2="1" k3="1" result="reg-rg"/>
+        <feComposite in="reg-rg" in2="reg-blue-shift" operator="arithmetic" k2="1" k3="1" result="reg-rgb"/>
+        <feComposite in="reg-rgb" in2="SourceGraphic" operator="in" result="reg-rgb-alpha"/>
+        <feComposite in="reg-rgb-alpha" in2="SourceGraphic" operator="arithmetic" k2=".86" k3=".14" result="registered-scene"/>
+
+        <!-- Reader CRT sequence: beam softness -> lens displacement -> tube softness. -->
+        <feGaussianBlur in="registered-scene" stdDeviation=".35" result="beam"/>
+        <feDisplacementMap id="curve-displacement" in="beam" in2="lens" scale="50" xChannelSelector="R" yChannelSelector="G" result="curved-signal"/>
+        <feGaussianBlur in="curved-signal" stdDeviation=".18" result="tube-signal"/>
+
+        <!-- Bloom is derived from real bright phosphor; glyph cores stay readable. -->
+        <feColorMatrix in="tube-signal" type="matrix" color-interpolation-filters="linearRGB"
+          values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  .29764 1.00128 .10108 0 -.55"
+          result="emission-key"/>
+        <feComposite color-interpolation-filters="linearRGB" in="tube-signal" in2="emission-key" operator="in" result="phosphor-emission"/>
+        <feGaussianBlur color-interpolation-filters="linearRGB" in="phosphor-emission" stdDeviation="3.5" result="near-scatter"/>
+        <feComponentTransfer color-interpolation-filters="linearRGB" in="near-scatter" result="near-bloom">
+          <feFuncA type="linear" slope=".32"/>
         </feComponentTransfer>
+        <feGaussianBlur color-interpolation-filters="linearRGB" in="phosphor-emission" stdDeviation="22" result="wide-scatter"/>
+        <feComponentTransfer color-interpolation-filters="linearRGB" in="wide-scatter" result="wide-bloom">
+          <feFuncA type="linear" slope=".36"/>
+        </feComponentTransfer>
+        <feBlend color-interpolation-filters="sRGB" in="tube-signal" in2="near-bloom" mode="screen" result="lit-signal"/>
+        <feBlend color-interpolation-filters="sRGB" in="lit-signal" in2="wide-bloom" mode="screen" result="original-optics"/>
+        <feGaussianBlur color-interpolation-filters="linearRGB" in="phosphor-emission" stdDeviation="48" result="panel-scatter"/>
+        <feComponentTransfer color-interpolation-filters="linearRGB" in="panel-scatter" result="panel-bloom">
+          <feFuncA type="linear" slope=".38"/>
+        </feComponentTransfer>
+        <feBlend color-interpolation-filters="sRGB" in="original-optics" in2="panel-bloom" mode="screen"/>
       </filter>
     </defs>
   </svg>
@@ -111,10 +139,6 @@
           <span class="controls">↑ ↓ SELECT&nbsp;&nbsp;&nbsp; ENTER CONFIRM&nbsp;&nbsp;&nbsp; ESC BACK</span>
         </footer>
       </div>
-      <div class="edge-curve edge-curve--top" aria-hidden="true"></div>
-      <div class="edge-curve edge-curve--right" aria-hidden="true"></div>
-      <div class="edge-curve edge-curve--bottom" aria-hidden="true"></div>
-      <div class="edge-curve edge-curve--left" aria-hidden="true"></div>
     </div>
   </div>
 

@@ -1256,3 +1256,194 @@ body[data-wake="true"] .signal{animation:wake .28s steps(7,end) both}
 html[data-crt-engine="webkit-svg"] .signal{
   -webkit-filter:url("#crt-warp") brightness(var(--flicker));
 }
+
+
+/* === Interaction/boot correction pass === */
+.home-jump{
+  appearance:none;
+  -webkit-appearance:none;
+  border:0;
+  padding:0;
+  margin:0;
+  width:28px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  color:#001807;
+  background:transparent;
+  font:900 16px/1 "Courier New",monospace;
+  cursor:pointer;
+  text-shadow:none;
+}
+.home-jump:hover,.home-jump:focus-visible{
+  color:#001807;
+  background:rgba(255,255,255,.34);
+  outline:1px solid rgba(0,0,0,.75);
+  outline-offset:1px;
+}
+.home-jump:active{transform:translateY(1px)}
+
+/* Loading screen uses the same optical language as the live tube instead of
+   a clean splash screen. */
+.boot{
+  isolation:isolate;
+  background:
+    radial-gradient(ellipse at 50% 48%,rgba(29,91,67,.42),rgba(5,31,23,.88) 48%,#020b08 100%);
+}
+.boot__raster,.boot__grain,.boot__roll{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+.boot__raster{
+  z-index:4;
+  opacity:.46;
+  mix-blend-mode:multiply;
+  background:
+    repeating-linear-gradient(0deg,rgba(0,0,0,.55) 0 .65px,transparent .65px 2.1px),
+    repeating-linear-gradient(90deg,rgba(255,44,79,.08) 0 1px,rgba(49,255,122,.05) 1px 2px,rgba(73,190,255,.07) 2px 3px,transparent 3px 4px);
+}
+.boot__grain{
+  z-index:3;
+  opacity:.2;
+  mix-blend-mode:screen;
+  background:
+    radial-gradient(circle at 13% 18%,rgba(255,255,255,.22) 0 1px,transparent 1.5px),
+    radial-gradient(circle at 78% 31%,rgba(255,255,255,.15) 0 1px,transparent 1.4px),
+    radial-gradient(circle at 36% 74%,rgba(255,255,255,.12) 0 1px,transparent 1.5px),
+    radial-gradient(circle at 91% 82%,rgba(255,255,255,.13) 0 1px,transparent 1.4px);
+  background-size:17px 13px,23px 19px,31px 27px,37px 29px;
+  animation:boot-grain-shift .11s steps(2,end) infinite;
+}
+.boot__roll{
+  z-index:5;
+  top:-22%;
+  bottom:auto;
+  height:22%;
+  opacity:.5;
+  background:linear-gradient(180deg,transparent,rgba(176,255,211,.12) 43%,rgba(255,255,255,.22) 49%,rgba(0,0,0,.32) 53%,transparent);
+  filter:blur(.7px);
+  -webkit-filter:blur(.7px);
+  animation:boot-roll-pass 2.3s linear infinite;
+}
+.boot__signal{
+  z-index:2;
+  filter:url("#crt-warp") brightness(1.04);
+  -webkit-filter:url("#crt-warp") brightness(1.04);
+  animation:boot-signal-instability .085s steps(2,end) infinite;
+}
+.boot__mark{
+  opacity:.78;
+  filter:
+    drop-shadow(-.7px 0 rgba(255,78,109,.58))
+    drop-shadow(.85px 0 rgba(70,238,255,.56))
+    drop-shadow(0 0 4px rgba(219,255,235,.66))
+    drop-shadow(0 0 18px rgba(82,255,135,.36));
+  -webkit-filter:
+    drop-shadow(-.7px 0 rgba(255,78,109,.58))
+    drop-shadow(.85px 0 rgba(70,238,255,.56))
+    drop-shadow(0 0 4px rgba(219,255,235,.66))
+    drop-shadow(0 0 18px rgba(82,255,135,.36));
+}
+.boot__name,.boot__loading{
+  text-shadow:
+    -.055em 0 .018em rgba(255,232,82,.62),
+    .06em 0 .018em rgba(52,249,22,.58),
+    0 0 .07em rgba(236,255,244,.82),
+    0 0 .22em rgba(98,255,151,.5),
+    0 0 .52em rgba(65,205,118,.24);
+}
+.boot__loading{opacity:.92}
+@keyframes boot-signal-instability{
+  0%{transform:translate3d(-.45px,.12px,0);opacity:.97}
+  50%{transform:translate3d(.38px,-.08px,0);opacity:1}
+  100%{transform:translate3d(-.12px,.04px,0);opacity:.985}
+}
+@keyframes boot-grain-shift{
+  0%{transform:translate3d(0,0,0)}
+  50%{transform:translate3d(3px,-2px,0)}
+  100%{transform:translate3d(-2px,1px,0)}
+}
+@keyframes boot-roll-pass{
+  from{transform:translateY(0)}
+  to{transform:translateY(555%)}
+}
+
+/* Integrity reader used by the migrated Exedra site. */
+.integrity-block{
+  margin:20px 0 28px;
+  padding:14px;
+  border:1px solid rgba(45,239,105,.38);
+  background:rgba(0,0,0,.22);
+}
+.integrity-block h3{margin-top:0}
+.integrity-hash{overflow-wrap:anywhere}
+.integrity-table-wrap{overflow:auto;margin:12px 0}
+.integrity-table{
+  width:100%;
+  min-width:640px;
+  border-collapse:collapse;
+  font-size:11px;
+}
+.integrity-table th,.integrity-table td{
+  padding:7px 9px;
+  border:1px solid rgba(42,226,99,.28);
+  text-align:left;
+  vertical-align:top;
+}
+.integrity-table code{overflow-wrap:anywhere}
+.terminal-details{
+  margin:12px 0;
+  border:1px solid rgba(47,229,103,.3);
+  background:rgba(0,0,0,.22);
+}
+.terminal-details summary{
+  cursor:pointer;
+  padding:9px 11px;
+  color:#eaffef;
+  font-weight:700;
+}
+.terminal-details pre{
+  max-height:42vh;
+  margin:0;
+  border:0;
+  border-top:1px solid rgba(47,229,103,.25);
+}
+
+/* Mobile tabs are real accordion controls: selected content is physically
+   inserted after the tapped subsystem node by app.js. */
+@media(max-width:760px){
+  .sub-menu>.content-panel{
+    width:100%;
+    min-height:0;
+    margin:8px 0 13px;
+    padding:16px;
+    border-width:1px;
+    animation:mobile-panel-open .18s steps(5,end) both;
+  }
+  .sub-menu>.content-panel::before{
+    margin:-16px -16px 13px;
+    top:-16px;
+    height:4px;
+  }
+  .sub-node[aria-expanded="true"]{
+    box-shadow:
+      -1px 0 0 rgba(255,232,82,.54),
+      1px 0 .3px rgba(52,249,22,.52),
+      0 0 7px rgba(166,247,82,.54),
+      0 0 15px rgba(105,235,76,.24);
+  }
+  .integrity-table{min-width:560px}
+  .boot__signal{
+    transform:scale(.93);
+    transform-origin:center;
+  }
+}
+@keyframes mobile-panel-open{
+  0%{opacity:.25;transform:translateY(-5px);filter:blur(.55px)}
+  55%{opacity:1;transform:translateY(1px);filter:blur(.15px)}
+  100%{opacity:1;transform:none;filter:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .boot__signal,.boot__grain,.boot__roll,.sub-menu>.content-panel{animation:none!important}
+}

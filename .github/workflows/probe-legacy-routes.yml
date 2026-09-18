@@ -1,0 +1,19 @@
+name: Probe legacy release routes
+
+on:
+  push:
+    paths:
+      - ".github/workflows/probe-legacy-routes.yml"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect old public tool pages
+        run: |
+          set -e
+          for page in bilibili netease; do
+            echo "===== $page ====="
+            curl -fsSL "https://bilibili-follower-snapshot.pages.dev/$page/" -o "/tmp/$page.html"
+            grep -Eo 'href="[^"]+"' "/tmp/$page.html" | grep -Ei 'downloads|apk|zip|user\.js|txt' || true
+          done

@@ -4,7 +4,7 @@
   --green:#00f36a;
   --green-soft:#46ff8c;
   --ink:#e9fff0;
-  --dim:#3b8c58;
+  --dim:#69c884;
   --white:#f4fff7;
   --red:#ff5b78;
   --cyan:#76f7ff;
@@ -52,7 +52,7 @@ button,
   height:100%;
   position:relative;
   overflow:hidden;
-  border-radius:7.5% / 5.8%;
+  border-radius:9.5% / 6.8%;
   background:#03160a;
   box-shadow:
     0 0 0 2px #050505,
@@ -97,8 +97,8 @@ button,
   overflow:hidden;
   will-change:transform,filter;
 }
-.signal[data-slip="true"]{transform:translate3d(calc(var(--jitter-x) + 4px),var(--jitter-y),0) scale(var(--signal-scale))}
-.signal[data-drop="true"]{opacity:.62;filter:url(#crt-warp) brightness(.68) contrast(1.45) saturate(.75) blur(.45px)}
+..signal[data-burst="true"]{filter:url(#crt-warp) brightness(1.035) contrast(1.1) saturate(.92)}
+.signal[data-drop="true"]{opacity:.72;filter:url(#crt-warp) brightness(.78) contrast(1.3) saturate(.82) blur(.16px)}
 
 .noise,.scanlines,.phosphor-grid,.rolling-band,.mouse-glow,.tear-band{
   position:absolute;
@@ -187,7 +187,7 @@ button,
   justify-content:space-between;
   padding:0 10px;
   color:#001807;
-  background:var(--green);
+  background:rgba(0,243,106,.72);
   border:1px solid rgba(255,255,255,.3);
   box-shadow:
     -1px 0 0 rgba(255,77,115,.65),
@@ -264,7 +264,7 @@ button,
   align-items:center;
   gap:7px;
   padding:10px 11px;
-  color:#7dd69a;
+  color:#b5f3c6;
   text-align:left;
   border:2px solid rgba(0,245,98,.33);
   background:rgba(0,8,2,.36);
@@ -325,7 +325,7 @@ button,
   display:block;
   margin-top:8px;
   font-size:11px;
-  opacity:.68;
+  opacity:.82;
   letter-spacing:.04em;
 }
 .menu-node__glyph{font-size:11px;text-align:right;position:relative;z-index:2}
@@ -348,7 +348,7 @@ button,
   justify-content:center;
   pointer-events:none;
   color:var(--green);
-  opacity:.085;
+  opacity:.12;
   filter:blur(.55px);
 }
 .brand-watermark img{
@@ -443,7 +443,7 @@ button,
 .sub-node small{
   position:relative;
   z-index:2;
-  color:#4d9a66;
+  color:#8bd6a1;
   font-size:10px;
   letter-spacing:.08em;
 }
@@ -471,7 +471,7 @@ button,
   overflow:auto;
   padding:22px 25px 26px;
   border:2px solid rgba(0,235,92,.48);
-  background:rgba(0,52,18,.48);
+  background:rgba(0,38,13,.34);
   box-shadow:inset 0 0 45px rgba(0,0,0,.38);
   scrollbar-width:thin;
   scrollbar-color:rgba(0,255,100,.72) rgba(0,0,0,.22);
@@ -482,7 +482,7 @@ button,
   position:sticky;
   display:block;
   top:-22px;
-  height:13px;
+  height:7px;
   margin:-22px -25px 18px;
   background:var(--green);
   z-index:5;
@@ -493,7 +493,7 @@ button,
 .content-inner{
   position:relative;
   z-index:2;
-  color:#dfffea;
+  color:#f1fff5;
   text-shadow:
     -.65px 0 rgba(255,80,112,.34),
     .7px 0 rgba(73,231,255,.32),
@@ -615,7 +615,7 @@ button,
 }
 .meta-line{
   margin-top:13px!important;
-  color:#64b67c;
+  color:#8ad39f;
   font-size:10px!important;
   overflow-wrap:anywhere;
 }
@@ -746,7 +746,7 @@ body[data-wake="true"] .signal{animation:wake .28s steps(7,end) both}
 @media(max-width:760px){
   body{overflow:auto}
   .bezel{position:relative;min-height:100svh;padding:7px}
-  .screen{height:auto;min-height:calc(100svh - 14px);border-radius:24px/18px}
+  .screen{height:auto;min-height:calc(100svh - 14px);border-radius:10.5% / 4.6%}
   .signal{position:relative;inset:auto;min-height:calc(100svh - 14px)}
   .masthead{height:96px;padding:10px 12px 0}
   .masthead__bar{height:22px}
@@ -779,9 +779,14 @@ body[data-wake="true"] .signal{animation:wake .28s steps(7,end) both}
     padding:18px;
   }
   .content-panel::before{margin:-18px -18px 14px;top:-18px}
-  .brand-watermark{inset:25% 4% 20%}
-  .brand-watermark img{width:58vw}
-  .brand-watermark strong{font-size:12vw}
+  .brand-watermark{
+    inset:auto 7% auto 7%;
+    top:88px;
+    height:360px;
+    opacity:.15;
+  }
+  .brand-watermark img{width:min(58vw,340px)}
+  .brand-watermark strong{font-size:min(11vw,58px)}
   .statusbar{left:12px;right:12px;bottom:8px}
   .controls{display:none}
   .hero-copy,.contact-grid{grid-template-columns:1fr}
@@ -789,4 +794,71 @@ body[data-wake="true"] .signal{animation:wake .28s steps(7,end) both}
 @media(prefers-reduced-motion:reduce){
   .rolling-band,.boot__loading i{animation:none!important}
   .content-inner.is-redrawing,body[data-wake="true"] .signal{animation:none!important}
+}
+
+.edge-curve{
+  position:absolute;
+  z-index:63;
+  pointer-events:none;
+  opacity:.5;
+  filter:drop-shadow(0 0 3px rgba(0,255,98,.12));
+}
+.edge-curve--top{
+  left:7%;
+  right:7%;
+  top:9px;
+  height:25px;
+  border-top:1px solid rgba(103,255,149,.24);
+  border-radius:50% 50% 0 0 / 100% 100% 0 0;
+}
+.edge-curve--bottom{
+  left:7%;
+  right:7%;
+  bottom:9px;
+  height:25px;
+  border-bottom:1px solid rgba(103,255,149,.22);
+  border-radius:0 0 50% 50% / 0 0 100% 100%;
+}
+.edge-curve--left{
+  top:7%;
+  bottom:7%;
+  left:9px;
+  width:25px;
+  border-left:1px solid rgba(103,255,149,.18);
+  border-radius:100% 0 0 100% / 50% 0 0 50%;
+}
+.edge-curve--right{
+  top:7%;
+  bottom:7%;
+  right:9px;
+  width:25px;
+  border-right:1px solid rgba(103,255,149,.18);
+  border-radius:0 100% 100% 0 / 0 50% 50% 0;
+}
+.menu-node__copy b,.sub-node b,.content-inner h2,.content-inner h3,.download-button{
+  text-shadow:
+    -.32px 0 rgba(255,70,105,.28),
+    .38px 0 rgba(70,235,255,.26),
+    0 0 1px rgba(255,255,255,.1);
+}
+
+@media(max-width:760px){
+  .noise{opacity:.06}
+  .scanlines{opacity:.36}
+  .phosphor-grid{opacity:.065}
+  .masthead__node,.masthead__clock{color:#92dba8;font-size:10px}
+  .section-label{color:#8bd5a1}
+  .menu-node{color:#d0f7da;border-color:rgba(38,232,101,.48)}
+  .menu-node__copy small{color:#9ad9ab;opacity:.9}
+  .sub-node{color:#f0fff4;border-color:rgba(39,232,102,.42)}
+  .sub-node small{color:#9edfb0}
+  .content-inner{color:#f6fff8}
+  .content-inner p,.content-inner li{font-size:15px;line-height:1.82;font-weight:600}
+  .content-inner h2{font-size:clamp(28px,8.5vw,40px)}
+  .content-inner h3{font-size:18px}
+  .content-panel{background:rgba(0,31,11,.27);border-color:rgba(24,231,94,.52)}
+  .edge-curve--top{top:5px;left:8%;right:8%;height:18px}
+  .edge-curve--bottom{bottom:5px;left:8%;right:8%;height:18px}
+  .edge-curve--left{left:5px;top:5%;bottom:5%;width:18px}
+  .edge-curve--right{right:5px;top:5%;bottom:5%;width:18px}
 }

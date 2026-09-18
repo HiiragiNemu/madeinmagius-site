@@ -24,7 +24,11 @@
     if (!programs.includes(name)) name = 'home';
     selected = programs.indexOf(name);
     terminal.dataset.program = name;
-    nav.forEach(item => item.classList.toggle('is-active', item.dataset.program === name));
+    nav.forEach(item => {
+      const active = item.dataset.program === name;
+      item.classList.toggle('is-active', active);
+      item.setAttribute('aria-pressed', String(active));
+    });
     panels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.panel === name));
     statusLine.textContent = `PROGRAM ${String(selected).padStart(2, '0')} // ${name.toUpperCase()} // INPUT READY`;
     if (!fromHistory && location.hash !== `#${name}`) history.replaceState(null, '', `#${name}`);
@@ -76,9 +80,11 @@
     const delay = reducedMotion.matches ? 120 : (seen ? 760 : 2050);
     setTimeout(() => { bootSync.textContent = 'LOCKED'; }, Math.max(80, delay - 560));
     setTimeout(() => {
+      body.dataset.wake = 'true';
       boot.classList.add('is-hidden');
       sessionStorage.setItem('magi-terminal-booted', '1');
       selectProgram(location.hash.slice(1) || 'home', true);
+      setTimeout(() => { body.dataset.wake = 'false'; }, 420);
     }, delay);
   }
   bootSequence();

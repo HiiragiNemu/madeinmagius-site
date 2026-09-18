@@ -24,6 +24,7 @@ export const PROGRAMS = {
     { id: 'tw-demo', label: 'MUMU DEMO SCRIPT', note: '演示脚本' },
     { id: 'tw-mumu-en', label: 'TW · WINDOWS / MUMU (EN)', note: 'English guide' },
     { id: 'tw-phone-en', label: 'TW · ANDROID PHONE (EN)', note: 'English guide' },
+    { id: 'integrity', label: 'INTEGRITY / HASHES', note: '校验与验证记录' },
     { id: 'troubleshoot', label: 'TROUBLESHOOT', note: '常见问题' }
   ]},
   about: { subs: [
@@ -187,8 +188,12 @@ export function renderContent(programId, subId, data) {
     if (subId === 'contact') return contactHtml();
     return '<p class="content-kicker">MAGIUS LINK / HOME</p><h2>WELCOME</h2>' +
       '<div class="hero-copy"><div>' +
-      '<p class="lead">这里是 MadeInMagius 的统一工具入口。左侧选择程序，连接线会点亮该程序的子系统；在子系统中选择下载、工具或教程，内容会在这里打开。</p>' +
-      '<p>下载、教程和工具本身就是界面。</p>' +
+      '<p class="lead">MadeInMagius 的软件、工具与资料入口。</p>' +
+      '<div class="tool-list">' +
+      '<div><b>BILIBILI SNAPSHOT</b><small>粉丝快照与 Android 伴侣</small></div>' +
+      '<div><b>NETEASE EXPORTER</b><small>歌单与下架记录导出</small></div>' +
+      '<div><b>EXEDRA TW / JP</b><small>客户端、安装工具与完整教程</small></div>' +
+      '</div>' +
       '</div></div>';
   }
 
@@ -232,6 +237,29 @@ export function renderContent(programId, subId, data) {
       '<div class="quick-links"><a href="https://github.com/HiiragiNemu/netease-cloudmusic-delisted-exporter#readme" target="_blank" rel="noreferrer">完整 README ↗</a></div>';
   }
 
+  function renderIntegrityBlock(label, manifest, verification, sums) {
+    if (!manifest || !manifest.releases || !manifest.releases.length) return '';
+    const latest = manifest.releases.find(function(item) {
+      return item.versionName === manifest.latestVersion;
+    }) || manifest.releases[0];
+    const splitRows = Object.entries(latest.splits || {}).map(function(entry) {
+      const name = entry[0];
+      const item = entry[1];
+      return '<tr><td>' + escapeHtml(name) + '</td><td>' + escapeHtml(String(item.length || '')) + '</td><td><code>' + escapeHtml(item.sha256 || '') + '</code></td></tr>';
+    }).join('');
+    return '<section class="integrity-block">' +
+      '<h3>' + escapeHtml(label) + '</h3>' +
+      '<p><strong>PACKAGE</strong> ' + escapeHtml(manifest.packageName || '') + '</p>' +
+      '<p><strong>VERSION</strong> ' + escapeHtml(latest.versionName || '') + ' / ' + escapeHtml(String(latest.versionCode || '')) + '</p>' +
+      '<p><strong>XAPK</strong> ' + escapeHtml(String(latest.length || '')) + ' bytes</p>' +
+      '<p class="integrity-hash"><strong>SHA-256</strong> <code>' + escapeHtml(latest.sha256 || '') + '</code></p>' +
+      (latest.signingCertificateSha256 ? '<p class="integrity-hash"><strong>SIGNING CERT</strong> <code>' + escapeHtml(latest.signingCertificateSha256) + '</code></p>' : '') +
+      '<div class="integrity-table-wrap"><table class="integrity-table"><thead><tr><th>SPLIT</th><th>BYTES</th><th>SHA-256</th></tr></thead><tbody>' + splitRows + '</tbody></table></div>' +
+      (verification ? '<details class="terminal-details"><summary>VERIFICATION RECORD</summary><pre><code>' + escapeHtml(JSON.stringify(verification, null, 2)) + '</code></pre></details>' : '') +
+      (sums ? '<details class="terminal-details"><summary>SHA256SUMS</summary><pre><code>' + escapeHtml(sums) + '</code></pre></details>' : '') +
+      '</section>';
+  }
+
   if (programId === 'exedra') {
     if (subId === 'exedra-downloads') {
       return '<p class="content-kicker">EXEDRA TW / JP / DOWNLOADS</p><h2>原版客户端与安装工具</h2>' +
@@ -246,16 +274,28 @@ export function renderContent(programId, subId, data) {
         '<a href="https://www.madoka-exedra.com/" target="_blank" rel="noreferrer">JP OFFICIAL ↗</a>' +
         '</div>';
     }
+    if (subId === 'integrity') {
+      const files = data.integrity && data.integrity.files ? data.integrity.files : {};
+      return '<p class="content-kicker">EXEDRA / INTEGRITY</p><h2>校验与验证记录</h2>' +
+        '<p>这里保留旧 Exedra 下载站使用的版本清单、完整 XAPK SHA-256、每个 split 的固定哈希与验证记录。</p>' +
+        renderIntegrityBlock('TW ORIGINAL CLIENT', files.twManifest && files.twManifest.content, files.twVerification && files.twVerification.content, files.twSums && files.twSums.content) +
+        renderIntegrityBlock('JP ORIGINAL CLIENT', files.jpManifest && files.jpManifest.content, files.jpVerification && files.jpVerification.content, files.jpSums && files.jpSums.content) +
+        '<div class="quick-links"><a href="./data/exedra-integrity.json" target="_blank" rel="noreferrer">RAW INTEGRITY JSON ↗</a></div>';
+    }
     if (subId === 'troubleshoot') {
       return '<p class="content-kicker">EXEDRA / HELP</p><h2>TROUBLESHOOT</h2>' +
         '<h3>没有台区或日区 Google 账号，也能下载安装吗？</h3>' +
-        '<p>可以。公开下载与原版 split 安装不要求 Google Play 账号改区。TW 与 JP 都从发布资产获取完整 XAPK；游戏登录和服务状态在启动后单独判断。</p>' +
+        '<p>公开下载与原版 split 安装不要求 Google Play 账号改区。TW 与 JP 都从发布资产获取完整 XAPK；游戏登录和服务状态在启动后单独判断。</p>' +
         '<h3>游戏提示“应用程序已推出新版本”</h3>' +
-        '<p>这是 Android 客户端升级提示。下载当前 XAPK 后原位升级，不要先卸载或清除游戏资料。</p>' +
+        '<p>这是 Android 客户端升级提示。下载当前 XAPK 后原位升级，不要重新安装旧版，也不要先清除游戏资料。</p>' +
+        '<h3>以前教程的 GitHub 链接为什么显示 404？</h3>' +
+        '<p>历史阶段仓库曾有可见性变化；当前教程与发布入口以 MAGIUS LINK 和源仓库现状为准。旧收藏链接不会自动更新到新版本。</p>' +
         '<h3>安装失败、签名冲突或 split 缺失</h3>' +
         '<p>使用完整的同版本 XAPK，一次安装全部三个 APK。若显示 INSTALL_FAILED_UPDATE_INCOMPATIBLE，先检查现有客户端签名来源，不要通过卸载来试错。</p>' +
+        '<h3>向导找不到设备，或同时连接多个模拟器</h3>' +
+        '<p>确认 MuMu 已开启 ADB 调试。没有自动发现时输入实例设置显示的 ADB 地址；多个实例必须明确选择目标。也可用 TW_ADB 指定 adb.exe 路径。</p>' +
         '<h3>安装成功之后仍有网络或登录问题</h3>' +
-        '<p>安装、网络与账号登录需要分别判断。保留错误文字与版本信息；工具不会修改 VPN、代理、DNS 或游戏账号。</p>';
+        '<p>安装、网络与账号登录需要分别判断。保留错误文字与版本信息；工具不会修改 VPN、代理、DNS 或游戏账号，也不读取密码、引继码或会话资料。</p>';
     }
     const doc = data.docs.get(subId);
     if (!doc) return '<p>DOCUMENT LOADING...</p>';

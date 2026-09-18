@@ -5,6 +5,7 @@ const PROJECTS = {
     assets: {
       android: /\.apk$/i,
       userscript: /\.user\.js$/i,
+      sourceZip: /source\.zip$/i,
     },
   },
   netease: {
@@ -64,6 +65,22 @@ async function latestProject(key, config, token) {
       return [assetKey, assetShape(found, key, assetKey)];
     }),
   );
+  if (key === 'bilibili') {
+    assets.consoleScript = {
+      name: 'bilibili-follower-snapshot-console.js',
+      size: null,
+      digest: null,
+      content_type: 'text/javascript; charset=utf-8',
+      download: './downloads/bilibili-follower-snapshot-console.js',
+    };
+    assets.consoleText = {
+      name: 'bilibili-follower-snapshot-console.txt',
+      size: null,
+      digest: null,
+      content_type: 'text/plain; charset=utf-8',
+      download: './downloads/bilibili-follower-snapshot-console.txt',
+    };
+  }
   return {
     tag: release.tag_name,
     name: release.name,

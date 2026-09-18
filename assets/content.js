@@ -218,11 +218,11 @@ export function renderContent(programId, subId, data) {
     if (subId === 'console') {
       const project = data.releases && data.releases.projects ? data.releases.projects.bilibili : null;
       const assets = project && project.assets ? project.assets : {};
-      const scriptUrl = assets.consoleScript && assets.consoleScript.browser_download_url
-        ? assets.consoleScript.browser_download_url
+      const scriptUrl = assets.consoleScript
+        ? (assets.consoleScript.download || assets.consoleScript.browser_download_url)
         : 'https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.js';
-      const textUrl = assets.consoleText && assets.consoleText.browser_download_url
-        ? assets.consoleText.browser_download_url
+      const textUrl = assets.consoleText
+        ? (assets.consoleText.download || assets.consoleText.browser_download_url)
         : 'https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.txt';
       return '<p class="content-kicker">BILIBILI / F12 CONSOLE</p><h2>F12 CONSOLE</h2>' +
         '<p>桌面浏览器临时运行入口，不安装扩展。先登录 B站并打开自己的个人空间，再打开开发者工具的 Console。</p>' +

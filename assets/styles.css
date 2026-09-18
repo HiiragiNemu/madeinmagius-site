@@ -1447,3 +1447,23 @@ html[data-crt-engine="webkit-svg"] .signal{
 @media(prefers-reduced-motion:reduce){
   .boot__signal,.boot__grain,.boot__roll,.sub-menu>.content-panel{animation:none!important}
 }
+
+
+.terminal-copy-button{
+  appearance:none;
+  -webkit-appearance:none;
+  padding:6px 9px;
+  border:1px solid rgba(0,255,95,.35);
+  background:rgba(0,0,0,.22);
+  color:#aaffc2;
+  font:inherit;
+  font-size:11px;
+  cursor:pointer;
+}
+.terminal-copy-button:hover,.terminal-copy-button:focus-visible{
+  background:rgba(0,255,96,.12);
+  border-color:rgba(125,255,160,.72);
+  outline:none;
+  box-shadow:0 0 8px rgba(75,255,127,.18);
+}
+.terminal-copy-button:disabled{opacity:.72;cursor:wait}

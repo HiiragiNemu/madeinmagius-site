@@ -66,6 +66,7 @@ async function latestProject(key, config, token) {
     }),
   );
   if (key === 'bilibili') {
+    if (assets.sourceZip) assets.sourceZip.download = './downloads/bilibili/source';
     assets.consoleScript = {
       name: 'bilibili-follower-snapshot-console.js',
       size: null,

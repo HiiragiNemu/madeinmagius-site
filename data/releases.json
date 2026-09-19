@@ -129,7 +129,8 @@
           "name": "com.aniplex.magia.exedra.jp-3.18.0.xapk",
           "size": 923195400,
           "digest": "sha256:43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514",
-          "browser_download_url": "https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/jp-v3.18.0/com.aniplex.magia.exedra.jp-3.18.0.xapk"
+          "browser_download_url": "https://d.apkpure.net/b/XAPK/com.aniplex.magia.exedra.jp?version=latest",
+          "source": "APKPure latest endpoint; probed 2026-09-19 -> JP 3.18.0 / 26090311 / 923195400 bytes"
         },
         "tools": {
           "name": "MagiaExedraTWJPTools-v1.4.0.zip",

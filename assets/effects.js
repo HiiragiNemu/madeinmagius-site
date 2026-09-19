@@ -163,15 +163,18 @@ export function setupCrtEffects(options) {
     // ±0.5 px horizontally frame-to-frame, while vertical motion is much lower.
     // Combine a slow timebase wander with low-amplitude high-frequency jitter.
     const lowDrift =
-      Math.sin(now * .00155) * .16 +
-      Math.sin(now * .0039 + 1.37) * .08;
-    const randomPhase = (Math.random() + Math.random() - 1) * .50;
-    const motion = Math.min(.68, pointerEnergy * .42);
+      Math.sin(now * .00155) * .22 +
+      Math.sin(now * .0039 + 1.37) * .11;
+    const randomPhase = (Math.random() + Math.random() - 1) * .64;
+    const motion = Math.min(.72, pointerEnergy * .44);
+    const trackingKick = signal.dataset.tracking === 'true'
+      ? Math.sin(now * .031 + 1.2) * .62
+      : 0;
 
-    const x = lowDrift + randomPhase + (Math.random() - .5) * motion;
+    const x = lowDrift + randomPhase + trackingKick + (Math.random() - .5) * motion;
     const y =
-      Math.sin(now * .00115 + .7) * .025 +
-      (Math.random() + Math.random() - 1) * (.075 + motion * .10);
+      Math.sin(now * .00115 + .7) * .035 +
+      (Math.random() + Math.random() - 1) * (.09 + motion * .11);
 
     root.style.setProperty('--jitter-x', x.toFixed(2) + 'px');
     root.style.setProperty('--jitter-y', y.toFixed(2) + 'px');

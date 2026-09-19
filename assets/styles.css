@@ -1767,3 +1767,29 @@ html[data-pixel-font="false"] .content-inner :is(p,li){
 @media(prefers-reduced-motion:reduce){
   .tube-grain,.tracking-sweep,.boot__grain{animation:none!important}
 }
+
+
+/* Safari/iOS 27 safety path for the upstream feDisplacementMap regression.
+   Stable iOS continues to use the full reader lens. */
+html[data-crt-engine="ios-safe"] .signal{
+  filter:brightness(var(--flicker)) contrast(1.035) saturate(.94)!important;
+  -webkit-filter:brightness(var(--flicker)) contrast(1.035) saturate(.94)!important;
+  transform:
+    perspective(1200px)
+    translate3d(var(--jitter-x),var(--jitter-y),0)
+    scale(.992,.986)!important;
+  -webkit-transform:
+    perspective(1200px)
+    translate3d(var(--jitter-x),var(--jitter-y),0)
+    scale(.992,.986)!important;
+}
+html[data-crt-engine="ios-safe"] .screen::before{
+  background:
+    radial-gradient(ellipse at 50% 47%,
+      transparent 31%,
+      rgba(0,0,0,.025) 54%,
+      rgba(0,0,0,.18) 76%,
+      rgba(0,0,0,.42) 92%,
+      rgba(0,0,0,.72) 100%),
+    linear-gradient(90deg,rgba(0,0,0,.34),transparent 10% 90%,rgba(0,0,0,.36));
+}

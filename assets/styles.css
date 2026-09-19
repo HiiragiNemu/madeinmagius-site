@@ -1871,3 +1871,26 @@ html[data-pixel-font="true"] .signal :is([lang="ja"],[lang="ja"] *){
   .brand-wordmark{width:min(58vw,310px)}
   .boot__emblem{width:min(26vw,118px);margin-bottom:11px}
 }
+
+
+/* Performance: keep the full-quality grain raster but animate the composited
+   layer itself. This avoids repainting background-position every 105ms. */
+.tube-grain{
+  inset:-12px!important;
+  background-position:17px 11px,83px 47px!important;
+  will-change:transform,opacity!important;
+  animation:tube-grain-composite .105s steps(2,end) infinite!important;
+}
+.boot__grain{
+  inset:-12px!important;
+  background-position:0 0!important;
+  will-change:transform,opacity!important;
+  animation:tube-grain-composite .105s steps(2,end) infinite!important;
+}
+@keyframes tube-grain-composite{
+  0%{transform:translate3d(0,0,0)}
+  25%{transform:translate3d(5px,-4px,0)}
+  50%{transform:translate3d(-4px,5px,0)}
+  75%{transform:translate3d(3px,2px,0)}
+  100%{transform:translate3d(0,0,0)}
+}

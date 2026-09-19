@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-pixel-font="true">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -18,14 +18,14 @@
 
         <!-- Scene-wide registration, ported from the reader night CRT pass. -->
         <feColorMatrix in="SourceGraphic" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1" result="reg-red"/>
-        <feOffset in="reg-red" dx="-.52" dy="-.18" result="reg-red-shift"/>
+        <feOffset in="reg-red" dx=".75" dy=".12" result="reg-red-shift"/>
         <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 0 1" result="reg-green"/>
         <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 0 1" result="reg-blue"/>
-        <feOffset in="reg-blue" dx=".8" dy=".18" result="reg-blue-shift"/>
+        <feOffset in="reg-blue" dx="-.75" dy="-.12" result="reg-blue-shift"/>
         <feComposite in="reg-red-shift" in2="reg-green" operator="arithmetic" k2="1" k3="1" result="reg-rg"/>
         <feComposite in="reg-rg" in2="reg-blue-shift" operator="arithmetic" k2="1" k3="1" result="reg-rgb"/>
         <feComposite in="reg-rgb" in2="SourceGraphic" operator="in" result="reg-rgb-alpha"/>
-        <feComposite in="reg-rgb-alpha" in2="SourceGraphic" operator="arithmetic" k2=".86" k3=".14" result="registered-scene"/>
+        <feComposite in="reg-rgb-alpha" in2="SourceGraphic" operator="arithmetic" k2=".72" k3=".28" result="registered-scene"/>
 
         <!-- Reader CRT sequence: beam softness -> lens displacement -> tube softness. -->
         <feGaussianBlur in="registered-scene" stdDeviation=".35" result="beam"/>

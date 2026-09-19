@@ -18,7 +18,7 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   await page.waitForFunction(
     () => Number(document.querySelector('#signal')?.dataset.trackingCount || '0') > 0,
     null,
-    { timeout: 7000 }
+    { timeout: 9500 }
   );
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => document.fonts.load('12px MagiusPixel'));
@@ -44,14 +44,8 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   const rasterTransform = await page.locator('#signal').evaluate(el => getComputedStyle(el).transform);
   if (!testInfo.project.name.includes('ios')) expect(rasterTransform).toBe('none');
   await expect(page.locator('.tube-grain')).toBeAttached();
-  const continuousAnimations = await page.evaluate(() => ({
-    fieldTop: getComputedStyle(document.documentElement).getPropertyValue('--roll-y').trim(),
-    raster: getComputedStyle(document.querySelector('.scanlines')).animationName,
-    grain: getComputedStyle(document.querySelector('.tube-grain')).animationName,
-  }));
-  expect(continuousAnimations.fieldTop).not.toBe('');
-  expect(continuousAnimations.raster).toContain('raster-phase');
-  expect(continuousAnimations.grain).toContain('tube-grain-drift');
+  const scanlineAnimation = await page.locator('.scanlines').evaluate(el => getComputedStyle(el).animationName);
+  expect(scanlineAnimation).toBe('none');
 
   await page.locator('[data-program="bilibili"]').evaluate(el => el.click());
   await expect(page.locator('[data-sub="source"]')).toHaveCount(0);

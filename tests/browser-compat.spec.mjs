@@ -2,6 +2,11 @@ import { test, expect } from '@playwright/test';
 
 test('terminal optics, mobile accordion, home jump and public downloads work', async ({ page }, testInfo) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(420);
+  await expect(page.locator('.boot__wordmark')).toBeVisible();
+  await expect(page.locator('.boot__raster')).toBeVisible();
+  await expect(page.locator('.boot__grain')).toBeVisible();
+  await page.screenshot({ path: `test-results/${testInfo.project.name}-boot.png`, fullPage: false });
   await page.waitForSelector('#boot.is-hidden', { timeout: 6000 });
 
   await expect(page.locator('.screen')).toBeVisible();
@@ -58,5 +63,5 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   await expect(page.locator('#tracking-sweep')).toBeVisible();
   await expect(page.locator('#signal')).toHaveAttribute('data-tracking', 'true', { timeout: 1000 });
 
-  await page.screenshot({ path: `test-results/${testInfo.project.name}.png`, fullPage: false });
+  await page.screenshot({ path: `test-results/${testInfo.project.name}-live.png`, fullPage: false });
 });

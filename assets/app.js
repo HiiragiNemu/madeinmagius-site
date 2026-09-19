@@ -54,13 +54,15 @@ function initPixelFont() {
   } catch {}
   applyPixelFont(enabled);
 
-  pixelToggle?.addEventListener('click', () => {
+  function togglePixelFont() {
     const next = document.documentElement.dataset.pixelFont !== 'true';
     applyPixelFont(next);
     try { localStorage.setItem('magius-pixel-font', String(next)); } catch {}
     crt.pulse(.72);
     statusLine.textContent = next ? 'PIXEL FONT // ON' : 'PIXEL FONT // OFF';
-  });
+  }
+
+  pixelToggle?.addEventListener('click', togglePixelFont);
 }
 
 function selectedProgramButton() {
@@ -429,6 +431,26 @@ homeJump.addEventListener('click', event => {
       top: 0,
       behavior: reducedMotion.matches ? 'auto' : 'smooth'
     });
+  }
+});
+
+/* The CRT displacement bends pixels but DOM hit boxes stay rectangular.
+   Let the green hardware bar accept taps in a slightly expanded visual zone. */
+document.querySelector('.masthead__bar')?.addEventListener('pointerup', event => {
+  if (event.target.closest('#pixel-toggle,#home-jump')) return;
+  for (const control of [pixelToggle, homeJump]) {
+    if (!control) continue;
+    const rect = control.getBoundingClientRect();
+    const pad = 16;
+    if (
+      event.clientX >= rect.left - pad &&
+      event.clientX <= rect.right + pad &&
+      event.clientY >= rect.top - pad &&
+      event.clientY <= rect.bottom + pad
+    ) {
+      control.click();
+      break;
+    }
   }
 });
 

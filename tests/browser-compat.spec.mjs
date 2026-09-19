@@ -27,30 +27,23 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   expect(perfState.scanlineAnimation).toBe('none');
   expect(perfState.grainAnimation).toBe('none');
 
-  // The display must remain alive without user input: temporal grain and an
-  // automatic top-to-bottom tracking pass both advance on their own.
   await expect(page.locator('.tube-grain')).toBeAttached();
-  await page.waitForFunction(
-    () => Number(document.querySelector('#signal')?.dataset.trackingCount || '0') > 0,
-    null,
-    { timeout: 9500 }
-  );
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => document.fonts.load('12px MagiusPixel'));
   expect(await page.evaluate(() => document.fonts.check('12px MagiusPixel'))).toBeTruthy();
   await expect(page.locator('.boot__wordmark')).toHaveAttribute('src', /magius-link-wordmark\.svg/);
 
   const engine = await page.locator('html').getAttribute('data-crt-engine');
-  expect(['svg', 'webkit-svg', 'ios-safe']).toContain(engine);
-  if (testInfo.project.name.includes('ios')) {
-    expect(engine).toBe('ios-safe');
+  expect(['static-svg', 'mobile-static']).toContain(engine);
+  if (isMobileProject) {
+    expect(engine).toBe('mobile-static');
     const computedFilter = await page.locator('#signal').evaluate(el => getComputedStyle(el).filter);
     expect(computedFilter).not.toContain('url(');
   }
 
   await page.bringToFront();
   await expect(page.locator('#tracking-sweep')).toBeAttached();
-      await expect(page.locator('.tube-grain')).toBeAttached();
+  await expect(page.locator('.tube-grain')).toBeAttached();
   const scanlineAnimation = await page.locator('.scanlines').evaluate(el => getComputedStyle(el).animationName);
   expect(scanlineAnimation).toBe('none');
 

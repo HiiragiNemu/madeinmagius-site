@@ -254,7 +254,7 @@ export function renderContent(programId, subId, data) {
       '<h3>油猴脚本</h3><ol><li>启用 Tampermonkey 并安装脚本。</li><li>保持登录并打开自己的 B站空间。</li><li>读取后保存 JSON / CSV；以后导入旧快照比较。</li></ol>' +
       '<h3>F12 Console</h3><ol><li>桌面浏览器登录 B站并打开自己的个人空间。</li><li>按 F12 切换到 Console。</li><li>粘贴完整脚本并回车运行。</li></ol>' +
       '<p><strong>比较结果：</strong>只有两份快照都通过完整性检查时才输出精确差集。覆盖存在缺口时，未返回账号保持“未分类”，不会直接判定关系消失；超过 1000 人同样按实际唯一 UID 与接口报告总数判断。</p>' +
-      '<div class="quick-links"><a href="https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot#readme" target="_blank" rel="noreferrer">完整 README ↗</a></div>';
+      '<div class="quick-links"><a href="#bilibili/source">SOURCE ZIP</a><a href="#bilibili/android">ANDROID</a><a href="#bilibili/userscript">USERSCRIPT</a></div>';
   }
 
   if (programId === 'netease') {

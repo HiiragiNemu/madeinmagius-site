@@ -7,7 +7,7 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   await expect(page.locator('.boot__raster')).toBeVisible();
   await expect(page.locator('.boot__grain')).toBeVisible();
   await page.screenshot({ path: `test-results/${testInfo.project.name}-boot.png`, fullPage: false });
-  await page.waitForSelector('#boot.is-hidden', { timeout: 6000 });
+  await expect(page.locator('#boot')).toHaveClass(/is-hidden/, { timeout: 6000 });
 
   await expect(page.locator('.screen')).toBeVisible();
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');

@@ -65,6 +65,7 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   await expect(win).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/netease\/v2\.5\.1\/.*windows-x64\.zip/);
 
   await page.locator('[data-program="exedra"]').evaluate(el => el.click());
+  await expect(page.locator('[data-sub="tw-demo"]')).toHaveCount(0);
   await page.locator('[data-sub="integrity"]').evaluate(el => el.click());
   await expect(page.getByText('TW ORIGINAL CLIENT')).toBeVisible();
   await expect(page.getByText('JP ORIGINAL CLIENT')).toBeVisible();

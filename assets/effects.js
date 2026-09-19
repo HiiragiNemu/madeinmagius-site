@@ -11,6 +11,8 @@ export function setupCrtEffects(options) {
   let pointerEnergy = 0;
   let lastPointer = { x: innerWidth / 2, y: innerHeight / 2, t: performance.now() };
   let roll = -24;
+  let rollVelocity = .36;
+  let nextRollVelocity = performance.now() + 900 + Math.random() * 1800;
   let rafId = 0;
   let lastSignalFrame = 0;
   let lastNoiseFrame = 0;
@@ -129,28 +131,46 @@ export function setupCrtEffects(options) {
 
     clearTimeout(trackingTimer);
 
-    // A vertical-sync / timebase disturbance is a moving field boundary with
-    // a small horizontal phase error, not a full-screen geometry mutation.
-    root.style.setProperty('--tracking-shift', ((Math.random() - .5) * 7.2).toFixed(1) + 'px');
-    root.style.setProperty('--tracking-duration', (.88 + Math.random() * .52).toFixed(2) + 's');
-    root.style.setProperty('--tracking-brightness', (1.04 + Math.random() * .09).toFixed(3));
+    const modeRoll = Math.random();
+    const mode =
+      modeRoll < .43 ? 'down' :
+      modeRoll < .67 ? 'up' :
+      modeRoll < .93 ? 'converge' :
+      'double';
+
+    trackingSweep.dataset.mode = mode;
+
+    root.style.setProperty('--tracking-shift-a', ((Math.random() - .5) * 8.5).toFixed(1) + 'px');
+    root.style.setProperty('--tracking-shift-b', ((Math.random() - .5) * 8.5).toFixed(1) + 'px');
+    root.style.setProperty('--tracking-duration', (.72 + Math.random() * .72).toFixed(2) + 's');
+    root.style.setProperty('--tracking-brightness', (1.035 + Math.random() * .11).toFixed(3));
+    root.style.setProperty('--scan-height', (7 + Math.random() * 6).toFixed(1) + '%');
 
     signal.dataset.tracking = 'true';
     trackingCount += 1;
     signal.dataset.trackingCount = String(trackingCount);
-    pointerEnergy = Math.max(pointerEnergy, .68);
+    pointerEnergy = Math.max(pointerEnergy, .72);
 
-    if (Math.random() < .55) {
-      setTimeout(() => triggerSyncBurst(.58 + Math.random() * .5), 180 + Math.random() * 260);
+    if (Math.random() < .62) {
+      setTimeout(() => triggerSyncBurst(.55 + Math.random() * .52), 110 + Math.random() * 360);
+    }
+
+    if (mode === 'double') {
+      setTimeout(() => {
+        if (!active) return;
+        trackingSweep.dataset.mode = Math.random() < .5 ? 'down' : 'up';
+        root.style.setProperty('--tracking-shift-a', ((Math.random() - .5) * 9).toFixed(1) + 'px');
+        root.style.setProperty('--tracking-duration', (.52 + Math.random() * .45).toFixed(2) + 's');
+      }, 180 + Math.random() * 340);
     }
 
     trackingTimer = setTimeout(() => {
       signal.dataset.tracking = 'false';
-    }, 1450);
+    }, 1700);
 
-    // The supplied reference does not sit perfectly still: a stronger field
-    // rolls through every few seconds even without user input.
-    nextTracking = now + 1350 + Math.random() * 2850;
+    const u = Math.max(.001, Math.random());
+    const irregularGap = Math.min(5600, 900 + (-Math.log(u) * 1700));
+    nextTracking = now + irregularGap;
   }
 
   function updateSignal(now) {
@@ -163,18 +183,18 @@ export function setupCrtEffects(options) {
     // ±0.5 px horizontally frame-to-frame, while vertical motion is much lower.
     // Combine a slow timebase wander with low-amplitude high-frequency jitter.
     const lowDrift =
-      Math.sin(now * .00155) * .22 +
-      Math.sin(now * .0039 + 1.37) * .11;
-    const randomPhase = (Math.random() + Math.random() - 1) * .64;
-    const motion = Math.min(.72, pointerEnergy * .44);
+      Math.sin(now * .00155) * .34 +
+      Math.sin(now * .0039 + 1.37) * .15;
+    const randomPhase = (Math.random() + Math.random() - 1) * .82;
+    const motion = Math.min(.78, pointerEnergy * .46);
     const trackingKick = signal.dataset.tracking === 'true'
-      ? Math.sin(now * .031 + 1.2) * .62
+      ? Math.sin(now * .034 + 1.2) * 1.15
       : 0;
 
     const x = lowDrift + randomPhase + trackingKick + (Math.random() - .5) * motion;
     const y =
       Math.sin(now * .00115 + .7) * .035 +
-      (Math.random() + Math.random() - 1) * (.09 + motion * .11);
+      (Math.random() + Math.random() - 1) * (.12 + motion * .13);
 
     root.style.setProperty('--jitter-x', x.toFixed(2) + 'px');
     root.style.setProperty('--jitter-y', y.toFixed(2) + 'px');
@@ -186,9 +206,16 @@ export function setupCrtEffects(options) {
       Math.sin(now * .00063 + 2.1) * .004;
     root.style.setProperty('--flicker', (0.994 + breath + (Math.random() - .5) * .006).toFixed(3));
 
-    // Continuous slow field roll underneath the rarer tracking fault.
-    roll += .72;
+    // Continuous field drift is deliberately non-uniform: the vertical
+    // timebase speeds up, slows down and occasionally reverses slightly.
+    if (now >= nextRollVelocity) {
+      const direction = Math.random() < .12 ? -1 : 1;
+      rollVelocity = direction * (.16 + Math.random() * .62);
+      nextRollVelocity = now + 650 + Math.random() * 2100;
+    }
+    roll += rollVelocity;
     if (roll > 112) roll = -24;
+    if (roll < -28) roll = 110;
     root.style.setProperty('--roll-y', roll.toFixed(1) + '%');
 
     pointerEnergy *= .92;
@@ -211,7 +238,8 @@ export function setupCrtEffects(options) {
 
     // Signal instability is intentionally around 30 Hz; the raster, text,
     // curvature and phosphor layers themselves remain full-resolution.
-    if (now - lastSignalFrame >= 31) {
+    const signalInterval = mobileCurve.matches ? 30 : 20;
+    if (now - lastSignalFrame >= signalInterval) {
       lastSignalFrame = now;
       updateSignal(now);
     }

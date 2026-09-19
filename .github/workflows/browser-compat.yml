@@ -11,6 +11,10 @@ on:
       - "playwright.config.mjs"
       - ".github/workflows/browser-compat.yml"
 
+concurrency:
+  group: mobile-browser-compat
+  cancel-in-progress: true
+
 jobs:
   compat:
     runs-on: ubuntu-latest

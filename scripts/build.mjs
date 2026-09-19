@@ -26,7 +26,7 @@ const index = await readFile('index.html','utf8');
 for (const token of ['./assets/styles.css','./assets/app.js','FOLDERS','BILIBILI','NETEASE','EXEDRA TW / JP','MADE IN MAGIUS']) {
   if (!index.includes(token)) throw new Error(`index.html missing required token: ${token}`);
 }
-for (const rejected of ['独立分发','HTTPS 直链','本站直链','版本可核对','左侧选择程序，连接线会点亮']) {
+for (const rejected of ['独立分发','HTTPS 直链','本站直链','版本可核对','左侧选择程序，连接线会点亮','商店版','GOOGLE PLAY AAB','SOURCE ZIP','SOURCE TAR.GZ']) {
   if (index.includes(rejected)) throw new Error(`rejected homepage copy returned: ${rejected}`);
 }
 const contentSource = await readFile('assets/content.js','utf8');
@@ -34,6 +34,12 @@ if (contentSource.includes('github.com/HiiragiNemu/Bilibili-Follower-Snapshot#re
   throw new Error('private Bilibili repository link returned to public UI');
 }
 const releaseData = JSON.parse(await readFile('data/releases.json','utf8'));
+for (const forbiddenKey of ['sourceZip']) {
+  if (releaseData.projects?.bilibili?.assets?.[forbiddenKey]) throw new Error(`Forbidden public Bilibili asset returned: ${forbiddenKey}`);
+}
+for (const forbiddenKey of ['androidStore','androidAab','source']) {
+  if (releaseData.projects?.netease?.assets?.[forbiddenKey]) throw new Error(`Forbidden public NetEase asset returned: ${forbiddenKey}`);
+}
 const exedraDocs = JSON.parse(await readFile('data/exedra-docs.json','utf8'));
 const exedraIntegrity = JSON.parse(await readFile('data/exedra-integrity.json','utf8'));
 

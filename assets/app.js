@@ -26,6 +26,7 @@ const data = { releases: null, docs: new Map(), integrity: null };
 let programId = 'home';
 let subId = 'welcome';
 let hoverSubId = null;
+let mobileExpandedSub = null;
 
 const contentAnchor = document.createComment('content-panel-anchor');
 contentPanel.parentNode.insertBefore(contentAnchor, contentPanel);
@@ -77,16 +78,25 @@ function restoreContentPanel() {
 
 function placeContentPanel(scrollIntoView = false) {
   if (!mobileMode.matches) {
+    contentPanel.hidden = false;
     restoreContentPanel();
     return;
   }
 
-  const selected = subMenu.querySelector('.sub-node.is-selected');
+  if (!mobileExpandedSub) {
+    contentPanel.hidden = true;
+    restoreContentPanel();
+    return;
+  }
+
+  const selected = subMenu.querySelector('[data-sub="' + CSS.escape(mobileExpandedSub) + '"]');
   if (!selected) {
+    contentPanel.hidden = true;
     restoreContentPanel();
     return;
   }
 
+  contentPanel.hidden = false;
   selected.insertAdjacentElement('afterend', contentPanel);
 
   if (scrollIntoView) {
@@ -181,7 +191,7 @@ function buildSubMenu() {
     button.type = 'button';
     button.className = 'sub-node' + (item.id === subId ? ' is-selected' : '');
     button.dataset.sub = item.id;
-    button.setAttribute('aria-expanded', String(item.id === subId && mobileMode.matches));
+    button.setAttribute('aria-expanded', String(mobileMode.matches && item.id === mobileExpandedSub));
     button.innerHTML =
       '<b>&gt;' + escapeHtml(item.label) + '</b><small>' + escapeHtml(item.note || '') + '</small>';
 
@@ -224,6 +234,7 @@ function selectProgram(id, focusSub = false, mobileScroll = true) {
 
   programId = id;
   subId = PROGRAMS[id].subs[0].id;
+  if (mobileMode.matches) mobileExpandedSub = null;
   syncProgramButtons();
   buildSubMenu();
   renderCurrentContent();
@@ -245,12 +256,26 @@ function selectProgram(id, focusSub = false, mobileScroll = true) {
 function selectSub(id, focus = false) {
   if (!PROGRAMS[programId].subs.some(item => item.id === id)) return;
 
+  if (mobileMode.matches && mobileExpandedSub === id) {
+    mobileExpandedSub = null;
+    Array.from(subMenu.querySelectorAll('.sub-node')).forEach(button => {
+      const selected = button.dataset.sub === id;
+      button.classList.toggle('is-selected', selected);
+      button.setAttribute('aria-expanded', 'false');
+    });
+    placeContentPanel(false);
+    statusLine.textContent = programId.toUpperCase() + ' // ' + id.toUpperCase() + ' // COLLAPSED';
+    crt.pulse(.42);
+    return;
+  }
+
   subId = id;
+  if (mobileMode.matches) mobileExpandedSub = id;
 
   Array.from(subMenu.querySelectorAll('.sub-node')).forEach(button => {
     const selected = button.dataset.sub === id;
     button.classList.toggle('is-selected', selected);
-    button.setAttribute('aria-expanded', String(selected && mobileMode.matches));
+    button.setAttribute('aria-expanded', String(mobileMode.matches && selected));
   });
 
   renderCurrentContent();
@@ -271,9 +296,9 @@ function parseHash() {
   if (!PROGRAMS[p]) return;
 
   programId = p;
-  subId = PROGRAMS[p].subs.some(item => item.id === s)
-    ? s
-    : PROGRAMS[p].subs[0].id;
+  const hasSub = PROGRAMS[p].subs.some(item => item.id === s);
+  subId = hasSub ? s : PROGRAMS[p].subs[0].id;
+  if (mobileMode.matches) mobileExpandedSub = hasSub ? subId : null;
 }
 
 function setupProgramInteractions() {
@@ -467,7 +492,8 @@ bootSequence();
 setInterval(updateClock, 1000);
 addEventListener('keydown', keyboardNavigation);
 
-mobileMode.addEventListener?.('change', () => {
+mobileMode.addEventListener?.('change', event => {
+  mobileExpandedSub = event.matches ? null : subId;
   buildSubMenu();
   renderCurrentContent();
 });

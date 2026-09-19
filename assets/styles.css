@@ -2103,3 +2103,16 @@ html[data-pixel-font="false"] .boot{
   .pixel-toggle{min-height:30px}
   .pixel-toggle::before{inset:-13px -14px}
 }
+
+
+.content-panel[hidden]{
+  display:none!important;
+}
+@media(max-width:760px){
+  .sub-node[aria-expanded="false"].is-selected{
+    box-shadow:
+      -1px 0 0 rgba(255,232,82,.34),
+      1px 0 .3px rgba(52,249,22,.32),
+      0 0 5px rgba(166,247,82,.28)!important;
+  }
+}

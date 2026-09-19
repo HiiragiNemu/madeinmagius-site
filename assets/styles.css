@@ -2700,3 +2700,35 @@ html[data-crt-engine="ios-safe"] .signal[data-tracking="true"] .tracking-sweep{
 .signal{
   will-change:transform,filter,opacity!important;
 }
+
+
+/* Final glass edge: no luminous outer outline, only black falloff. */
+.screen::after{
+  background:
+    radial-gradient(
+      ellipse at 50% 49%,
+      transparent 0 78%,
+      rgba(0,0,0,.20) 88%,
+      rgba(0,0,0,.62) 96%,
+      #000 100%
+    )!important;
+  mix-blend-mode:normal!important;
+}
+.screen{
+  background:#000!important;
+}
+
+/* All iOS/WebKit uses the safe compositor path. SVG displacement currently
+   renders unreliably in WebKit; raster/grain/registration/tracking remain on. */
+html[data-crt-engine="ios-safe"] .signal{
+  filter:brightness(var(--flicker)) contrast(1.035) saturate(.94)!important;
+  -webkit-filter:brightness(var(--flicker)) contrast(1.035) saturate(.94)!important;
+  transform:
+    perspective(1100px)
+    translate3d(var(--jitter-x),var(--jitter-y),0)
+    scale(.992,.986)!important;
+  -webkit-transform:
+    perspective(1100px)
+    translate3d(var(--jitter-x),var(--jitter-y),0)
+    scale(.992,.986)!important;
+}

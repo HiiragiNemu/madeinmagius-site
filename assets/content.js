@@ -24,7 +24,6 @@ export const PROGRAMS = {
     { id: 'jp-android', label: 'JP · ANDROID / MUMU', note: '完整教程' },
     { id: 'steam', label: 'STEAM WINDOWS', note: '安装与网络' },
     { id: 'tw-client-113', label: 'TW CLIENT 1.1.3', note: '版本说明' },
-    { id: 'tw-demo', label: 'MUMU DEMO SCRIPT', note: '演示脚本' },
     { id: 'tw-mumu-en', label: 'TW · WINDOWS / MUMU (EN)', note: 'English guide' },
     { id: 'tw-phone-en', label: 'TW · ANDROID PHONE (EN)', note: 'English guide' },
     { id: 'integrity', label: 'INTEGRITY / HASHES', note: '校验与验证记录' },

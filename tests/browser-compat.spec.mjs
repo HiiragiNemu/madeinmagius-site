@@ -33,14 +33,14 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   const laterTick = Number(await page.locator('#signal').getAttribute('data-tick') || '0');
   expect(laterTick).toBeGreaterThan(initialTick);
 
-  await page.locator('[data-program="bilibili"]').click({ force: true });
+  await page.locator('[data-program="bilibili"]').evaluate(el => el.click());
   await expect(page.locator('[data-sub="android"]')).toBeVisible();
   await page.locator('[data-sub="android"]').click({ force: true });
   const apk = page.locator('.download-button').first();
   await expect(apk).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/bilibili\/v0\.1\.9\/.*\.apk/);
   expect(await page.locator('#content-panel').evaluate(node => node.previousElementSibling?.dataset?.sub)).toBe('android');
 
-  await page.locator('[data-program="netease"]').click({ force: true });
+  await page.locator('[data-program="netease"]').evaluate(el => el.click());
   const selectedNetease = page.locator('[data-program="netease"]');
   const selectedSubtitle = selectedNetease.locator('.menu-node__copy small');
   await expect(selectedNetease).toHaveClass(/is-selected/);
@@ -50,7 +50,7 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   const win = page.locator('.download-button').first();
   await expect(win).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/netease\/v2\.5\.1\/.*windows-x64\.zip/);
 
-  await page.locator('[data-program="exedra"]').click({ force: true });
+  await page.locator('[data-program="exedra"]').evaluate(el => el.click());
   await page.locator('[data-sub="integrity"]').click({ force: true });
   await expect(page.getByText('TW ORIGINAL CLIENT')).toBeVisible();
   await expect(page.getByText('JP ORIGINAL CLIENT')).toBeVisible();

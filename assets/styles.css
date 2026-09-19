@@ -2020,3 +2020,39 @@ html[data-pixel-font="off"] .boot{
     -webkit-text-fill-color:#173b22 !important;
   }
 }
+
+
+/* Final pixel-font state uses the same true/false contract as the reader. */
+html[data-pixel-font="true"] .signal,
+html[data-pixel-font="true"] .boot{
+  font-family:var(--pixel-face)!important;
+  font-synthesis:none!important;
+}
+html[data-pixel-font="false"] .signal,
+html[data-pixel-font="false"] .boot{
+  font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif!important;
+}
+.pixel-toggle{
+  min-width:max-content;
+}
+
+/* Hard contrast on white menu selections, including secondary CJK copy. */
+.menu-node.is-selected .menu-node__copy b{
+  color:#050b06!important;
+  -webkit-text-fill-color:#050b06!important;
+  opacity:1!important;
+}
+.menu-node.is-selected .menu-node__copy small{
+  color:#15361f!important;
+  -webkit-text-fill-color:#15361f!important;
+  opacity:1!important;
+  font-weight:700!important;
+  text-shadow:none!important;
+}
+.menu-node.is-selected .menu-node__index,
+.menu-node.is-selected .menu-node__glyph{
+  color:#1d3925!important;
+  -webkit-text-fill-color:#1d3925!important;
+  opacity:1!important;
+  text-shadow:none!important;
+}

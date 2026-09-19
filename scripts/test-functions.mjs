@@ -15,11 +15,11 @@ const fixtures = {
     ],
   },
   'HiiragiNemu/netease-cloudmusic-delisted-exporter': {
-    tag_name:'v8.8.8', name:'NetEase test', published_at:'2026-09-19T00:00:00Z',
+    tag_name:'v2.1.0', name:'NetEase old private release', published_at:'2026-08-23T00:00:00Z',
     html_url:'https://example.test/netease',
     assets:[
-      {id:21,name:'NeteasePlaylistExporter-v8.8.8-windows-x64.zip',size:5,digest:'sha256:ccc',content_type:'application/zip',url:'https://api.github.test/assets/21'},
-      {id:22,name:'NeteasePlaylistExporter-v8.8.8-python.zip',size:6,digest:'sha256:ddd',content_type:'application/zip',url:'https://api.github.test/assets/22'},
+      {id:21,name:'NeteasePlaylistExporter-v2.1.0-windows-x64.zip',size:5,digest:'sha256:old-win',content_type:'application/zip',url:'https://api.github.test/assets/21'},
+      {id:22,name:'NeteasePlaylistExporter-v2.1.0-python.zip',size:6,digest:'sha256:old-python',content_type:'application/zip',url:'https://api.github.test/assets/22'},
     ],
   },
 };
@@ -32,10 +32,8 @@ const exedraReleases = [
     ],
   },
   {
-    tag_name:'jp-v9.0.0', published_at:'2026-09-18T00:00:00Z',
-    assets:[
-      {id:32,name:'com.aniplex.magia.exedra.jp-9.0.0.xapk',size:8,digest:'sha256:fff',content_type:'application/octet-stream',url:'https://api.github.test/assets/32'},
-    ],
+    tag_name:'jp-v3.18.0', published_at:'2026-09-18T00:00:00Z',
+    assets:[],
   },
   {
     tag_name:'v9.0.0', published_at:'2026-09-17T00:00:00Z',
@@ -59,6 +57,24 @@ globalThis.fetch = async (input, init = {}) => {
     return body
       ? new Response(JSON.stringify(body),{status:200,headers:{'content-type':'application/json'}})
       : new Response('missing',{status:404});
+  }
+
+  if (url.startsWith('https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/')) {
+    const range = new Headers(init.headers || {}).get('range');
+    if (range === 'bytes=0-1') {
+      return new Response(new Uint8Array([1,2]),{
+        status:206,
+        headers:{'content-range':'bytes 0-1/18331073','content-length':'2','accept-ranges':'bytes'},
+      });
+    }
+    return new Response(new Uint8Array([1,2,3]),{status:200,headers:{'accept-ranges':'bytes'}});
+  }
+
+  if (url.startsWith('https://d.apkpure.net/b/XAPK/com.aniplex.magia.exedra.jp')) {
+    return new Response(new Uint8Array([1,2,3]),{
+      status:200,
+      headers:{'content-type':'application/xapk-package-archive','accept-ranges':'bytes'},
+    });
   }
 
   const asset = url.match(/api\.github\.test\/assets\/(\d+)$/);
@@ -86,7 +102,7 @@ globalThis.fetch = async (input, init = {}) => {
     });
   }
 
-  return new Response('unexpected',{status:500});
+  return new Response('unexpected ' + url,{status:500});
 };
 
 try {
@@ -96,15 +112,22 @@ try {
 
   assert.equal(data.source,'cloudflare-live');
   assert.equal(data.projects.bilibili.tag,'v9.9.9');
-  assert.equal(data.projects.netease.assets.windows.name,'NeteasePlaylistExporter-v8.8.8-windows-x64.zip');
   assert.equal(data.projects.bilibili.assets.android.download,'./downloads/bilibili/android');
   assert.equal(data.projects.bilibili.assets.sourceZip.download,'./downloads/bilibili/source');
   assert.equal(data.projects.bilibili.assets.consoleScript.download,'./downloads/bilibili-follower-snapshot-console.js');
   assert.equal(data.projects.bilibili.assets.consoleText.download,'./downloads/bilibili-follower-snapshot-console.txt');
+
+  // The private NetEase repository currently exposes an older release. The live
+  // Cloudflare layer must never downgrade the public v2.5.1 assets.
+  assert.equal(data.projects.netease.tag,'v2.5.1');
+  assert.equal(data.projects.netease.source,'legacy-public-fallback');
+  assert.equal(data.projects.netease.assets.windows.name,'NeteasePlaylistExporter-v2.5.1-windows-x64.zip');
+  assert.equal(data.projects.netease.assets.androidFull.download,'./downloads/netease/android-full');
+
   assert.equal(data.projects.exedra.assets.twXapk.name,'tw.sonet.magiaexedra-9.0.0-99999999.xapk');
-  assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-9.0.0.xapk');
+  assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-3.18.0.xapk');
+  assert.equal(data.projects.exedra.assets.jpXapk.download,'./downloads/exedra/jp-xapk');
   assert.equal(data.projects.exedra.assets.tools.name,'MagiaExedraTWJPTools-v9.0.0.zip');
-  assert.equal(data.projects.exedra.assets.tools.download,'./downloads/exedra/tools');
   assert.ok(!JSON.stringify(data).includes('fake-token'));
 
   const binary = await download({
@@ -115,8 +138,6 @@ try {
   assert.equal(binary.status,200);
   assert.match(binary.headers.get('content-disposition') || '',/Bilibili-Follower-Snapshot-Companion/);
   assert.equal(binary.headers.get('x-release-digest'),'sha256:aaa');
-  assert.equal(binary.headers.get('content-length'),'3');
-  assert.equal(binary.headers.get('accept-ranges'),'bytes');
 
   const partial = await download({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},
@@ -127,24 +148,6 @@ try {
   assert.equal(partial.headers.get('content-range'),'bytes 0-1/3');
   assert.equal(partial.headers.get('content-length'),'2');
 
-  const head = await headDownload({
-    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
-    params:{project:'netease',kind:'windows'},
-    request:new Request('https://site.test/downloads/netease/windows',{method:'HEAD'}),
-  });
-  assert.equal(head.status,200);
-  assert.equal(head.headers.get('content-length'),'5');
-  assert.equal(await head.text(),'');
-
-  const exedra = await download({
-    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
-    params:{project:'exedra',kind:'tw-xapk'},
-    request:new Request('https://site.test/downloads/exedra/tw-xapk'),
-  });
-  assert.equal(exedra.status,200);
-  assert.match(exedra.headers.get('content-disposition') || '',/tw\.sonet\.magiaexedra/);
-  assert.equal(exedra.headers.get('x-release-digest'),'sha256:ggg');
-
   const sourceZip = await download({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},
     params:{project:'bilibili',kind:'source'},
@@ -153,6 +156,24 @@ try {
   assert.equal(sourceZip.status,200);
   assert.match(sourceZip.headers.get('content-disposition') || '',/source\.zip/);
   assert.equal(sourceZip.headers.get('x-release-digest'),'sha256:src');
+
+  const neteaseHead = await headDownload({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'netease',kind:'windows'},
+    request:new Request('https://site.test/downloads/netease/windows',{method:'HEAD'}),
+  });
+  assert.equal(neteaseHead.status,200);
+  assert.equal(neteaseHead.headers.get('content-length'),'18331073');
+  assert.equal(neteaseHead.headers.get('x-release-digest'),'sha256:2cca372d639cb0a1d3fb0d53ef7188246d44e3ce2eeaa2e06e86fc7e366daa73');
+
+  const jp = await download({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'exedra',kind:'jp-xapk'},
+    request:new Request('https://site.test/downloads/exedra/jp-xapk'),
+  });
+  assert.equal(jp.status,200);
+  assert.match(jp.headers.get('content-disposition') || '',/3\.18\.0\.xapk/);
+  assert.equal(jp.headers.get('x-release-digest'),'sha256:43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514');
 
   const missing = await download({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},

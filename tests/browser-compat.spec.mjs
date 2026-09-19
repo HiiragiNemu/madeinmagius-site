@@ -12,6 +12,21 @@ test('terminal optics, responsive information hierarchy, home jump and public do
 
   await expect(page.locator('.screen')).toBeVisible();
 
+  // performance-static-check: no continuous scan/jitter loops.
+  const perfState = await page.evaluate(() => ({
+    trackingDisplay: getComputedStyle(document.querySelector('#tracking-sweep')).display,
+    rollingDisplay: getComputedStyle(document.querySelector('.rolling-band')).display,
+    tearDisplay: getComputedStyle(document.querySelector('.tear-band')).display,
+    scanlineAnimation: getComputedStyle(document.querySelector('.scanlines')).animationName,
+    grainAnimation: getComputedStyle(document.querySelector('.tube-grain')).animationName,
+    signalTransform: getComputedStyle(document.querySelector('#signal')).transform,
+  }));
+  expect(perfState.trackingDisplay).toBe('none');
+  expect(perfState.rollingDisplay).toBe('none');
+  expect(perfState.tearDisplay).toBe('none');
+  expect(perfState.scanlineAnimation).toBe('none');
+  expect(perfState.grainAnimation).toBe('none');
+
   // The display must remain alive without user input: temporal grain and an
   // automatic top-to-bottom tracking pass both advance on their own.
   await expect(page.locator('.tube-grain')).toBeAttached();
@@ -35,15 +50,7 @@ test('terminal optics, responsive information hierarchy, home jump and public do
 
   await page.bringToFront();
   await expect(page.locator('#tracking-sweep')).toBeAttached();
-  const initialLineNoise = Number(await page.locator('#signal').getAttribute('data-line-noise-tick') || '0');
-  await page.waitForFunction(
-    previous => Number(document.querySelector('#signal')?.dataset.lineNoiseTick || '0') > previous,
-    initialLineNoise,
-    { timeout: 2500 }
-  );
-  const rasterTransform = await page.locator('#signal').evaluate(el => getComputedStyle(el).transform);
-  if (!testInfo.project.name.includes('ios')) expect(rasterTransform).toBe('none');
-  await expect(page.locator('.tube-grain')).toBeAttached();
+      await expect(page.locator('.tube-grain')).toBeAttached();
   const scanlineAnimation = await page.locator('.scanlines').evaluate(el => getComputedStyle(el).animationName);
   expect(scanlineAnimation).toBe('none');
 
@@ -113,10 +120,6 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'false');
   await page.locator('#pixel-toggle').evaluate(el => el.click());
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
-
-  await page.locator('[data-program="bilibili"]').click({ force: true });
-  await expect(page.locator('#tracking-sweep')).toBeVisible();
-  await expect(page.locator('#signal')).toHaveAttribute('data-tracking', 'true', { timeout: 1000 });
 
   await page.screenshot({ path: `test-results/${testInfo.project.name}-live.png`, fullPage: false });
 });

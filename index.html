@@ -7,8 +7,8 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="MadeInMagius / MAGIUS LINK — software, tools and guides in a CRT terminal interface.">
   <title>MAGIUS LINK // Made In Magius</title>
-  <link rel="icon" href="./assets/magius-mark.svg?v=20260919-2030" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=20260919-2030">
+  <link rel="icon" href="./assets/magius-mark.svg?v=20260919-2125" type="image/svg+xml">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260919-2125">
 </head>
 <body>
   <svg class="svg-defs" aria-hidden="true" focusable="false">
@@ -16,53 +16,19 @@
       <filter id="crt-warp" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
         <feImage id="crt-warp-map" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="lens"/>
 
-        <!-- Scene-wide registration, ported from the reader night CRT pass. -->
+        <!-- Static RGB registration only. No animated turbulence/noise. -->
         <feColorMatrix in="SourceGraphic" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1" result="reg-red"/>
-        <feOffset in="reg-red" dx=".75" dy=".12" result="reg-red-shift"/>
+        <feOffset in="reg-red" dx=".55" dy=".08" result="reg-red-shift"/>
         <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 0 1" result="reg-green"/>
         <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 0 1" result="reg-blue"/>
-        <feOffset in="reg-blue" dx="-.75" dy="-.12" result="reg-blue-shift"/>
+        <feOffset in="reg-blue" dx="-.55" dy="-.08" result="reg-blue-shift"/>
         <feComposite in="reg-red-shift" in2="reg-green" operator="arithmetic" k2="1" k3="1" result="reg-rg"/>
         <feComposite in="reg-rg" in2="reg-blue-shift" operator="arithmetic" k2="1" k3="1" result="reg-rgb"/>
-        <feComposite in="reg-rgb" in2="SourceGraphic" operator="in" result="reg-rgb-alpha"/>
-        <feComposite in="reg-rgb-alpha" in2="SourceGraphic" operator="arithmetic" k2=".72" k3=".28" result="registered-scene"/>
+        <feComposite in="reg-rgb" in2="SourceGraphic" operator="in" result="registered"/>
 
-        <!-- Analog horizontal timebase noise: line-local displacement. Dark
-             fields stay visually still; high-contrast text and borders shimmer. -->
-        <feTurbulence id="line-noise" type="fractalNoise" baseFrequency=".0015 .16" numOctaves="1" seed="11" result="line-noise-raw"/>
-        <feColorMatrix in="line-noise-raw" type="matrix"
-          values="1 0 0 0 0
-                  0 0 0 0 .5
-                  0 0 0 0 .5
-                  0 0 0 1 0"
-          result="line-noise-map"/>
-
-        <!-- Reader CRT sequence: beam softness -> line jitter -> lens -> tube softness. -->
-        <feGaussianBlur in="registered-scene" stdDeviation=".35" result="beam"/>
-        <feDisplacementMap id="line-displacement" in="beam" in2="line-noise-map" scale=".62" xChannelSelector="R" yChannelSelector="G" result="line-jittered"/>
-        <feDisplacementMap id="curve-displacement" in="line-jittered" in2="lens" scale="50" xChannelSelector="R" yChannelSelector="G" result="curved-signal"/>
-        <feGaussianBlur in="curved-signal" stdDeviation=".18" result="tube-signal"/>
-
-        <!-- Bloom is derived from real bright phosphor; glyph cores stay readable. -->
-        <feColorMatrix in="tube-signal" type="matrix" color-interpolation-filters="linearRGB"
-          values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  .29764 1.00128 .10108 0 -.55"
-          result="emission-key"/>
-        <feComposite color-interpolation-filters="linearRGB" in="tube-signal" in2="emission-key" operator="in" result="phosphor-emission"/>
-        <feGaussianBlur color-interpolation-filters="linearRGB" in="phosphor-emission" stdDeviation="3.5" result="near-scatter"/>
-        <feComponentTransfer color-interpolation-filters="linearRGB" in="near-scatter" result="near-bloom">
-          <feFuncA type="linear" slope=".32"/>
-        </feComponentTransfer>
-        <feGaussianBlur color-interpolation-filters="linearRGB" in="phosphor-emission" stdDeviation="22" result="wide-scatter"/>
-        <feComponentTransfer color-interpolation-filters="linearRGB" in="wide-scatter" result="wide-bloom">
-          <feFuncA type="linear" slope=".36"/>
-        </feComponentTransfer>
-        <feBlend color-interpolation-filters="sRGB" in="tube-signal" in2="near-bloom" mode="screen" result="lit-signal"/>
-        <feBlend color-interpolation-filters="sRGB" in="lit-signal" in2="wide-bloom" mode="screen" result="original-optics"/>
-        <feGaussianBlur color-interpolation-filters="linearRGB" in="phosphor-emission" stdDeviation="48" result="panel-scatter"/>
-        <feComponentTransfer color-interpolation-filters="linearRGB" in="panel-scatter" result="panel-bloom">
-          <feFuncA type="linear" slope=".38"/>
-        </feComponentTransfer>
-        <feBlend color-interpolation-filters="sRGB" in="original-optics" in2="panel-bloom" mode="screen"/>
+        <!-- Static tube curvature. -->
+        <feDisplacementMap id="curve-displacement" in="registered" in2="lens" scale="46" xChannelSelector="R" yChannelSelector="G" result="curved"/>
+        <feGaussianBlur in="curved" stdDeviation=".10"/>
       </filter>
     </defs>
   </svg>
@@ -72,8 +38,8 @@
     <div class="boot__grain" aria-hidden="true"></div>
     <div class="boot__roll" aria-hidden="true"></div>
     <div class="boot__signal">
-      <img class="boot__emblem" src="./assets/magius-mark.svg?v=20260919-2030" alt="">
-      <img class="boot__wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2030" alt="MAGIUS LINK">
+      <img class="boot__emblem" src="./assets/magius-mark.svg?v=20260919-2125" alt="">
+      <img class="boot__wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2125" alt="MAGIUS LINK">
       <div class="boot__loading">LOADING <i></i> 数据加载中</div>
     </div>
   </div>
@@ -137,8 +103,8 @@
 
           <section id="stage" class="stage" aria-live="polite">
             <div class="brand-watermark" aria-hidden="true">
-              <img class="brand-emblem" src="./assets/magius-mark.svg?v=20260919-2030" alt="">
-              <img class="brand-wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2030" alt="">
+              <img class="brand-emblem" src="./assets/magius-mark.svg?v=20260919-2125" alt="">
+              <img class="brand-wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2125" alt="">
             </div>
 
             <svg id="connectors" class="connectors" aria-hidden="true"></svg>
@@ -162,6 +128,6 @@
     </div>
   </div>
 
-  <script type="module" src="./assets/app.js?v=20260919-2030"></script>
+  <script type="module" src="./assets/app.js?v=20260919-2125"></script>
 </body>
 </html>

@@ -2915,3 +2915,119 @@ html[data-crt-engine="ios-safe"] .signal{
     opacity:.105!important;
   }
 }
+
+
+/* === PERFORMANCE MODE: static CRT optics, no continuous animation === */
+.signal{
+  transform:none!important;
+  -webkit-transform:none!important;
+  will-change:auto!important;
+  filter:url("#crt-warp") brightness(.995) contrast(1.025) saturate(.94)!important;
+  -webkit-filter:url("#crt-warp") brightness(.995) contrast(1.025) saturate(.94)!important;
+}
+html[data-crt-engine="mobile-static"] .signal{
+  filter:none!important;
+  -webkit-filter:none!important;
+  transform:scale(.994,.988)!important;
+  -webkit-transform:scale(.994,.988)!important;
+}
+
+/* Keep the CRT texture, but freeze it. */
+.scanlines,
+.tube-grain,
+.phosphor-grid,
+.boot__raster,
+.boot__grain{
+  animation:none!important;
+  will-change:auto!important;
+}
+.tube-grain,
+.boot__grain{
+  opacity:.16!important;
+}
+.scanlines{
+  opacity:.34!important;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(3,0,1,.50) 0 1px,
+    transparent 1px 2.8px
+  )!important;
+}
+.phosphor-grid{opacity:.045!important}
+
+/* Remove all continuous/random scan and fault layers. */
+.rolling-band,
+.tracking-sweep,
+.tear-band,
+.mouse-glow,
+.boot__roll{
+  display:none!important;
+}
+
+/* No text/glyph motion. Keep only a fixed low-amplitude registration fringe. */
+:is(
+  .masthead__row h1,
+  .masthead__node,
+  .masthead__clock,
+  .section-label,
+  .menu-node__copy b,
+  .menu-node__copy small,
+  .sub-node b,
+  .sub-node small,
+  .content-kicker,
+  .content-inner h2,
+  .content-inner h3,
+  .download-button,
+  .statusbar
+){
+  transform:none!important;
+  will-change:auto!important;
+  text-shadow:
+    -1px 0 .15px rgba(63,197,255,.54),
+    1px 0 .15px rgba(255,54,88,.50),
+    0 0 1.8px rgba(188,255,205,.10)!important;
+}
+.content-inner :is(p,li,code,td,th){
+  text-shadow:
+    -.45px 0 .1px rgba(63,197,255,.30),
+    .45px 0 .1px rgba(255,54,88,.28)!important;
+}
+
+/* Static edge treatment only. */
+.menu-node.is-selected,
+.sub-node.is-selected,
+.download-button{
+  transform:none!important;
+  box-shadow:
+    -1px 0 0 rgba(63,197,255,.54),
+    1px 0 0 rgba(255,54,88,.50),
+    0 0 5px rgba(241,255,245,.18)!important;
+}
+.connector-path.is-hot{
+  filter:
+    drop-shadow(-1px 0 .1px rgba(63,197,255,.50))
+    drop-shadow(1px 0 .1px rgba(255,54,88,.46))!important;
+}
+
+/* Boot stays visually CRT-like but no longer animates grain/roll/jitter. */
+.boot__signal,
+.boot__grain,
+.boot__roll,
+.boot__loading i{
+  animation:none!important;
+  will-change:auto!important;
+}
+.boot__roll{display:none!important}
+.boot__signal{
+  transform:none!important;
+}
+
+/* Disable costly SVG filtering on all phones/tablets. */
+@media(max-width:760px){
+  .signal{
+    filter:none!important;
+    -webkit-filter:none!important;
+    transform:scale(.994,.988)!important;
+    -webkit-transform:scale(.994,.988)!important;
+  }
+}

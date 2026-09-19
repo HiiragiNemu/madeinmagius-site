@@ -35,7 +35,7 @@ export function setupCrtEffects(options) {
   // iOS 27 developer builds currently have a WebKit feDisplacementMap crash
   // regression. Preserve every dynamic signal layer, but disable only the
   // risky lens displacement on that affected engine.
-  const riskyDisplacement = isIOSWebKit && iosMajor >= 27;
+  const riskyDisplacement = isIOSWebKit;
   root.dataset.crtEngine = riskyDisplacement ? 'ios-safe' : (isIOSWebKit ? 'webkit-svg' : 'svg');
 
   function updateCurveScale() {

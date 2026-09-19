@@ -57,3 +57,21 @@ The browser never receives the GitHub token. Updating a source repository by pub
 ## Custom domain
 
 The site does not hard-code a Cloudflare hostname. A custom domain can therefore be attached later without a code change. Keep GitHub Pages enabled as a static fallback.
+
+
+## Release migration safeguards
+
+The live bridge deliberately refuses to regress a public tool to an older private GitHub release.
+
+- Bilibili: latest private GitHub Release remains the canonical future source. Until the new Cloudflare project is deployed, GitHub Pages uses the already-public legacy Cloudflare download files so visitors do not hit a private GitHub 404.
+- NetEase: the legacy public site currently exposes **v2.5.1**, while the private source repository's latest GitHub Release is older. The Pages Function therefore keeps the v2.5.1 public assets until the source repository publishes a release at or above v2.5.1; after that, it automatically switches back to the source repository.
+- Exedra TW: the public GitHub Release is used directly.
+- Exedra JP 3.18.0: the source repository has the verification record and release tag, but its release asset is missing. The fallback uses APKPure's package endpoint only when the GitHub asset is absent. The pinned size/version/hash remain stored in the site's integrity data.
+
+Before retiring either old Pages site, first migrate any remaining fallback binaries into their canonical source repository release or another permanent object store, then remove the fallback routes.
+
+## Browser/optics compatibility
+
+The site contains a separate mobile compatibility workflow that exercises Chromium with an Android device profile and WebKit with an iPhone profile. A synthetic iOS 27 WebKit profile also verifies the safety path used for the known feDisplacementMap regression.
+
+The live CRT loop uses requestAnimationFrame and pauses its JS signal loop when the page is hidden. The grain layer is moved as a compositor layer instead of regenerating a canvas noise image each frame.

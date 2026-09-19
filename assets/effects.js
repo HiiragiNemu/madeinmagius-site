@@ -2,6 +2,7 @@ export function setupCrtEffects(options) {
   const root = document.documentElement;
   const signal = options.signal;
   const screen = options.screen;
+  const noiseCanvas = options.noiseCanvas;
   const warpImage = options.warpImage;
   const reducedMotion = options.reducedMotion;
   const displacement = document.getElementById('curve-displacement');
@@ -9,12 +10,14 @@ export function setupCrtEffects(options) {
 
   let pointerEnergy = 0;
   let lastPointer = { x: innerWidth / 2, y: innerHeight / 2, t: performance.now() };
-  let roll = -26;
+  let roll = -24;
   let rafId = 0;
-  let lastFrame = 0;
-  let nextTracking = performance.now() + 1700 + Math.random() * 2200;
+  let lastSignalFrame = 0;
+  let lastNoiseFrame = 0;
+  let nextTracking = performance.now() + 1200 + Math.random() * 2200;
   let trackingTimer = 0;
   let signalTickCount = 0;
+  let noiseTickCount = 0;
   let active = !document.hidden;
 
   const mobileCurve = matchMedia('(max-width: 767px)');
@@ -26,9 +29,9 @@ export function setupCrtEffects(options) {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   );
 
-  // WebKit currently has a reported feDisplacementMap regression in iOS 27
-  // developer builds. Keep full optics on current stable iOS; fail safe only
-  // for the affected major instead of risking a tab crash.
+  // iOS 27 developer builds currently have a WebKit feDisplacementMap crash
+  // regression. Preserve every dynamic signal layer, but disable only the
+  // risky lens displacement on that affected engine.
   const riskyDisplacement = isIOSWebKit && iosMajor >= 27;
   root.dataset.crtEngine = riskyDisplacement ? 'ios-safe' : (isIOSWebKit ? 'webkit-svg' : 'svg');
 
@@ -63,42 +66,88 @@ export function setupCrtEffects(options) {
     ctx.putImageData(pixels, 0, 0);
     const url = canvas.toDataURL('image/png');
     warpImage.setAttribute('href', url);
-    // Older WebKit still checks the legacy xlink namespace for feImage data URLs.
     warpImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', url);
+  }
+
+  function renderTemporalNoise(now) {
+    if (!noiseCanvas || reducedMotion.matches || !active) return;
+
+    // A small native noise buffer scaled by the browser gives true temporal
+    // grain without repainting the full-resolution viewport every frame.
+    const rect = screen.getBoundingClientRect();
+    const mobile = mobileCurve.matches;
+    const targetW = Math.max(112, Math.min(mobile ? 190 : 260, Math.round(rect.width * .17)));
+    const targetH = Math.max(80, Math.min(mobile ? 150 : 190, Math.round(rect.height * .17)));
+
+    if (noiseCanvas.width !== targetW || noiseCanvas.height !== targetH) {
+      noiseCanvas.width = targetW;
+      noiseCanvas.height = targetH;
+    }
+
+    const ctx = noiseCanvas.getContext('2d', { alpha: true, desynchronized: true });
+    if (!ctx) return;
+
+    const image = ctx.createImageData(targetW, targetH);
+    const data = image.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      // Most samples are dark luma noise; occasional bright phosphor flecks
+      // keep the grain alive instead of looking like a static texture.
+      const spike = Math.random() > .974;
+      const luma = spike ? 188 + Math.random() * 67 : 30 + Math.random() * 82;
+      const tint = (Math.random() - .5) * 12;
+      data[i] = Math.max(0, Math.min(255, luma - 8 + tint));
+      data[i + 1] = Math.max(0, Math.min(255, luma + 8));
+      data[i + 2] = Math.max(0, Math.min(255, luma - 3 - tint));
+      data[i + 3] = spike ? 30 : 11;
+    }
+
+    ctx.putImageData(image, 0, 0);
+    noiseTickCount += 1;
+    signal.dataset.noiseTick = String(noiseTickCount);
+    lastNoiseFrame = now;
   }
 
   function triggerSyncBurst(strength = 1) {
     if (reducedMotion.matches || !active) return;
 
-    root.style.setProperty('--tear-y', String(Math.round(9 + Math.random() * 80)) + '%');
-    root.style.setProperty('--tear-h', String(1 + Math.round(Math.random() * 4 * strength)) + 'px');
-    root.style.setProperty('--tear-x', String(Math.round((Math.random() - .5) * 34 * strength)) + 'px');
-    root.style.setProperty('--tear-o', String(Math.min(.76, .36 + strength * .24)));
+    root.style.setProperty('--tear-y', String(Math.round(8 + Math.random() * 82)) + '%');
+    root.style.setProperty('--tear-h', String(1 + Math.round(Math.random() * 3 * strength)) + 'px');
+    root.style.setProperty('--tear-x', String(Math.round((Math.random() - .5) * 26 * strength)) + 'px');
+    root.style.setProperty('--tear-o', String(Math.min(.72, .28 + strength * .25)));
 
     signal.dataset.burst = 'true';
     setTimeout(() => {
       root.style.setProperty('--tear-o', '0');
       signal.dataset.burst = 'false';
-    }, 34 + Math.random() * 55);
+    }, 30 + Math.random() * 52);
   }
 
   function triggerTrackingSweep(now = performance.now()) {
     if (reducedMotion.matches || !active || !trackingSweep) return;
 
     clearTimeout(trackingTimer);
-    root.style.setProperty('--tracking-shift', ((Math.random() - .5) * 11).toFixed(1) + 'px');
-    root.style.setProperty('--tracking-duration', (.92 + Math.random() * .48).toFixed(2) + 's');
+
+    // A vertical-sync / timebase disturbance is a moving field boundary with
+    // a small horizontal phase error, not a full-screen geometry mutation.
+    root.style.setProperty('--tracking-shift', ((Math.random() - .5) * 7.2).toFixed(1) + 'px');
+    root.style.setProperty('--tracking-duration', (.78 + Math.random() * .46).toFixed(2) + 's');
+    root.style.setProperty('--tracking-brightness', (1.04 + Math.random() * .09).toFixed(3));
 
     signal.dataset.tracking = 'true';
-    // Tiny global kick accompanies the local top-to-bottom tracking fault,
-    // matching the measured ~subpixel horizontal movement in the reference.
-    pointerEnergy = Math.max(pointerEnergy, .75);
+    pointerEnergy = Math.max(pointerEnergy, .68);
+
+    if (Math.random() < .55) {
+      setTimeout(() => triggerSyncBurst(.58 + Math.random() * .5), 180 + Math.random() * 260);
+    }
 
     trackingTimer = setTimeout(() => {
       signal.dataset.tracking = 'false';
-    }, 1500);
+    }, 1450);
 
-    nextTracking = now + 2300 + Math.random() * 5200;
+    // The supplied reference does not sit perfectly still: a stronger field
+    // rolls through every few seconds even without user input.
+    nextTracking = now + 1900 + Math.random() * 4300;
   }
 
   function updateSignal(now) {
@@ -107,36 +156,66 @@ export function setupCrtEffects(options) {
     signalTickCount += 1;
     signal.dataset.tick = String(signalTickCount);
 
-    // The source video moves horizontally by roughly half a pixel frame-to-frame,
-    // with very little vertical movement.
-    const motion = Math.min(.75, pointerEnergy * .48);
-    const x = (Math.random() - .5) * (1.08 + motion);
-    const y = (Math.random() - .5) * (.22 + motion * .16);
+    // Measured from the supplied 60 fps video: stable areas wander roughly
+    // ±0.5 px horizontally frame-to-frame, while vertical motion is much lower.
+    // Combine a slow timebase wander with low-amplitude high-frequency jitter.
+    const lowDrift =
+      Math.sin(now * .00155) * .16 +
+      Math.sin(now * .0039 + 1.37) * .08;
+    const randomPhase = (Math.random() + Math.random() - 1) * .50;
+    const motion = Math.min(.68, pointerEnergy * .42);
+
+    const x = lowDrift + randomPhase + (Math.random() - .5) * motion;
+    const y =
+      Math.sin(now * .00115 + .7) * .025 +
+      (Math.random() + Math.random() - 1) * (.075 + motion * .10);
 
     root.style.setProperty('--jitter-x', x.toFixed(2) + 'px');
     root.style.setProperty('--jitter-y', y.toFixed(2) + 'px');
-    root.style.setProperty('--flicker', (.982 + Math.random() * .034).toFixed(3));
 
-    roll += .32;
-    if (roll > 112) roll = -26;
+    // Brightness changes are correlated and tiny; independent strong flicker
+    // looks digital rather than like a CRT timebase/phosphor system.
+    const breath =
+      Math.sin(now * .00215) * .006 +
+      Math.sin(now * .00063 + 2.1) * .004;
+    root.style.setProperty('--flicker', (0.994 + breath + (Math.random() - .5) * .006).toFixed(3));
+
+    // Continuous slow field roll underneath the rarer tracking fault.
+    roll += .50;
+    if (roll > 112) roll = -24;
     root.style.setProperty('--roll-y', roll.toFixed(1) + '%');
 
-    pointerEnergy *= .91;
+    pointerEnergy *= .92;
 
-    if (Math.random() < .022) triggerSyncBurst(.72 + Math.random() * .55);
-    if (Math.random() < .0032) {
+    // Short horizontal sync disturbances happen independently of clicks.
+    if (Math.random() < .014) triggerSyncBurst(.50 + Math.random() * .48);
+
+    // Full luminance dropout is rare and short.
+    if (Math.random() < .0018) {
       signal.dataset.drop = 'true';
-      setTimeout(() => { signal.dataset.drop = 'false'; }, 24 + Math.random() * 58);
+      setTimeout(() => { signal.dataset.drop = 'false'; }, 20 + Math.random() * 46);
     }
+
     if (now >= nextTracking) triggerTrackingSweep(now);
   }
 
   function frame(now) {
     rafId = requestAnimationFrame(frame);
     if (!active || reducedMotion.matches) return;
-    if (now - lastFrame < 32) return; // ~30 Hz signal instability; raster itself remains full resolution.
-    lastFrame = now;
-    updateSignal(now);
+
+    // Signal instability is intentionally around 30 Hz; the raster, text,
+    // curvature and phosphor layers themselves remain full-resolution.
+    if (now - lastSignalFrame >= 31) {
+      lastSignalFrame = now;
+      updateSignal(now);
+    }
+
+    // True temporal grain refreshes more slowly than the raster and is drawn
+    // from a tiny buffer for iOS/Android efficiency.
+    const noiseInterval = mobileCurve.matches ? 92 : 72;
+    if (now - lastNoiseFrame >= noiseInterval) {
+      renderTemporalNoise(now);
+    }
   }
 
   function onPointerMove(event) {
@@ -147,15 +226,16 @@ export function setupCrtEffects(options) {
     const now = performance.now();
     const dt = Math.max(12, now - lastPointer.t);
     const velocity = Math.hypot(event.clientX - lastPointer.x, event.clientY - lastPointer.y) / dt;
-    pointerEnergy = Math.min(1.35, pointerEnergy * .72 + velocity * .18);
+    pointerEnergy = Math.min(1.2, pointerEnergy * .74 + velocity * .15);
     lastPointer = { x: event.clientX, y: event.clientY, t: now };
   }
 
   function onVisibility() {
     active = !document.hidden;
     if (active) {
-      lastFrame = performance.now();
-      nextTracking = Math.min(nextTracking, lastFrame + 1600 + Math.random() * 1800);
+      lastSignalFrame = performance.now();
+      lastNoiseFrame = 0;
+      nextTracking = Math.min(nextTracking, lastSignalFrame + 1200 + Math.random() * 1700);
     }
   }
 
@@ -171,7 +251,7 @@ export function setupCrtEffects(options) {
     pulse: triggerSyncBurst,
     scan: triggerTrackingSweep,
     addEnergy(amount) {
-      pointerEnergy = Math.min(1.35, pointerEnergy + amount);
+      pointerEnergy = Math.min(1.2, pointerEnergy + amount);
     },
     destroy() {
       cancelAnimationFrame(rafId);

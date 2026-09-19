@@ -20,6 +20,14 @@ export default defineConfig({
       },
     },
     {
+      name: 'ios27-webkit-safe',
+      use: {
+        ...devices['iPhone 15 Pro'],
+        browserName: 'webkit',
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/620.1.1 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1',
+      },
+    },
+    {
       name: 'android-chromium',
       use: {
         ...devices['Pixel 7'],

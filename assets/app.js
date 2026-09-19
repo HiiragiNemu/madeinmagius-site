@@ -149,25 +149,50 @@ function drawConnectors() {
   const programRect = activeProgram.getBoundingClientRect();
   const startX = programRect.right - stageRect.left + 2;
   const startY = programRect.top + programRect.height / 2 - stageRect.top;
-  const trunkX = 26;
-  const lines = [];
 
-  subs.forEach(button => {
+  const points = subs.map(button => {
     const rect = button.getBoundingClientRect();
-    const endX = rect.left - stageRect.left - 11;
-    const endY = rect.top + rect.height / 2 - stageRect.top;
-    const hot = button.dataset.sub === subId || button.dataset.sub === hoverSubId;
-    const d = 'M ' + startX.toFixed(1) + ' ' + startY.toFixed(1) +
-      ' H ' + trunkX +
-      ' V ' + endY.toFixed(1) +
-      ' H ' + endX.toFixed(1);
-
-    lines.push(
-      '<path class="connector-path' + (hot ? ' is-hot' : '') + '" d="' + d + '"/>' +
-      '<circle class="connector-dot' + (hot ? ' is-hot' : '') + '" cx="' +
-      endX.toFixed(1) + '" cy="' + endY.toFixed(1) + '" r="' + (hot ? '3.2' : '2.1') + '"/>'
-    );
+    return {
+      button,
+      endX: rect.left - stageRect.left - 12,
+      endY: rect.top + rect.height / 2 - stageRect.top,
+      hot: button.dataset.sub === subId || button.dataset.sub === hoverSubId,
+    };
   });
+
+  const firstEndX = Math.min(...points.map(point => point.endX));
+  const trunkX = Math.max(14, firstEndX - 24);
+  const minY = Math.min(startY, ...points.map(point => point.endY));
+  const maxY = Math.max(startY, ...points.map(point => point.endY));
+
+  const lines = [
+    '<path class="connector-path" d="M ' + startX.toFixed(1) + ' ' + startY.toFixed(1) +
+      ' H ' + trunkX.toFixed(1) +
+      ' M ' + trunkX.toFixed(1) + ' ' + minY.toFixed(1) +
+      ' V ' + maxY.toFixed(1) + '"/>'
+  ];
+
+  for (const point of points) {
+    lines.push(
+      '<path class="connector-path' + (point.hot ? ' is-hot' : '') +
+      '" d="M ' + trunkX.toFixed(1) + ' ' + point.endY.toFixed(1) +
+      ' H ' + point.endX.toFixed(1) + '"/>' +
+      '<circle class="connector-dot' + (point.hot ? ' is-hot' : '') +
+      '" cx="' + point.endX.toFixed(1) +
+      '" cy="' + point.endY.toFixed(1) +
+      '" r="' + (point.hot ? '3.2' : '2.1') + '"/>'
+    );
+  }
+
+  const hotPoint = points.find(point => point.button.dataset.sub === subId);
+  if (hotPoint) {
+    lines.push(
+      '<path class="connector-path is-hot" d="M ' + startX.toFixed(1) + ' ' + startY.toFixed(1) +
+      ' H ' + trunkX.toFixed(1) +
+      ' V ' + hotPoint.endY.toFixed(1) +
+      ' H ' + hotPoint.endX.toFixed(1) + '"/>'
+    );
+  }
 
   connectorSvg.setAttribute(
     'viewBox',

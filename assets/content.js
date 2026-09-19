@@ -8,14 +8,12 @@ export const PROGRAMS = {
     { id: 'android', label: 'ANDROID APK', note: '伴侣应用' },
     { id: 'userscript', label: 'USERSCRIPT', note: '浏览器脚本' },
     { id: 'console', label: 'F12 CONSOLE', note: '桌面临时运行' },
-    { id: 'source', label: 'SOURCE ZIP', note: '完整工程' },
     { id: 'bili-guide', label: 'USAGE', note: '完整使用说明' }
   ]},
   netease: { subs: [
-    { id: 'android-full', label: 'ANDROID', note: '完整版 / 商店版 / AAB' },
+    { id: 'android-full', label: 'ANDROID', note: '完整版 APK' },
     { id: 'windows', label: 'WINDOWS X64', note: '免安装 ZIP' },
     { id: 'python', label: 'PYTHON', note: 'ZIP / wheel' },
-    { id: 'netease-source', label: 'SOURCE', note: '源码包' },
     { id: 'netease-verify', label: 'VERIFY', note: '清单 / 签名' },
     { id: 'netease-guide', label: 'USAGE', note: '完整使用说明' }
   ]},
@@ -235,13 +233,6 @@ export function renderContent(programId, subId, data) {
         '</div>' +
         '<ol><li>按 F12，切换到 Console。</li><li>复制完整脚本并粘贴后回车运行。</li><li>读取并保存快照；需要比较时导入旧记录。</li></ol>';
     }
-    if (subId === 'source') {
-      return '<p class="content-kicker">BILIBILI / SOURCE</p><h2>SOURCE ZIP</h2>' +
-        '<p>完整工程包含 Android 工程、用户脚本、Console 与测试；不包含签名私钥、账户凭据或个人快照。</p>' +
-        '<div class="download-stack">' +
-        downloadCard(data, 'bilibili', 'sourceZip', 'FULL SOURCE ZIP', 'v0.1.9 / userscript v0.2.9', '') +
-        '</div>';
-    }
     return '<p class="content-kicker">BILIBILI / USAGE</p><h2>使用说明</h2>' +
       '<h3>v0.1.9 新操作方式</h3>' +
       '<ol>' +
@@ -254,19 +245,17 @@ export function renderContent(programId, subId, data) {
       '<h3>油猴脚本</h3><ol><li>启用 Tampermonkey 并安装脚本。</li><li>保持登录并打开自己的 B站空间。</li><li>读取后保存 JSON / CSV；以后导入旧快照比较。</li></ol>' +
       '<h3>F12 Console</h3><ol><li>桌面浏览器登录 B站并打开自己的个人空间。</li><li>按 F12 切换到 Console。</li><li>粘贴完整脚本并回车运行。</li></ol>' +
       '<p><strong>比较结果：</strong>只有两份快照都通过完整性检查时才输出精确差集。覆盖存在缺口时，未返回账号保持“未分类”，不会直接判定关系消失；超过 1000 人同样按实际唯一 UID 与接口报告总数判断。</p>' +
-      '<div class="quick-links"><a href="#bilibili/source">SOURCE ZIP</a><a href="#bilibili/android">ANDROID</a><a href="#bilibili/userscript">USERSCRIPT</a></div>';
+      '<div class="quick-links"><a href="#bilibili/android">ANDROID</a><a href="#bilibili/userscript">USERSCRIPT</a></div>';
   }
 
   if (programId === 'netease') {
     if (subId === 'android-full') {
       return '<p class="content-kicker">NETEASE / ANDROID / v2.5.1</p><h2>ANDROID</h2>' +
-        '<p>Android 8.0+。普通用户使用完整版；商店版移除刷新助手；Google Play 分发使用 AAB。</p>' +
+        '<p>Android 8.0+ 完整版。日常登录、选择、比较和导出不需要电脑、Root 或 ADB。</p>' +
         '<div class="download-stack">' +
         downloadCard(data, 'netease', 'androidFull', '完整版 APK', 'Android 8.0+ · 推荐', '') +
-        downloadCard(data, 'netease', 'androidStore', '商店版 APK', 'Android 8.0+ · 商店包', '') +
-        downloadCard(data, 'netease', 'androidAab', 'GOOGLE PLAY AAB', 'Google Play 分发包', '') +
         '</div>' +
-        '<p>完整版可由用户主动启用刷新助手处理长久未打开的歌单；商店版不含该助手，可先在网易云音乐中手动打开歌单。</p>';
+        '<p>完整版可由用户主动启用刷新助手处理长久未打开的歌单。</p>';
     }
     if (subId === 'windows') {
       return '<p class="content-kicker">NETEASE / WINDOWS / v2.5.1</p><h2>WINDOWS X64</h2>' +
@@ -281,13 +270,6 @@ export function renderContent(programId, subId, data) {
         '<div class="download-stack">' +
         downloadCard(data, 'netease', 'python', 'PYTHON ZIP', 'Python 3 · 跨平台', '') +
         downloadCard(data, 'netease', 'wheel', 'PYTHON WHEEL', 'py3-none-any', '') +
-        '</div>';
-    }
-    if (subId === 'netease-source') {
-      return '<p class="content-kicker">NETEASE / SOURCE / v2.5.1</p><h2>SOURCE</h2>' +
-        '<p>完整源码与文档归档，适合审阅、开发或自行构建。</p>' +
-        '<div class="download-stack">' +
-        downloadCard(data, 'netease', 'source', 'SOURCE TAR.GZ', '完整源码包', '') +
         '</div>';
     }
     if (subId === 'netease-verify') {
@@ -321,10 +303,10 @@ export function renderContent(programId, subId, data) {
       '<li>按菜单选择歌单、曲目、重复策略和 baseline 模式；直接回车采用默认去重。</li>' +
       '<li>完整刷新已下架侧栏时需要连接 Android 并启用 ADB；仅读取当前曲目或缓存时可不连接。</li>' +
       '</ol>' +
-      '<h3>Python ZIP / wheel / source</h3><ol>' +
+      '<h3>Python ZIP / wheel</h3><ol>' +
       '<li>ZIP：python -m pip install -r requirements.txt，然后 python run.py。</li>' +
       '<li>wheel：python -m pip install 下载的 .whl，然后使用 netease-playlist-exporter。</li>' +
-      '<li>源码 tar.gz：包含完整源码和文档。</li>' +
+      '' +
       '</ol>' +
       '<h3>v2.5.1 基准版本</h3><ol>' +
       '<li>“对比设置”列出每一次完整结果，并标注“上次完整”和“默认固定”。</li>' +
@@ -367,7 +349,7 @@ export function renderContent(programId, subId, data) {
         downloadCard(data, 'exedra', 'jpXapk', 'JP 3.18.0 XAPK', '日服原版完整 XAPK', './downloads/exedra/jp-xapk') +
         downloadCard(data, 'exedra', 'tools', 'TW / JP TOOLS v1.4.0', '安装与升级工具', './downloads/exedra/tools') +
         '</div><div class="quick-links">' +
-        '<a href="https://github.com/HiiragiNemu/MagiaExedraTWTools" target="_blank" rel="noreferrer">SOURCE ↗</a>' +
+        '' +
         '<a href="https://mme.so-net.tw/" target="_blank" rel="noreferrer">TW OFFICIAL ↗</a>' +
         '<a href="https://www.madoka-exedra.com/" target="_blank" rel="noreferrer">JP OFFICIAL ↗</a>' +
         '</div>';

@@ -1473,14 +1473,22 @@ html[data-crt-engine="webkit-svg"] .signal{
 @font-face{
   font-family:"MagiusPixel";
   src:
-    url("https://cdn.jsdelivr.net/gh/TakWolf/fusion-pixel-font@latest/build/fusion-pixel-12px-monospaced-zh_hans.woff2") format("woff2"),
+    url("./fonts/night-pixel/fusion-pixel-12px-monospaced-zh_hans.2026.07.20.woff2") format("woff2"),
     url("https://fusion-pixel-font.takwolf.com/fusion-pixel-12px-monospaced-zh_hans.otf.woff2") format("woff2");
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+}
+@font-face{
+  font-family:"MagiusPixelJP";
+  src:url("./fonts/night-pixel/fusion-pixel-12px-monospaced-ja.2026.07.20.woff2") format("woff2");
   font-style:normal;
   font-weight:400;
   font-display:swap;
 }
 :root{
   --pixel-face:"MagiusPixel","MS Gothic","Courier New",monospace;
+  --pixel-face-jp:"MagiusPixelJP","MS Gothic","Courier New",monospace;
   --fringe-blue:rgba(65,204,255,.72);
   --fringe-red:rgba(255,57,89,.68);
 }
@@ -1792,4 +1800,8 @@ html[data-crt-engine="ios-safe"] .screen::before{
       rgba(0,0,0,.42) 92%,
       rgba(0,0,0,.72) 100%),
     linear-gradient(90deg,rgba(0,0,0,.34),transparent 10% 90%,rgba(0,0,0,.36));
+}
+
+html[data-pixel-font="true"] .signal :is([lang="ja"],[lang="ja"] *){
+  font-family:var(--pixel-face-jp)!important;
 }

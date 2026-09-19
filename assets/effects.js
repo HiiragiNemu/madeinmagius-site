@@ -2,25 +2,28 @@ export function setupCrtEffects(options) {
   const root = document.documentElement;
   const warpImage = options.warpImage;
   const curveDisplacement = document.getElementById('curve-displacement');
-  const mobile = matchMedia('(max-width: 767px)');
-  const ua = navigator.userAgent || '';
-  const isIOSWebKit = /AppleWebKit/i.test(ua) && (
-    /iPhone|iPad|iPod/i.test(ua) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  );
-
-  // Performance-first static CRT mode: desktop keeps one static optical warp;
-  // mobile/WebKit uses the CSS glass curve with no SVG filter.
-  const mobileStatic = mobile.matches || isIOSWebKit;
-  root.dataset.crtEngine = mobileStatic ? 'mobile-static' : 'static-svg';
+  // One static optical path on every viewport. A phone is not a reason to
+  // discard the lens. There is no animation or per-frame texture allocation.
+  root.dataset.crtEngine = 'static-svg';
 
   function updateCurveScale() {
     if (!curveDisplacement) return;
-    curveDisplacement.setAttribute('scale', '46');
+    // Explicit pixel bounds avoid percentage filter-region rounding in WebKit.
+    const filter = curveDisplacement.parentElement;
+    const width = options.signal.clientWidth;
+    const height = options.signal.clientHeight;
+    filter.setAttribute('filterUnits', 'userSpaceOnUse');
+    filter.setAttribute('primitiveUnits', 'userSpaceOnUse');
+    for (const node of [filter, warpImage]) {
+      node.setAttribute('width', String(width));
+      node.setAttribute('height', String(height));
+    }
+    const size = Math.min(options.screen.clientWidth, window.innerHeight);
+    curveDisplacement.setAttribute('scale', String(Math.round(Math.max(32, Math.min(64, size * .095)))));
   }
 
   function createWarpMap() {
-    if (!warpImage || mobileStatic) return;
+    if (!warpImage) return;
 
     const canvas = document.createElement('canvas');
     const size = 384;
@@ -50,12 +53,18 @@ export function setupCrtEffects(options) {
 
   createWarpMap();
   updateCurveScale();
+  const resizeObserver = new ResizeObserver(updateCurveScale);
+  resizeObserver.observe(options.screen);
+  window.addEventListener('resize', updateCurveScale);
 
   return {
     pulse() {},
     scan() {},
     addEnergy() {},
-    destroy() {}
+    destroy() {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateCurveScale);
+    }
   };
 }
 

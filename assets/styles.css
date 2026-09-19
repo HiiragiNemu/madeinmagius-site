@@ -31,7 +31,7 @@ body{
 button,a{font:inherit}
 button{color:inherit}
 a{color:inherit;text-underline-offset:3px}
-.svg-defs{position:absolute;width:0;height:0;overflow:hidden}
+.svg-defs{position:absolute;left:-2px;top:-2px;width:1px;height:1px;overflow:hidden;pointer-events:none}
 
 .bevel,
 button,
@@ -2034,6 +2034,9 @@ html[data-pixel-font="false"] .boot{
 }
 .pixel-toggle{
   min-width:max-content;
+  display:grid;
+  place-items:center;
+  white-space:nowrap;
 }
 
 /* Hard contrast on white menu selections, including secondary CJK copy. */
@@ -2065,9 +2068,9 @@ html[data-pixel-font="false"] .boot{
   z-index:30;
   display:grid;
   place-items:center;
-  min-width:34px;
-  width:34px;
-  height:28px;
+  min-width:24px;
+  width:24px;
+  height:20px;
   text-decoration:none;
   touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;
@@ -2079,9 +2082,9 @@ html[data-pixel-font="false"] .boot{
 }
 @media(max-width:760px){
   .home-jump{
-    min-width:38px;
-    width:38px;
-    height:30px;
+    min-width:22px;
+    width:22px;
+    height:16px;
   }
   .home-jump::before{inset:-13px -14px}
 }
@@ -2090,7 +2093,9 @@ html[data-pixel-font="false"] .boot{
 .pixel-toggle{
   position:relative;
   z-index:30;
-  min-height:28px;
+  min-height:0;
+  height:20px;
+  line-height:1;
   touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;
 }
@@ -2100,7 +2105,7 @@ html[data-pixel-font="false"] .boot{
   inset:-10px -12px;
 }
 @media(max-width:760px){
-  .pixel-toggle{min-height:30px}
+  .pixel-toggle{min-height:0;height:16px;line-height:1;font-size:8px;padding:0 4px}
   .pixel-toggle::before{inset:-13px -14px}
 }
 
@@ -2925,12 +2930,6 @@ html[data-crt-engine="ios-safe"] .signal{
   filter:url("#crt-warp") brightness(.995) contrast(1.025) saturate(.94)!important;
   -webkit-filter:url("#crt-warp") brightness(.995) contrast(1.025) saturate(.94)!important;
 }
-html[data-crt-engine="mobile-static"] .signal{
-  filter:none!important;
-  -webkit-filter:none!important;
-  transform:scale(.994,.988)!important;
-  -webkit-transform:scale(.994,.988)!important;
-}
 
 /* Keep the CRT texture, but freeze it. */
 .scanlines,
@@ -3022,35 +3021,20 @@ html[data-crt-engine="mobile-static"] .signal{
   transform:none!important;
 }
 
-/* Disable costly SVG filtering on all phones/tablets. */
-@media(max-width:760px){
-  .signal{
-    filter:none!important;
-    -webkit-filter:none!important;
-    transform:scale(.994,.988)!important;
-    -webkit-transform:scale(.994,.988)!important;
-  }
-}
 
 
 /* === STATIC LOW-FIDELITY RESTORATION ===
    Keep the soft analog texture without bringing back continuous motion. */
 .signal{
-  filter:url("#crt-warp") brightness(.982) contrast(1.055) saturate(.89)!important;
-  -webkit-filter:url("#crt-warp") brightness(.982) contrast(1.055) saturate(.89)!important;
-}
-html[data-crt-engine="mobile-static"] .signal{
-  filter:none!important;
-  -webkit-filter:none!important;
-  transform:scale(.994,.988)!important;
-  -webkit-transform:scale(.994,.988)!important;
+  filter:url("#crt-warp") brightness(1.035) contrast(1.035) saturate(.84)!important;
+  -webkit-filter:url("#crt-warp") brightness(1.035) contrast(1.035) saturate(.84)!important;
 }
 
 /* Static emulsion/grain texture: stronger than the performance pass, but no
    background-position animation and no JS redraw loop. */
 .tube-grain,
 .boot__grain{
-  opacity:.22!important;
+  opacity:.27!important;
   mix-blend-mode:screen!important;
   animation:none!important;
   will-change:auto!important;
@@ -3058,7 +3042,7 @@ html[data-crt-engine="mobile-static"] .signal{
   -webkit-filter:sepia(.08) hue-rotate(31deg) saturate(.76) contrast(1.05)!important;
 }
 .scanlines{
-  opacity:.43!important;
+  opacity:.54!important;
   animation:none!important;
   background:repeating-linear-gradient(
     0deg,
@@ -3167,14 +3151,9 @@ html[data-crt-engine="mobile-static"] .signal{
   will-change:auto!important;
 }
 
-/* Mobile keeps the same low-fi texture without the expensive full-screen SVG
-   filter. */
+/* Static phone texture; the same lens remains enabled at every breakpoint. */
 @media(max-width:760px){
-  .tube-grain,.boot__grain{opacity:.20!important}
-  .scanlines{opacity:.39!important}
+  .tube-grain,.boot__grain{opacity:.24!important}
+  .scanlines{opacity:.49!important}
   .phosphor-grid{opacity:.052!important}
-  .signal{
-    filter:none!important;
-    -webkit-filter:none!important;
-  }
 }

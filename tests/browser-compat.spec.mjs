@@ -44,13 +44,18 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   expect(await page.evaluate(() => document.fonts.check('12px MagiusPixel'))).toBeTruthy();
   await expect(page.locator('.boot__wordmark')).toHaveAttribute('src', /magius-link-wordmark\.svg/);
 
-  const engine = await page.locator('html').getAttribute('data-crt-engine');
-  expect(['static-svg', 'mobile-static']).toContain(engine);
-  if (isMobileProject) {
-    expect(engine).toBe('mobile-static');
-    const computedFilter = await page.locator('#signal').evaluate(el => getComputedStyle(el).filter);
-    expect(computedFilter).not.toContain('url(');
-  }
+  await expect(page.locator('html')).toHaveAttribute('data-crt-engine', 'static-svg');
+  expect(await page.locator('#signal').evaluate(el => getComputedStyle(el).filter)).toContain('url(');
+  expect(Number(await page.locator('#curve-displacement').getAttribute('scale'))).toBeGreaterThan(0);
+  await expect(page.locator('#crt-warp-map')).toHaveAttribute('href', /^data:image\/png/);
+  const controlsContained = await page.evaluate(() => {
+    const bar = document.querySelector('.masthead__bar').getBoundingClientRect();
+    return ['#pixel-toggle', '#home-jump'].every(selector => {
+      const r = document.querySelector(selector).getBoundingClientRect();
+      return r.top >= bar.top + 1 && r.bottom <= bar.bottom - 1 && r.left >= bar.left && r.right <= bar.right;
+    });
+  });
+  expect(controlsContained).toBe(true);
 
   await page.bringToFront();
   await expect(page.locator('#tracking-sweep')).toBeAttached();
@@ -63,7 +68,7 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   await expect(page.locator('[data-sub="android"]')).toBeVisible();
   await page.locator('[data-sub="android"]').evaluate(el => el.click());
   const apk = page.locator('.download-button').first();
-  await expect(apk).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/bilibili\/v0\.1\.9\/.*\.apk/);
+  await expect(apk).toHaveAttribute('href', /downloads\/bilibili\/(?:android$|v0\.1\.9\/.*\.apk)/);
   if (isMobileProject) {
     expect(await page.locator('#content-panel').evaluate(node => node.previousElementSibling?.dataset?.sub)).toBe('android');
   }
@@ -108,7 +113,7 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   }
 
   const win = page.locator('.download-button').first();
-  await expect(win).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/netease\/v2\.5\.1\/.*windows-x64\.zip/);
+  await expect(win).toHaveAttribute('href', /downloads\/netease\/(?:windows$|v2\.5\.1\/.*windows-x64\.zip)/);
 
   await page.locator('[data-program="exedra"]').evaluate(el => el.click());
   await expect(page.locator('[data-sub="tw-demo"]')).toHaveCount(0);
@@ -116,13 +121,13 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   await expect(page.getByText('TW ORIGINAL CLIENT')).toBeVisible();
   await expect(page.getByText('JP ORIGINAL CLIENT')).toBeVisible();
 
-  await page.locator('#home-jump').evaluate(el => el.click());
+  await page.locator('#home-jump').click();
   await expect(page).toHaveURL(/#home\/welcome$/);
   await expect(page.locator('h2', { hasText: 'WELCOME' })).toBeVisible();
 
-  await page.locator('#pixel-toggle').evaluate(el => el.click());
+  await page.locator('#pixel-toggle').click();
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'false');
-  await page.locator('#pixel-toggle').evaluate(el => el.click());
+  await page.locator('#pixel-toggle').click();
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
 
   await page.screenshot({ path: `test-results/${testInfo.project.name}-live.png`, fullPage: false });

@@ -10,6 +10,20 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   await expect(page.locator('#boot')).toHaveClass(/is-hidden/, { timeout: 6000 });
 
   await expect(page.locator('.screen')).toBeVisible();
+
+  // The display must remain alive without user input: temporal grain and an
+  // automatic top-to-bottom tracking pass both advance on their own.
+  const startNoiseTick = Number(await page.locator('#signal').getAttribute('data-noise-tick') || '0');
+  await page.waitForFunction(
+    previous => Number(document.querySelector('#signal')?.dataset.noiseTick || '0') > previous,
+    startNoiseTick,
+    { timeout: 2500 }
+  );
+  await page.waitForFunction(
+    () => Number(document.querySelector('#signal')?.dataset.trackingCount || '0') > 0,
+    null,
+    { timeout: 6500 }
+  );
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => document.fonts.load('12px MagiusPixel'));
   expect(await page.evaluate(() => document.fonts.check('12px MagiusPixel'))).toBeTruthy();

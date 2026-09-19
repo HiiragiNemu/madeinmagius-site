@@ -1,0 +1,39 @@
+name: Mobile browser compatibility
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "index.html"
+      - "assets/**"
+      - "data/**"
+      - "tests/browser-compat.spec.mjs"
+      - ".github/workflows/browser-compat.yml"
+
+jobs:
+  compat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - run: npm run build
+      - name: Install Playwright browsers
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium webkit
+      - name: Start local site
+        run: |
+          python3 -m http.server 4173 --directory dist >/tmp/magius-compat-http.log 2>&1 &
+          echo $! > /tmp/magius-http.pid
+      - name: Run iOS WebKit and Android Chromium checks
+        run: npx playwright test tests/browser-compat.spec.mjs --reporter=line
+      - name: Upload compatibility screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-browser-screens
+          path: test-results/*.png
+          if-no-files-found: ignore

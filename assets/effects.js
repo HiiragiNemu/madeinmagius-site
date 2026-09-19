@@ -14,6 +14,7 @@ export function setupCrtEffects(options) {
   let lastFrame = 0;
   let nextTracking = performance.now() + 1700 + Math.random() * 2200;
   let trackingTimer = 0;
+  let signalTickCount = 0;
   let active = !document.hidden;
 
   const mobileCurve = matchMedia('(max-width: 767px)');
@@ -102,6 +103,9 @@ export function setupCrtEffects(options) {
 
   function updateSignal(now) {
     if (!active || reducedMotion.matches) return;
+
+    signalTickCount += 1;
+    signal.dataset.tick = String(signalTickCount);
 
     // The source video moves horizontally by roughly half a pixel frame-to-frame,
     // with very little vertical movement.

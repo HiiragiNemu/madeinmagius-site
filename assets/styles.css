@@ -2116,3 +2116,171 @@ html[data-pixel-font="false"] .boot{
       0 0 5px rgba(166,247,82,.28)!important;
   }
 }
+
+
+/* === Analog signal motion pass (measured against supplied 60 fps footage) ===
+   Geometry stays fixed. Only the raster/timebase/noise layers move. */
+.noise{
+  opacity:.105!important;
+  mix-blend-mode:screen!important;
+  image-rendering:pixelated;
+  filter:contrast(1.08) brightness(.96);
+  -webkit-filter:contrast(1.08) brightness(.96);
+}
+.tube-grain{
+  opacity:.19!important;
+  animation:tube-grain-drift .11s steps(2,end) infinite!important;
+}
+.scanlines{
+  opacity:.46!important;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(4,0,2,.62) 0 .72px,
+    transparent .72px 1.92px,
+    rgba(116,255,151,.018) 1.92px 2.18px
+  )!important;
+  mix-blend-mode:multiply!important;
+}
+.phosphor-grid{
+  opacity:.072!important;
+}
+.rolling-band{
+  opacity:.24!important;
+  height:15%!important;
+  background:
+    linear-gradient(180deg,
+      transparent 0,
+      rgba(28,120,56,.02) 24%,
+      rgba(116,255,151,.06) 42%,
+      rgba(224,255,231,.14) 49%,
+      rgba(10,0,4,.22) 54%,
+      transparent 100%)!important;
+  filter:blur(.46px)!important;
+  -webkit-filter:blur(.46px)!important;
+  transition:none!important;
+}
+
+/* Occasional vertical-sync/tracking fault. The moving boundary changes local
+   luminance, blur and line phase while the tube curvature stays untouched. */
+.tracking-sweep{
+  height:10.5%!important;
+  left:-4%!important;
+  right:-4%!important;
+  opacity:0!important;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,.015) 0 1px,
+      rgba(78,255,123,.055) 1px 3px,
+      rgba(0,0,0,.16) 3px 5px
+    ),
+    linear-gradient(180deg,
+      transparent 0,
+      rgba(70,255,119,.025) 27%,
+      rgba(192,255,208,.14) 43%,
+      rgba(247,255,249,.38) 49%,
+      rgba(63,255,113,.10) 52%,
+      rgba(0,0,0,.28) 58%,
+      transparent 100%)!important;
+  box-shadow:
+    -1.5px 0 0 var(--fringe-blue),
+    1.6px 0 0 var(--fringe-red),
+    0 0 5px rgba(231,255,238,.22),
+    0 6px 14px rgba(0,0,0,.18)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+.signal[data-tracking="true"] .tracking-sweep{
+  opacity:.92!important;
+  backdrop-filter:blur(.52px) contrast(1.06) brightness(var(--tracking-brightness,1.08))!important;
+  -webkit-backdrop-filter:blur(.52px) contrast(1.06) brightness(var(--tracking-brightness,1.08))!important;
+  animation:tracking-sweep-pass var(--tracking-duration,1s) steps(38,end) both!important;
+}
+.tracking-sweep::before{
+  content:"";
+  position:absolute;
+  left:0;right:0;
+  top:36%;
+  height:22%;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,.08) 0 1px,
+      rgba(19,70,32,.15) 1px 3px
+    );
+  opacity:.44;
+}
+.tracking-sweep::after{
+  top:49%!important;
+  height:1px!important;
+  background:rgba(241,255,245,.86)!important;
+  box-shadow:
+    -1.2px 0 .2px var(--fringe-blue),
+    1.25px 0 .2px var(--fringe-red),
+    0 0 4px rgba(229,255,236,.46)!important;
+}
+
+/* Short horizontal-sync tears are narrow phase errors, not giant glitches. */
+.tear-band{
+  mix-blend-mode:screen!important;
+  background:
+    linear-gradient(90deg,
+      transparent 0 3%,
+      rgba(255,255,255,.28) 6% 26%,
+      transparent 30% 52%,
+      rgba(85,255,133,.16) 57% 78%,
+      transparent 86%)!important;
+  box-shadow:
+    -1px 0 var(--fringe-blue),
+    1px 0 var(--fringe-red),
+    0 0 4px rgba(225,255,234,.24)!important;
+}
+
+/* Reference registration: cyan/blue fringe to the LEFT, red/magenta RIGHT.
+   Strongest on white/high-energy UI elements. */
+:root{
+  --fringe-blue:rgba(63,197,255,.78);
+  --fringe-red:rgba(255,54,88,.74);
+}
+.masthead__row h1,
+.menu-node__copy b,
+.sub-node b,
+.content-inner h2,
+.content-inner h3,
+.download-button,
+.statusbar,
+.section-label{
+  text-shadow:
+    -1.15px 0 .14px var(--fringe-blue),
+    1.28px 0 .14px var(--fringe-red),
+    0 0 2.6px rgba(187,255,203,.16)!important;
+}
+.menu-node.is-selected,
+.sub-node.is-selected,
+.download-button{
+  box-shadow:
+    -1.8px 0 0 var(--fringe-blue),
+    1.9px 0 0 var(--fringe-red),
+    0 0 7px rgba(242,255,245,.34),
+    0 0 16px rgba(93,244,126,.16)!important;
+}
+
+/* Current stable iOS keeps the same raster/grain/tracking layers.
+   The iOS-27 safety path only omits the known-risk displacement map. */
+html[data-crt-engine="ios-safe"] .tracking-sweep{
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+html[data-crt-engine="ios-safe"] .signal[data-tracking="true"] .tracking-sweep{
+  opacity:.94!important;
+}
+
+/* Mobile keeps full visual resolution; only temporal noise frequency/buffer
+   size is reduced in JS to save battery. */
+@media(max-width:760px){
+  .noise{opacity:.095!important}
+  .tube-grain{opacity:.18!important}
+  .scanlines{opacity:.43!important}
+  .rolling-band{opacity:.22!important}
+  .tracking-sweep{height:11.5%!important}
+}

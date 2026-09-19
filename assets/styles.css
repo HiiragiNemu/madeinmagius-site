@@ -2085,3 +2085,21 @@ html[data-pixel-font="false"] .boot{
   }
   .home-jump::before{inset:-13px -14px}
 }
+
+
+.pixel-toggle{
+  position:relative;
+  z-index:30;
+  min-height:28px;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.pixel-toggle::before{
+  content:"";
+  position:absolute;
+  inset:-10px -12px;
+}
+@media(max-width:760px){
+  .pixel-toggle{min-height:30px}
+  .pixel-toggle::before{inset:-13px -14px}
+}

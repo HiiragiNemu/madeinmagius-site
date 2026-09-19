@@ -65,9 +65,9 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   await expect(page).toHaveURL(/#home\/welcome$/);
   await expect(page.locator('h2', { hasText: 'WELCOME' })).toBeVisible();
 
-  await page.locator('#pixel-toggle').click({ force: true });
+  await page.locator('#pixel-toggle').evaluate(el => el.click());
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'false');
-  await page.locator('#pixel-toggle').click({ force: true });
+  await page.locator('#pixel-toggle').evaluate(el => el.click());
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
 
   await page.locator('[data-program="bilibili"]').click({ force: true });

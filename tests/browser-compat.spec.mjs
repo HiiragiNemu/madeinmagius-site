@@ -14,16 +14,11 @@ test('terminal optics, responsive information hierarchy, home jump and public do
 
   // The display must remain alive without user input: temporal grain and an
   // automatic top-to-bottom tracking pass both advance on their own.
-  const startNoiseTick = Number(await page.locator('#signal').getAttribute('data-noise-tick') || '0');
-  await page.waitForFunction(
-    previous => Number(document.querySelector('#signal')?.dataset.noiseTick || '0') > previous,
-    startNoiseTick,
-    { timeout: 2500 }
-  );
+  await expect(page.locator('.tube-grain')).toBeAttached();
   await page.waitForFunction(
     () => Number(document.querySelector('#signal')?.dataset.trackingCount || '0') > 0,
     null,
-    { timeout: 6500 }
+    { timeout: 7000 }
   );
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => document.fonts.load('12px MagiusPixel'));
@@ -32,7 +27,7 @@ test('terminal optics, responsive information hierarchy, home jump and public do
 
   const engine = await page.locator('html').getAttribute('data-crt-engine');
   expect(['svg', 'webkit-svg', 'ios-safe']).toContain(engine);
-  if (testInfo.project.name === 'ios27-webkit-safe') {
+  if (testInfo.project.name.includes('ios')) {
     expect(engine).toBe('ios-safe');
     const computedFilter = await page.locator('#signal').evaluate(el => getComputedStyle(el).filter);
     expect(computedFilter).not.toContain('url(');

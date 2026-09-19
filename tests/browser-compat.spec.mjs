@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test('terminal optics, mobile accordion, home jump and public downloads work', async ({ page }, testInfo) => {
+test('terminal optics, responsive information hierarchy, home jump and public downloads work', async ({ page }, testInfo) => {
+  const isMobileProject = testInfo.project.name.includes('ios') || testInfo.project.name.includes('android');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(420);
   await expect(page.locator('.boot__wordmark')).toBeVisible();
@@ -47,7 +48,9 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   await page.locator('[data-sub="android"]').evaluate(el => el.click());
   const apk = page.locator('.download-button').first();
   await expect(apk).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/bilibili\/v0\.1\.9\/.*\.apk/);
-  expect(await page.locator('#content-panel').evaluate(node => node.previousElementSibling?.dataset?.sub)).toBe('android');
+  if (isMobileProject) {
+    expect(await page.locator('#content-panel').evaluate(node => node.previousElementSibling?.dataset?.sub)).toBe('android');
+  }
 
   await page.locator('[data-program="netease"]').evaluate(el => el.click());
   await expect(page.locator('[data-sub="netease-source"]')).toHaveCount(0);
@@ -57,12 +60,29 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   expect(await selectedNetease.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
   expect(await selectedSubtitle.evaluate(el => getComputedStyle(el).color)).toBe('rgb(21, 54, 31)');
   await page.locator('[data-sub="windows"]').evaluate(el => el.click());
-  if (testInfo.project.name.includes('ios') || testInfo.project.name.includes('android')) {
+  if (isMobileProject) {
     await page.locator('[data-sub="windows"]').evaluate(el => el.click());
     await expect(page.locator('#content-panel')).toBeHidden();
     await page.locator('[data-sub="windows"]').evaluate(el => el.click());
     await expect(page.locator('#content-panel')).toBeVisible();
   }
+  if (testInfo.project.name === 'desktop-chromium') {
+    const layout = await page.evaluate(() => {
+      const subsystem = document.querySelector('.subsystem')?.getBoundingClientRect();
+      const panel = document.querySelector('#content-panel')?.getBoundingClientRect();
+      return subsystem && panel ? {
+        subsystemHeight: subsystem.height,
+        panelHeight: panel.height,
+        subsystemBottom: subsystem.bottom,
+        panelTop: panel.top,
+      } : null;
+    });
+    expect(layout).not.toBeNull();
+    expect(layout.subsystemHeight).toBeLessThan(145);
+    expect(layout.panelHeight).toBeGreaterThan(320);
+    expect(layout.panelTop).toBeGreaterThanOrEqual(layout.subsystemBottom - 3);
+  }
+
   const win = page.locator('.download-button').first();
   await expect(win).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/netease\/v2\.5\.1\/.*windows-x64\.zip/);
 

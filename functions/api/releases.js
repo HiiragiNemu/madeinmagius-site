@@ -129,6 +129,15 @@ const PROJECTS = {
   exedra: {
     repo: 'HiiragiNemu/MagiaExedraTWTools',
     mode: 'scan',
+    fallbackAssets: {
+      jpXapk: {
+        name: 'com.aniplex.magia.exedra.jp-3.18.0.xapk',
+        size: 923195400,
+        digest: 'sha256:43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514',
+        content_type: 'application/xapk-package-archive',
+        download: './downloads/exedra/jp-xapk',
+      },
+    },
     assets: {
       twXapk: /^tw\.sonet\.magiaexedra-.*\.xapk$/i,
       jpXapk: /^com\.aniplex\.magia\.exedra\.jp-.*\.xapk$/i,
@@ -245,7 +254,10 @@ async function scannedProject(key, config, token) {
     release_url: `https://github.com/${config.repo}/releases`,
     source_tags: sourceTags,
     assets: Object.fromEntries(
-      Object.keys(config.assets).map(assetKey => [assetKey, found[assetKey] || null]),
+      Object.keys(config.assets).map(assetKey => [
+        assetKey,
+        found[assetKey] || config.fallbackAssets?.[assetKey] || null,
+      ]),
     ),
   };
 }

@@ -17,6 +17,7 @@ const connectorSvg = document.getElementById('connectors');
 const statusLine = document.getElementById('status-line');
 const clock = document.getElementById('clock');
 const homeJump = document.getElementById('home-jump');
+const pixelToggle = document.getElementById('pixel-toggle');
 const warpImage = document.getElementById('crt-warp-map');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mobileMode = matchMedia('(max-width: 760px)');
@@ -36,6 +37,31 @@ const crt = setupCrtEffects({
   warpImage,
   reducedMotion
 });
+
+function applyPixelFont(enabled) {
+  document.documentElement.dataset.pixelFont = enabled ? 'true' : 'false';
+  if (pixelToggle) {
+    pixelToggle.setAttribute('aria-pressed', String(enabled));
+    pixelToggle.textContent = enabled ? 'PIXEL ON' : 'PIXEL OFF';
+  }
+}
+
+function initPixelFont() {
+  let enabled = true;
+  try {
+    const saved = localStorage.getItem('magius-pixel-font');
+    if (saved === 'false') enabled = false;
+  } catch {}
+  applyPixelFont(enabled);
+
+  pixelToggle?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.pixelFont !== 'true';
+    applyPixelFont(next);
+    try { localStorage.setItem('magius-pixel-font', String(next)); } catch {}
+    crt.pulse(.72);
+    statusLine.textContent = next ? 'PIXEL FONT // ON' : 'PIXEL FONT // OFF';
+  });
+}
 
 function selectedProgramButton() {
   return programButtons.find(button => button.dataset.program === programId);
@@ -203,6 +229,7 @@ function selectProgram(id, focusSub = false, mobileScroll = true) {
   statusLine.textContent = 'PROGRAM // ' + id.toUpperCase() + ' // SUBSYSTEM READY';
   history.replaceState(null, '', '#' + id + '/' + subId);
   crt.pulse(1.05);
+  crt.scan();
 
   if (mobileMode.matches && mobileScroll) {
     scrollSubsystemIntoView();
@@ -405,6 +432,7 @@ homeJump.addEventListener('click', () => {
 });
 
 parseHash();
+initPixelFont();
 setupProgramInteractions();
 syncProgramButtons();
 buildSubMenu();

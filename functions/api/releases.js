@@ -101,6 +101,7 @@ const PROJECTS = {
   exedra: {
     repo: 'HiiragiNemu/MagiaExedraTWTools',
     mode: 'scan',
+    routes: { twXapk: 'tw-xapk', jpXapk: 'jp-xapk' },
     fallbackAssets: {
       jpXapk: {
         name: 'com.aniplex.magia.exedra.jp-3.18.0.xapk',
@@ -214,7 +215,7 @@ async function scannedProject(key, config, token) {
       if (found[assetKey]) continue;
       const asset = (release.assets || []).find(candidate => matcher.test(candidate.name));
       if (!asset) continue;
-      found[assetKey] = assetShape(asset, key, assetKey);
+      found[assetKey] = assetShape(asset, key, assetKey, config.routes?.[assetKey] || assetKey);
       sourceTags[assetKey] = release.tag_name;
     }
   }

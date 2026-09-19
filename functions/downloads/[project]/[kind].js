@@ -92,6 +92,7 @@ const PROJECTS = {
         digest: 'sha256:43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514',
         content_type: 'application/xapk-package-archive',
         legacy_url: 'https://d.apkpure.net/b/XAPK/com.aniplex.magia.exedra.jp?version=latest',
+        redirect_to_origin: true,
       },
     },
     kinds: {
@@ -218,6 +219,18 @@ async function handle(context, headOnly = false) {
 
   try {
     const asset = await getAsset(config, kind, token);
+    // This public fallback accepts browser downloads but rejects Worker proxying.
+    // GitHub-hosted assets still use the normal authenticated streaming path.
+    if (asset.redirect_to_origin) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          location: asset.legacy_url,
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff',
+        },
+      });
+    }
     const range = context.request?.headers?.get('range') || null;
     const binaryResponse = headOnly ? null : await getBinary(asset, token, range);
 

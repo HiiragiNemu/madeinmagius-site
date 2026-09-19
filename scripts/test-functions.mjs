@@ -127,6 +127,7 @@ try {
   assert.equal(data.projects.netease.assets.source, undefined);
 
   assert.equal(data.projects.exedra.assets.twXapk.name,'tw.sonet.magiaexedra-9.0.0-99999999.xapk');
+  assert.equal(data.projects.exedra.assets.twXapk.download,'./downloads/exedra/tw-xapk');
   assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-3.18.0.xapk');
   assert.equal(data.projects.exedra.assets.jpXapk.download,'./downloads/exedra/jp-xapk');
   assert.equal(data.projects.exedra.assets.tools.name,'MagiaExedraTWJPTools-v9.0.0.zip');
@@ -192,9 +193,36 @@ try {
     params:{project:'exedra',kind:'jp-xapk'},
     request:new Request('https://site.test/downloads/exedra/jp-xapk'),
   });
-  assert.equal(jp.status,200);
-  assert.match(jp.headers.get('content-disposition') || '',/3\.18\.0\.xapk/);
-  assert.equal(jp.headers.get('x-release-digest'),'sha256:43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514');
+  assert.equal(jp.status,302);
+  assert.equal(jp.headers.get('location'),'https://d.apkpure.net/b/XAPK/com.aniplex.magia.exedra.jp?version=latest');
+  assert.equal(jp.headers.get('x-release-digest'),null);
+  assert.equal(jp.headers.get('content-length'),null);
+  assert.ok(!JSON.stringify([...jp.headers]).includes('fake-token'));
+
+  const jpHead = await headDownload({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'exedra',kind:'jp-xapk'},
+    request:new Request('https://site.test/downloads/exedra/jp-xapk',{method:'HEAD'}),
+  });
+  assert.equal(jpHead.status,302);
+  assert.equal(jpHead.headers.get('location'),jp.headers.get('location'));
+
+  // Once the source repository has a JP asset, keep the canonical route and stream it.
+  exedraReleases[1].assets.push({
+    id:44,name:'com.aniplex.magia.exedra.jp-3.18.0.xapk',size:3,
+    digest:'sha256:jp-test',content_type:'application/octet-stream',
+    url:'https://api.github.test/assets/44',
+  });
+  const githubMetadata = await (await releases({env:{GITHUB_RELEASES_TOKEN:'fake-token'}})).json();
+  assert.equal(githubMetadata.projects.exedra.assets.jpXapk.download,'./downloads/exedra/jp-xapk');
+  const githubJp = await download({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'exedra',kind:'jp-xapk'},
+    request:new Request('https://site.test/downloads/exedra/jp-xapk'),
+  });
+  assert.equal(githubJp.status,200);
+  assert.equal(githubJp.headers.get('x-release-digest'),'sha256:jp-test');
+  assert.equal(githubJp.headers.get('location'),null);
 
   const missing = await download({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},

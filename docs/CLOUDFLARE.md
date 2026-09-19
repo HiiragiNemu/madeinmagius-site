@@ -68,6 +68,8 @@ The live bridge deliberately refuses to regress a public tool to an older privat
 - Exedra TW: the public GitHub Release is used directly.
 - Exedra JP 3.18.0: the source repository has the verification record and release tag, but its release asset is missing. The fallback uses APKPure's package endpoint only when the GitHub asset is absent. The pinned size/version/hash remain stored in the site's integrity data.
 
+The JP fallback route redirects the browser to that public endpoint instead of proxying its bytes through a Worker, where the origin returns HTTP 403. GET and HEAD return a 302 without forwarding the GitHub credential or claiming a digest for the redirected response. When a JP asset is added to the source GitHub release, the same route automatically returns to authenticated streaming. TW and JP live metadata use `/downloads/exedra/tw-xapk` and `/downloads/exedra/jp-xapk` respectively.
+
 Before retiring either old Pages site, first migrate any remaining fallback binaries into their canonical source repository release or another permanent object store, then remove the fallback routes.
 
 ## Browser/optics compatibility

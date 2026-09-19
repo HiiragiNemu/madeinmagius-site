@@ -1894,3 +1894,129 @@ html[data-pixel-font="true"] .signal :is([lang="ja"],[lang="ja"] *){
   75%{transform:translate3d(3px,2px,0)}
   100%{transform:translate3d(0,0,0)}
 }
+
+
+/* === Selection contrast + pixel-font control === */
+html[data-pixel-font="on"] .signal,
+html[data-pixel-font="on"] .boot{
+  font-family:"Courier New","Lucida Console","SFMono-Regular","Cascadia Mono","MS Gothic","Microsoft YaHei UI",monospace;
+  font-synthesis:none;
+}
+html[data-pixel-font="off"] .signal,
+html[data-pixel-font="off"] .boot{
+  font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+}
+
+/* Alien-style white selection must invert every child, not only the parent.
+   Mobile CJK subtitles used to keep their green rule and vanish on white. */
+.menu-node.is-selected,
+.menu-node.is-selected .menu-node__index,
+.menu-node.is-selected .menu-node__copy,
+.menu-node.is-selected .menu-node__copy b,
+.menu-node.is-selected .menu-node__copy small,
+.menu-node.is-selected .menu-node__glyph{
+  color:#071109 !important;
+  -webkit-text-fill-color:#071109 !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+}
+.menu-node.is-selected .menu-node__copy small{
+  color:#183d24 !important;
+  -webkit-text-fill-color:#183d24 !important;
+  font-weight:700;
+}
+.menu-node.is-selected .menu-node__index{
+  color:#27442f !important;
+  -webkit-text-fill-color:#27442f !important;
+  font-weight:700;
+}
+.sub-node.is-selected b{
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+}
+.sub-node.is-selected small{
+  color:#e2ffe9 !important;
+  -webkit-text-fill-color:#e2ffe9 !important;
+  opacity:1 !important;
+  font-weight:700;
+  text-shadow:0 0 3px rgba(220,255,229,.22);
+}
+
+/* The white DOWNLOAD control needs the same hard inversion. */
+.download-button{
+  color:#061108 !important;
+  -webkit-text-fill-color:#061108 !important;
+  text-shadow:none !important;
+}
+.download-button:hover,.download-button:focus-visible{
+  color:#001506 !important;
+  -webkit-text-fill-color:#001506 !important;
+}
+
+.masthead__bar{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:10px;
+}
+.masthead__bar>span{
+  width:100%;
+}
+.pixel-font-toggle{
+  appearance:none;
+  -webkit-appearance:none;
+  min-width:max-content;
+  border:0;
+  padding:0 7px;
+  color:#001807;
+  background:transparent;
+  font:900 10px/1 "Courier New","Lucida Console",monospace;
+  letter-spacing:.05em;
+  cursor:pointer;
+}
+.pixel-font-toggle:hover,.pixel-font-toggle:focus-visible{
+  background:rgba(255,255,255,.26);
+  outline:1px solid rgba(0,0,0,.72);
+  outline-offset:0;
+}
+.pixel-font-toggle[aria-pressed="false"]{
+  opacity:.66;
+}
+
+/* Exact outlined reader loading wordmark, not a font approximation. */
+.boot__wordmark{
+  display:block;
+  width:clamp(210px,38vw,420px);
+  height:auto;
+  margin-top:14px;
+  filter:
+    drop-shadow(-.8px 0 rgba(255,78,109,.52))
+    drop-shadow(.9px 0 rgba(70,238,255,.48))
+    drop-shadow(0 0 4px rgba(219,255,235,.56))
+    drop-shadow(0 0 16px rgba(82,255,135,.3));
+  -webkit-filter:
+    drop-shadow(-.8px 0 rgba(255,78,109,.52))
+    drop-shadow(.9px 0 rgba(70,238,255,.48))
+    drop-shadow(0 0 4px rgba(219,255,235,.56))
+    drop-shadow(0 0 16px rgba(82,255,135,.3));
+}
+.boot__name{display:none}
+
+@media(max-width:760px){
+  .masthead__bar{
+    grid-template-columns:auto 1fr auto;
+    gap:5px;
+  }
+  .pixel-font-toggle{
+    padding:0 4px;
+    font-size:8px;
+    letter-spacing:.025em;
+  }
+  .boot__wordmark{
+    width:min(66vw,310px);
+    margin-top:10px;
+  }
+  .menu-node.is-selected .menu-node__copy small{
+    color:#173b22 !important;
+    -webkit-text-fill-color:#173b22 !important;
+  }
+}

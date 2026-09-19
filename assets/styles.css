@@ -2284,3 +2284,141 @@ html[data-crt-engine="ios-safe"] .signal[data-tracking="true"] .tracking-sweep{
   .rolling-band{opacity:.22!important}
   .tracking-sweep{height:11.5%!important}
 }
+
+
+/* === Desktop information hierarchy correction ===
+   Compact subsystem choices at the top; the document reader gets the screen. */
+@media(min-width:761px){
+  .terminal-ui{
+    grid-template-columns:minmax(220px,23%) minmax(0,1fr)!important;
+  }
+  .folders{
+    padding-right:24px!important;
+  }
+  .stage{
+    display:grid!important;
+    grid-template-rows:auto minmax(0,1fr)!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:10px!important;
+    height:100%!important;
+    min-height:0!important;
+    padding-left:52px!important;
+    overflow:hidden!important;
+  }
+  .subsystem{
+    grid-row:1!important;
+    width:100%!important;
+    min-height:0!important;
+    padding-right:2%!important;
+  }
+  .subsystem>.section-label{
+    height:28px!important;
+    padding-bottom:5px!important;
+  }
+  .sub-menu{
+    display:grid!important;
+    grid-template-columns:repeat(auto-fit,minmax(185px,1fr))!important;
+    grid-auto-rows:minmax(42px,auto)!important;
+    gap:6px!important;
+    width:100%!important;
+    max-height:112px!important;
+    overflow:auto!important;
+    padding:0 5px 3px 0!important;
+  }
+  .sub-node{
+    min-height:42px!important;
+    padding:5px 10px!important;
+    border-width:1px!important;
+  }
+  .sub-node b{
+    font-size:clamp(12px,.92vw,16px)!important;
+    line-height:1.05!important;
+  }
+  .sub-node small{
+    font-size:9px!important;
+    letter-spacing:.045em!important;
+  }
+  .content-panel{
+    grid-row:2!important;
+    position:relative!important;
+    left:auto!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:auto!important;
+    width:calc(98% - 0px)!important;
+    height:100%!important;
+    min-height:0!important;
+    margin:0 2% 0 0!important;
+    padding:18px 22px 24px!important;
+    overflow:auto!important;
+  }
+  .content-panel::before{
+    top:-18px!important;
+    margin:-18px -22px 14px!important;
+  }
+  .content-inner{
+    max-width:none!important;
+  }
+  .brand-watermark{
+    inset:12% 3% 7% 4%!important;
+  }
+}
+
+/* === Always-alive raster/timebase motion ===
+   A CRT-like display should not become a perfectly static bitmap when idle. */
+.rolling-band{
+  top:-16%!important;
+  height:15%!important;
+  animation:analog-field-roll 2.55s linear infinite!important;
+  will-change:transform,opacity!important;
+}
+@keyframes analog-field-roll{
+  0%{transform:translate3d(0,-2%,0);opacity:.12}
+  12%{opacity:.24}
+  48%{opacity:.31}
+  78%{opacity:.19}
+  100%{transform:translate3d(0,790%,0);opacity:.08}
+}
+.scanlines{
+  animation:raster-phase .22s steps(2,end) infinite!important;
+  will-change:background-position,transform!important;
+}
+@keyframes raster-phase{
+  0%{background-position:0 0;transform:translate3d(0,0,0)}
+  50%{background-position:0 .7px;transform:translate3d(.08px,.08px,0)}
+  100%{background-position:0 0;transform:translate3d(0,0,0)}
+}
+.signal[data-tracking="true"] .tracking-sweep{
+  opacity:1!important;
+  height:13.5%!important;
+  box-shadow:
+    -1.6px 0 0 var(--fringe-blue),
+    1.7px 0 0 var(--fringe-red),
+    0 0 7px rgba(235,255,241,.30),
+    0 7px 18px rgba(0,0,0,.22)!important;
+}
+.tracking-sweep::after{
+  height:2px!important;
+  box-shadow:
+    -1.35px 0 .25px var(--fringe-blue),
+    1.45px 0 .25px var(--fringe-red),
+    0 0 6px rgba(232,255,238,.55)!important;
+}
+.tube-grain{
+  opacity:.23!important;
+}
+.noise{
+  opacity:.12!important;
+}
+
+@media(max-width:760px){
+  .rolling-band{
+    animation-duration:2.8s!important;
+    opacity:.24!important;
+  }
+  .scanlines{
+    animation-duration:.26s!important;
+  }
+  .tube-grain{opacity:.20!important}
+  .noise{opacity:.105!important}
+}

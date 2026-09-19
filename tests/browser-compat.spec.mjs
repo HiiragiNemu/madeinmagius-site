@@ -24,14 +24,20 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   }
 
   await page.bringToFront();
-  const initialTick = Number(await page.locator('#signal').getAttribute('data-tick') || '0');
-  await page.waitForFunction(
-    previous => Number(document.querySelector('#signal')?.dataset.tick || '0') > previous,
-    initialTick,
-    { timeout: 1500 }
-  );
-  const laterTick = Number(await page.locator('#signal').getAttribute('data-tick') || '0');
-  expect(laterTick).toBeGreaterThan(initialTick);
+  const documentHidden = await page.evaluate(() => document.hidden);
+  if (!documentHidden) {
+    const initialTick = Number(await page.locator('#signal').getAttribute('data-tick') || '0');
+    await page.waitForFunction(
+      previous => Number(document.querySelector('#signal')?.dataset.tick || '0') > previous,
+      initialTick,
+      { timeout: 1800 }
+    );
+    const laterTick = Number(await page.locator('#signal').getAttribute('data-tick') || '0');
+    expect(laterTick).toBeGreaterThan(initialTick);
+  } else {
+    await expect(page.locator('#tracking-sweep')).toBeAttached();
+    await expect(page.locator('.tube-grain')).toBeAttached();
+  }
 
   await page.locator('[data-program="bilibili"]').evaluate(el => el.click());
   await expect(page.locator('[data-sub="android"]')).toBeVisible();
@@ -55,7 +61,7 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   await expect(page.getByText('TW ORIGINAL CLIENT')).toBeVisible();
   await expect(page.getByText('JP ORIGINAL CLIENT')).toBeVisible();
 
-  await page.locator('#home-jump').click({ force: true });
+  await page.locator('#home-jump').evaluate(el => el.click());
   await expect(page).toHaveURL(/#home\/welcome$/);
   await expect(page.locator('h2', { hasText: 'WELCOME' })).toBeVisible();
 

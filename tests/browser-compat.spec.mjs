@@ -35,6 +35,14 @@ test('terminal optics, responsive information hierarchy, home jump and public do
 
   await page.bringToFront();
   await expect(page.locator('#tracking-sweep')).toBeAttached();
+  const initialLineNoise = Number(await page.locator('#signal').getAttribute('data-line-noise-tick') || '0');
+  await page.waitForFunction(
+    previous => Number(document.querySelector('#signal')?.dataset.lineNoiseTick || '0') > previous,
+    initialLineNoise,
+    { timeout: 2500 }
+  );
+  const rasterTransform = await page.locator('#signal').evaluate(el => getComputedStyle(el).transform);
+  if (!testInfo.project.name.includes('ios')) expect(rasterTransform).toBe('none');
   await expect(page.locator('.tube-grain')).toBeAttached();
   const continuousAnimations = await page.evaluate(() => ({
     fieldTop: getComputedStyle(document.documentElement).getPropertyValue('--roll-y').trim(),

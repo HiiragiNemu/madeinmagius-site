@@ -1,5 +1,5 @@
-import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260919-1947';
-import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260919-1947';
+import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260919-2030';
+import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260919-2030';
 
 const body = document.body;
 const signal = document.getElementById('signal');
@@ -267,7 +267,6 @@ function selectProgram(id, focusSub = false, mobileScroll = true) {
   statusLine.textContent = 'PROGRAM // ' + id.toUpperCase() + ' // SUBSYSTEM READY';
   history.replaceState(null, '', '#' + id + '/' + subId);
   crt.pulse(1.05);
-  crt.scan();
 
   if (mobileMode.matches && mobileScroll) {
     scrollSubsystemIntoView();

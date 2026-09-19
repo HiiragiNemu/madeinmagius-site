@@ -7,8 +7,8 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="MadeInMagius / MAGIUS LINK — software, tools and guides in a CRT terminal interface.">
   <title>MAGIUS LINK // Made In Magius</title>
-  <link rel="icon" href="./assets/magius-mark.svg?v=20260919-1947" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=20260919-1947">
+  <link rel="icon" href="./assets/magius-mark.svg?v=20260919-2030" type="image/svg+xml">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260919-2030">
 </head>
 <body>
   <svg class="svg-defs" aria-hidden="true" focusable="false">
@@ -27,9 +27,20 @@
         <feComposite in="reg-rgb" in2="SourceGraphic" operator="in" result="reg-rgb-alpha"/>
         <feComposite in="reg-rgb-alpha" in2="SourceGraphic" operator="arithmetic" k2=".72" k3=".28" result="registered-scene"/>
 
-        <!-- Reader CRT sequence: beam softness -> lens displacement -> tube softness. -->
+        <!-- Analog horizontal timebase noise: line-local displacement. Dark
+             fields stay visually still; high-contrast text and borders shimmer. -->
+        <feTurbulence id="line-noise" type="fractalNoise" baseFrequency=".0015 .16" numOctaves="1" seed="11" result="line-noise-raw"/>
+        <feColorMatrix in="line-noise-raw" type="matrix"
+          values="1 0 0 0 0
+                  0 0 0 0 .5
+                  0 0 0 0 .5
+                  0 0 0 1 0"
+          result="line-noise-map"/>
+
+        <!-- Reader CRT sequence: beam softness -> line jitter -> lens -> tube softness. -->
         <feGaussianBlur in="registered-scene" stdDeviation=".35" result="beam"/>
-        <feDisplacementMap id="curve-displacement" in="beam" in2="lens" scale="50" xChannelSelector="R" yChannelSelector="G" result="curved-signal"/>
+        <feDisplacementMap id="line-displacement" in="beam" in2="line-noise-map" scale=".62" xChannelSelector="R" yChannelSelector="G" result="line-jittered"/>
+        <feDisplacementMap id="curve-displacement" in="line-jittered" in2="lens" scale="50" xChannelSelector="R" yChannelSelector="G" result="curved-signal"/>
         <feGaussianBlur in="curved-signal" stdDeviation=".18" result="tube-signal"/>
 
         <!-- Bloom is derived from real bright phosphor; glyph cores stay readable. -->
@@ -61,8 +72,8 @@
     <div class="boot__grain" aria-hidden="true"></div>
     <div class="boot__roll" aria-hidden="true"></div>
     <div class="boot__signal">
-      <img class="boot__emblem" src="./assets/magius-mark.svg?v=20260919-1947" alt="">
-      <img class="boot__wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-1947" alt="MAGIUS LINK">
+      <img class="boot__emblem" src="./assets/magius-mark.svg?v=20260919-2030" alt="">
+      <img class="boot__wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2030" alt="MAGIUS LINK">
       <div class="boot__loading">LOADING <i></i> 数据加载中</div>
     </div>
   </div>
@@ -126,8 +137,8 @@
 
           <section id="stage" class="stage" aria-live="polite">
             <div class="brand-watermark" aria-hidden="true">
-              <img class="brand-emblem" src="./assets/magius-mark.svg?v=20260919-1947" alt="">
-              <img class="brand-wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-1947" alt="">
+              <img class="brand-emblem" src="./assets/magius-mark.svg?v=20260919-2030" alt="">
+              <img class="brand-wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2030" alt="">
             </div>
 
             <svg id="connectors" class="connectors" aria-hidden="true"></svg>
@@ -151,6 +162,6 @@
     </div>
   </div>
 
-  <script type="module" src="./assets/app.js?v=20260919-1947"></script>
+  <script type="module" src="./assets/app.js?v=20260919-2030"></script>
 </body>
 </html>

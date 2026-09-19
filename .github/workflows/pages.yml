@@ -28,6 +28,8 @@ jobs:
         run: npm run check
       - name: Build static site
         run: npm run build
+      - name: Verify public download links
+        run: node scripts/check-public-links.mjs
       - name: Smoke-test static output
         run: |
           python3 -m http.server 4173 --directory dist >/tmp/magi-site-http.log 2>&1 &

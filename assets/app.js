@@ -1,5 +1,5 @@
-import { PROGRAMS, escapeHtml, renderContent } from './content.js';
-import { setupCrtEffects, setInteractiveGlow } from './effects.js';
+import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260919-1947';
+import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260919-1947';
 
 const body = document.body;
 const signal = document.getElementById('signal');

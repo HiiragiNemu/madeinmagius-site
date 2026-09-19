@@ -1,0 +1,43 @@
+name: Vendor reader pixel fonts
+
+on:
+  push:
+    paths:
+      - ".github/workflows/vendor-reader-fonts.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Download exact Fusion Pixel release used by reader
+        run: |
+          set -euo pipefail
+          mkdir -p assets/fonts/night-pixel
+          curl -fL             "https://github.com/TakWolf/fusion-pixel-font/releases/download/2026.07.20/fusion-pixel-font-12px-monospaced-otf.woff2-v2026.07.20.zip"             -o /tmp/fusion-pixel.zip
+          unzip -j /tmp/fusion-pixel.zip '*zh_hans*.woff2' -d /tmp/font-extract
+          unzip -j /tmp/fusion-pixel.zip '*ja*.woff2' -d /tmp/font-extract
+          SC="$(find /tmp/font-extract -type f -name '*zh_hans*.woff2' | head -n1)"
+          JP="$(find /tmp/font-extract -type f -name '*ja*.woff2' | head -n1)"
+          test -n "$SC"
+          test -n "$JP"
+          cp "$SC" assets/fonts/night-pixel/fusion-pixel-12px-monospaced-zh_hans.2026.07.20.woff2
+          cp "$JP" assets/fonts/night-pixel/fusion-pixel-12px-monospaced-ja.2026.07.20.woff2
+          curl -fL "https://raw.githubusercontent.com/TakWolf/fusion-pixel-font/2026.07.20/LICENSE-OFL"             -o assets/fonts/night-pixel/OFL.txt
+          printf '%s\n'             'Fusion Pixel Font 12px monospaced, release 2026.07.20.'             'Upstream: https://github.com/TakWolf/fusion-pixel-font'             'License: SIL Open Font License 1.1 (see OFL.txt).'             > assets/fonts/night-pixel/PROVENANCE.txt
+          test "$(head -c4 assets/fonts/night-pixel/fusion-pixel-12px-monospaced-zh_hans.2026.07.20.woff2)" = "wOF2"
+          test "$(head -c4 assets/fonts/night-pixel/fusion-pixel-12px-monospaced-ja.2026.07.20.woff2)" = "wOF2"
+      - name: Commit vendored fonts
+        run: |
+          if git diff --quiet -- assets/fonts/night-pixel; then
+            echo "Fonts already vendored."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/fonts/night-pixel
+          git commit -m "assets: vendor exact reader pixel fonts"
+          git push

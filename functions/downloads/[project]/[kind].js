@@ -6,20 +6,6 @@ const NETEASE_LEGACY = {
     content_type: 'application/vnd.android.package-archive',
     legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/%E7%BD%91%E6%98%93%E4%BA%91%E5%B7%B2%E4%B8%8B%E6%9E%B6%E9%9F%B3%E4%B9%90%E5%AE%8C%E6%95%B4%E5%90%8D%E5%AD%97%E5%AF%BC%E5%87%BA%E5%99%A8_v2.5.1_%E5%AE%8C%E6%95%B4%E7%89%88.apk',
   },
-  'android-store': {
-    name: '网易云已下架音乐完整名字导出器_v2.5.1_商店版.apk',
-    size: 896943,
-    digest: 'sha256:8371437808c723441e81b1eb373f0f35ff296e6bcef79250c1e2f6e84efa6558',
-    content_type: 'application/vnd.android.package-archive',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/%E7%BD%91%E6%98%93%E4%BA%91%E5%B7%B2%E4%B8%8B%E6%9E%B6%E9%9F%B3%E4%B9%90%E5%AE%8C%E6%95%B4%E5%90%8D%E5%AD%97%E5%AF%BC%E5%87%BA%E5%99%A8_v2.5.1_%E5%95%86%E5%BA%97%E7%89%88.apk',
-  },
-  'android-aab': {
-    name: '网易云已下架音乐完整名字导出器_v2.5.1_GooglePlay.aab',
-    size: 873418,
-    digest: 'sha256:631a30b4facecf6720ad5ea9851904d4c2374e0e15fd9819beae999cacc864e5',
-    content_type: 'application/octet-stream',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/%E7%BD%91%E6%98%93%E4%BA%91%E5%B7%B2%E4%B8%8B%E6%9E%B6%E9%9F%B3%E4%B9%90%E5%AE%8C%E6%95%B4%E5%90%8D%E5%AD%97%E5%AF%BC%E5%87%BA%E5%99%A8_v2.5.1_GooglePlay.aab',
-  },
   windows: {
     name: 'NeteasePlaylistExporter-v2.5.1-windows-x64.zip',
     size: 18331073,
@@ -33,13 +19,6 @@ const NETEASE_LEGACY = {
     digest: 'sha256:9a4670a02e2fbbd200e6f5764f302dcd83518616d11a92c9c33186bde5e01d38',
     content_type: 'application/zip',
     legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-python.zip',
-  },
-  source: {
-    name: 'NeteasePlaylistExporter-v2.5.1-source.tar.gz',
-    size: 1154458,
-    digest: 'sha256:48e278561b9f780ea99dc01bc08e5b0770d363b39660366283b25b3878a00b2d',
-    content_type: 'application/gzip',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-source.tar.gz',
   },
   wheel: {
     name: 'netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl',
@@ -85,7 +64,6 @@ const PROJECTS = {
     kinds: {
       android: /\.apk$/i,
       userscript: /\.user\.js$/i,
-      source: /source\.zip$/i,
     },
   },
   netease: {
@@ -95,11 +73,8 @@ const PROJECTS = {
     legacy: NETEASE_LEGACY,
     kinds: {
       'android-full': /完整版\.apk$/i,
-      'android-store': /商店版\.apk$/i,
-      'android-aab': /GooglePlay\.aab$/i,
       windows: /windows-x64\.zip$/i,
       python: /-python\.zip$/i,
-      source: /source\.tar\.gz$/i,
       wheel: /\.whl$/i,
       manifest: /^RELEASE_MANIFEST\.json$/i,
       sums: /^SHA256SUMS\.txt$/i,

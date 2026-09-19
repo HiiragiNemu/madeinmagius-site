@@ -32,7 +32,7 @@ jobs:
           test "$(head -c4 assets/fonts/night-pixel/fusion-pixel-12px-monospaced-ja.2026.07.20.woff2)" = "wOF2"
       - name: Commit vendored fonts
         run: |
-          if git diff --quiet -- assets/fonts/night-pixel; then
+          if [ -z "$(git status --porcelain -- assets/fonts/night-pixel)" ]; then
             echo "Fonts already vendored."
             exit 0
           fi

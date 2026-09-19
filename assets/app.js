@@ -423,18 +423,18 @@ function bootSequence() {
 }
 
 function applyPixelFont(enabled, persist = true) {
-  document.documentElement.dataset.pixelFont = enabled ? 'on' : 'off';
+  document.documentElement.dataset.pixelFont = enabled ? 'true' : 'false';
   if (pixelFontToggle) {
     pixelFontToggle.setAttribute('aria-pressed', String(enabled));
     pixelFontToggle.textContent = enabled ? 'PIXEL FONT / ON' : 'PIXEL FONT / OFF';
   }
-  if (persist) localStorage.setItem('magius-link-pixel-font', enabled ? 'on' : 'off');
+  if (persist) localStorage.setItem('magius-link-pixel-font', enabled ? 'true' : 'false');
 }
 
-applyPixelFont(localStorage.getItem('magius-link-pixel-font') !== 'off', false);
+applyPixelFont(localStorage.getItem('magius-link-pixel-font') !== 'false', false);
 
 pixelFontToggle?.addEventListener('click', () => {
-  const enabled = document.documentElement.dataset.pixelFont !== 'on';
+  const enabled = document.documentElement.dataset.pixelFont !== 'true';
   applyPixelFont(enabled);
   crt.pulse(.45);
 });

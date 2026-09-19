@@ -112,7 +112,7 @@ export function setupCrtEffects(options) {
   }
 
   function triggerSyncBurst(strength = 1) {
-    if (reducedMotion.matches || !active) return;
+    if (!active) return;
 
     root.style.setProperty('--tear-y', String(Math.round(8 + Math.random() * 82)) + '%');
     root.style.setProperty('--tear-h', String(1 + Math.round(Math.random() * 3 * strength)) + 'px');
@@ -127,7 +127,7 @@ export function setupCrtEffects(options) {
   }
 
   function triggerTrackingSweep(now = performance.now()) {
-    if (reducedMotion.matches || !active || !trackingSweep) return;
+    if (!active || !trackingSweep) return;
 
     clearTimeout(trackingTimer);
 
@@ -174,7 +174,7 @@ export function setupCrtEffects(options) {
   }
 
   function updateSignal(now) {
-    if (!active || reducedMotion.matches) return;
+    if (!active) return;
 
     signalTickCount += 1;
     signal.dataset.tick = String(signalTickCount);
@@ -182,19 +182,21 @@ export function setupCrtEffects(options) {
     // Measured from the supplied 60 fps video: stable areas wander roughly
     // ±0.5 px horizontally frame-to-frame, while vertical motion is much lower.
     // Combine a slow timebase wander with low-amplitude high-frequency jitter.
-    const lowDrift =
-      Math.sin(now * .00155) * .34 +
-      Math.sin(now * .0039 + 1.37) * .15;
-    const randomPhase = (Math.random() + Math.random() - 1) * .82;
+    const motionScale = reducedMotion.matches ? .52 : 1;
+    const lowDrift = (
+      Math.sin(now * .00155) * .48 +
+      Math.sin(now * .0039 + 1.37) * .22
+    ) * motionScale;
+    const randomPhase = (Math.random() + Math.random() - 1) * 1.12 * motionScale;
     const motion = Math.min(.78, pointerEnergy * .46);
     const trackingKick = signal.dataset.tracking === 'true'
-      ? Math.sin(now * .034 + 1.2) * 1.15
+      ? Math.sin(now * .034 + 1.2) * 1.55 * motionScale
       : 0;
 
     const x = lowDrift + randomPhase + trackingKick + (Math.random() - .5) * motion;
     const y =
-      Math.sin(now * .00115 + .7) * .035 +
-      (Math.random() + Math.random() - 1) * (.12 + motion * .13);
+      Math.sin(now * .00115 + .7) * .055 * motionScale +
+      (Math.random() + Math.random() - 1) * (.16 + motion * .15) * motionScale;
 
     root.style.setProperty('--jitter-x', x.toFixed(2) + 'px');
     root.style.setProperty('--jitter-y', y.toFixed(2) + 'px');
@@ -234,7 +236,7 @@ export function setupCrtEffects(options) {
 
   function frame(now) {
     rafId = requestAnimationFrame(frame);
-    if (!active || reducedMotion.matches) return;
+    if (!active) return;
 
     // Signal instability is intentionally around 30 Hz; the raster, text,
     // curvature and phosphor layers themselves remain full-resolution.

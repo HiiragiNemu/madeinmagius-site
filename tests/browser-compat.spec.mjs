@@ -76,19 +76,27 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   }
   if (testInfo.project.name === 'desktop-chromium') {
     const layout = await page.evaluate(() => {
+      const folders = document.querySelector('.folders')?.getBoundingClientRect();
       const subsystem = document.querySelector('.subsystem')?.getBoundingClientRect();
       const panel = document.querySelector('#content-panel')?.getBoundingClientRect();
-      return subsystem && panel ? {
-        subsystemHeight: subsystem.height,
+      const firstSub = document.querySelector('.sub-node')?.getBoundingClientRect();
+      return folders && subsystem && panel && firstSub ? {
+        foldersWidth: folders.width,
+        subsystemWidth: subsystem.width,
+        panelWidth: panel.width,
         panelHeight: panel.height,
-        subsystemBottom: subsystem.bottom,
-        panelTop: panel.top,
+        firstSubWidth: firstSub.width,
+        panelLeft: panel.left,
+        subsystemRight: subsystem.right,
       } : null;
     });
     expect(layout).not.toBeNull();
-    expect(layout.subsystemHeight).toBeLessThan(145);
-    expect(layout.panelHeight).toBeGreaterThan(320);
-    expect(layout.panelTop).toBeGreaterThanOrEqual(layout.subsystemBottom - 3);
+    expect(layout.foldersWidth).toBeLessThan(235);
+    expect(layout.subsystemWidth).toBeLessThan(285);
+    expect(layout.firstSubWidth).toBeLessThan(285);
+    expect(layout.panelWidth).toBeGreaterThan(650);
+    expect(layout.panelHeight).toBeGreaterThan(430);
+    expect(layout.panelLeft).toBeGreaterThanOrEqual(layout.subsystemRight - 3);
   }
 
   const win = page.locator('.download-button').first();

@@ -18,6 +18,7 @@ export function setupCrtEffects(options) {
   let trackingTimer = 0;
   let signalTickCount = 0;
   let noiseTickCount = 0;
+  let trackingCount = 0;
   let active = !document.hidden;
 
   const mobileCurve = matchMedia('(max-width: 767px)');
@@ -135,6 +136,8 @@ export function setupCrtEffects(options) {
     root.style.setProperty('--tracking-brightness', (1.04 + Math.random() * .09).toFixed(3));
 
     signal.dataset.tracking = 'true';
+    trackingCount += 1;
+    signal.dataset.trackingCount = String(trackingCount);
     pointerEnergy = Math.max(pointerEnergy, .68);
 
     if (Math.random() < .55) {

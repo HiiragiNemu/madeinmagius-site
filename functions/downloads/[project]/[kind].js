@@ -1,3 +1,83 @@
+const NETEASE_LEGACY = {
+  'android-full': {
+    name: '网易云已下架音乐完整名字导出器_v2.5.1_完整版.apk',
+    size: 897805,
+    digest: 'sha256:9309450db4918cdb2e5d2e04ffa85b35597d77b191a8d1aea3c8d9e94fe393c1',
+    content_type: 'application/vnd.android.package-archive',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/%E7%BD%91%E6%98%93%E4%BA%91%E5%B7%B2%E4%B8%8B%E6%9E%B6%E9%9F%B3%E4%B9%90%E5%AE%8C%E6%95%B4%E5%90%8D%E5%AD%97%E5%AF%BC%E5%87%BA%E5%99%A8_v2.5.1_%E5%AE%8C%E6%95%B4%E7%89%88.apk',
+  },
+  'android-store': {
+    name: '网易云已下架音乐完整名字导出器_v2.5.1_商店版.apk',
+    size: 896943,
+    digest: 'sha256:8371437808c723441e81b1eb373f0f35ff296e6bcef79250c1e2f6e84efa6558',
+    content_type: 'application/vnd.android.package-archive',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/%E7%BD%91%E6%98%93%E4%BA%91%E5%B7%B2%E4%B8%8B%E6%9E%B6%E9%9F%B3%E4%B9%90%E5%AE%8C%E6%95%B4%E5%90%8D%E5%AD%97%E5%AF%BC%E5%87%BA%E5%99%A8_v2.5.1_%E5%95%86%E5%BA%97%E7%89%88.apk',
+  },
+  'android-aab': {
+    name: '网易云已下架音乐完整名字导出器_v2.5.1_GooglePlay.aab',
+    size: 873418,
+    digest: 'sha256:631a30b4facecf6720ad5ea9851904d4c2374e0e15fd9819beae999cacc864e5',
+    content_type: 'application/octet-stream',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/%E7%BD%91%E6%98%93%E4%BA%91%E5%B7%B2%E4%B8%8B%E6%9E%B6%E9%9F%B3%E4%B9%90%E5%AE%8C%E6%95%B4%E5%90%8D%E5%AD%97%E5%AF%BC%E5%87%BA%E5%99%A8_v2.5.1_GooglePlay.aab',
+  },
+  windows: {
+    name: 'NeteasePlaylistExporter-v2.5.1-windows-x64.zip',
+    size: 18331073,
+    digest: 'sha256:2cca372d639cb0a1d3fb0d53ef7188246d44e3ce2eeaa2e06e86fc7e366daa73',
+    content_type: 'application/zip',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-windows-x64.zip',
+  },
+  python: {
+    name: 'NeteasePlaylistExporter-v2.5.1-python.zip',
+    size: 1218343,
+    digest: 'sha256:9a4670a02e2fbbd200e6f5764f302dcd83518616d11a92c9c33186bde5e01d38',
+    content_type: 'application/zip',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-python.zip',
+  },
+  source: {
+    name: 'NeteasePlaylistExporter-v2.5.1-source.tar.gz',
+    size: 1154458,
+    digest: 'sha256:48e278561b9f780ea99dc01bc08e5b0770d363b39660366283b25b3878a00b2d',
+    content_type: 'application/gzip',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-source.tar.gz',
+  },
+  wheel: {
+    name: 'netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl',
+    size: 54861,
+    digest: 'sha256:4223c69aa8cfee4d5aff50489f4260de4834de2861ab8be0b489e71a1dac2e1e',
+    content_type: 'application/zip',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl',
+  },
+  manifest: {
+    name: 'RELEASE_MANIFEST.json',
+    size: 1888,
+    digest: 'sha256:b9c98cacee24afce2fdaa146d7ba8ba48211bd96b41a75f499281bfb15577378',
+    content_type: 'application/json',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/RELEASE_MANIFEST.json',
+  },
+  sums: {
+    name: 'SHA256SUMS.txt',
+    size: 1144,
+    digest: null,
+    content_type: 'text/plain; charset=utf-8',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/SHA256SUMS.txt',
+  },
+  cert: {
+    name: 'ncm-exporter-upload-cert.pem',
+    size: 1896,
+    digest: 'sha256:b014ef0614bf874c90583c9fd81aca4c08941ca8ab187e6469e93a73df239e56',
+    content_type: 'application/x-pem-file',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/ncm-exporter-upload-cert.pem',
+  },
+  signature: {
+    name: 'SIGNATURE-VERIFICATION.txt',
+    size: 7436,
+    digest: 'sha256:18efa13ec3d76425617e4df5f3d5da4a12d57dfa853312b73f7d557495a2bc9b',
+    content_type: 'text/plain; charset=utf-8',
+    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/SIGNATURE-VERIFICATION.txt',
+  },
+};
+
 const PROJECTS = {
   bilibili: {
     repo: 'HiiragiNemu/Bilibili-Follower-Snapshot',
@@ -11,9 +91,20 @@ const PROJECTS = {
   netease: {
     repo: 'HiiragiNemu/netease-cloudmusic-delisted-exporter',
     mode: 'latest',
+    minimumVersion: '2.5.1',
+    legacy: NETEASE_LEGACY,
     kinds: {
+      'android-full': /完整版\.apk$/i,
+      'android-store': /商店版\.apk$/i,
+      'android-aab': /GooglePlay\.aab$/i,
       windows: /windows-x64\.zip$/i,
       python: /-python\.zip$/i,
+      source: /source\.tar\.gz$/i,
+      wheel: /\.whl$/i,
+      manifest: /^RELEASE_MANIFEST\.json$/i,
+      sums: /^SHA256SUMS\.txt$/i,
+      cert: /upload-cert\.pem$/i,
+      signature: /^SIGNATURE-VERIFICATION\.txt$/i,
     },
   },
   exedra: {
@@ -53,8 +144,23 @@ async function githubJson(url, token) {
   return response.json();
 }
 
+function parseVersion(tag) {
+  const match = String(tag || '').match(/(\d+)\.(\d+)\.(\d+)/);
+  return match ? match.slice(1).map(Number) : [0, 0, 0];
+}
+
+function atLeast(tag, minimum) {
+  const a = parseVersion(tag);
+  const b = parseVersion(minimum);
+  for (let i = 0; i < 3; i += 1) {
+    if (a[i] !== b[i]) return a[i] > b[i];
+  }
+  return true;
+}
+
 async function getAsset(config, kind, token) {
   const matcher = config.kinds[kind];
+
   if (config.mode === 'scan') {
     const releases = await githubJson(
       `https://api.github.com/repos/${config.repo}/releases?per_page=30`,
@@ -71,14 +177,30 @@ async function getAsset(config, kind, token) {
     `https://api.github.com/repos/${config.repo}/releases/latest`,
     token,
   );
+
+  if (config.minimumVersion && !atLeast(release.tag_name, config.minimumVersion)) {
+    const fallback = config.legacy?.[kind];
+    if (fallback) return fallback;
+  }
+
   const asset = (release.assets || []).find(candidate => matcher.test(candidate.name));
-  if (!asset) throw new Error(`asset not found: ${kind}`);
-  return asset;
+  if (asset) return asset;
+
+  const fallback = config.legacy?.[kind];
+  if (fallback) return fallback;
+
+  throw new Error(`asset not found: ${kind}`);
 }
 
 async function getBinary(asset, token, range) {
+  if (asset.legacy_url) {
+    const headers = range ? { Range: range } : undefined;
+    return fetch(asset.legacy_url, { headers, redirect: 'follow' });
+  }
+
   const apiHeaders = githubHeaders(token, 'application/octet-stream');
   if (range) apiHeaders.Range = range;
+
   const assetResponse = await fetch(asset.url, {
     headers: apiHeaders,
     redirect: 'manual',
@@ -90,6 +212,7 @@ async function getBinary(asset, token, range) {
     const headers = range ? { Range: range } : undefined;
     return fetch(location, { headers });
   }
+
   return assetResponse;
 }
 
@@ -129,6 +252,7 @@ async function handle(context, headOnly = false) {
     responseHeaders.set('cache-control', 'public, max-age=300, s-maxage=300');
     responseHeaders.set('x-content-type-options', 'nosniff');
     responseHeaders.set('accept-ranges', binaryResponse?.headers.get('accept-ranges') || 'bytes');
+
     if (asset.digest) {
       responseHeaders.set('x-release-digest', asset.digest);
       responseHeaders.set('etag', `"${asset.digest}"`);

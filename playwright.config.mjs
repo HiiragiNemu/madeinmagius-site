@@ -13,6 +13,14 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'desktop-chromium',
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 1600, height: 900 },
+        deviceScaleFactor: 1,
+      },
+    },
+    {
       name: 'ios-webkit',
       use: {
         ...devices['iPhone 15 Pro'],

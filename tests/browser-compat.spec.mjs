@@ -27,6 +27,17 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   expect(perfState.scanlineAnimation).toBe('none');
   expect(perfState.grainAnimation).toBe('none');
 
+  const staticLowFi = await page.evaluate(() => ({
+    grainOpacity: Number(getComputedStyle(document.querySelector('.tube-grain')).opacity),
+    scanOpacity: Number(getComputedStyle(document.querySelector('.scanlines')).opacity),
+    phosphorOpacity: Number(getComputedStyle(document.querySelector('.phosphor-grid')).opacity),
+    headingShadow: getComputedStyle(document.querySelector('.masthead__row h1')).textShadow,
+  }));
+  expect(staticLowFi.grainOpacity).toBeGreaterThanOrEqual(0.19);
+  expect(staticLowFi.scanOpacity).toBeGreaterThanOrEqual(0.38);
+  expect(staticLowFi.phosphorOpacity).toBeGreaterThanOrEqual(0.05);
+  expect(staticLowFi.headingShadow).not.toBe('none');
+
   await expect(page.locator('.tube-grain')).toBeAttached();
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => document.fonts.load('12px MagiusPixel'));

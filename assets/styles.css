@@ -3031,3 +3031,150 @@ html[data-crt-engine="mobile-static"] .signal{
     -webkit-transform:scale(.994,.988)!important;
   }
 }
+
+
+/* === STATIC LOW-FIDELITY RESTORATION ===
+   Keep the soft analog texture without bringing back continuous motion. */
+.signal{
+  filter:url("#crt-warp") brightness(.982) contrast(1.055) saturate(.89)!important;
+  -webkit-filter:url("#crt-warp") brightness(.982) contrast(1.055) saturate(.89)!important;
+}
+html[data-crt-engine="mobile-static"] .signal{
+  filter:none!important;
+  -webkit-filter:none!important;
+  transform:scale(.994,.988)!important;
+  -webkit-transform:scale(.994,.988)!important;
+}
+
+/* Static emulsion/grain texture: stronger than the performance pass, but no
+   background-position animation and no JS redraw loop. */
+.tube-grain,
+.boot__grain{
+  opacity:.22!important;
+  mix-blend-mode:screen!important;
+  animation:none!important;
+  will-change:auto!important;
+  filter:sepia(.08) hue-rotate(31deg) saturate(.76) contrast(1.05)!important;
+  -webkit-filter:sepia(.08) hue-rotate(31deg) saturate(.76) contrast(1.05)!important;
+}
+.scanlines{
+  opacity:.43!important;
+  animation:none!important;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(1,0,1,.58) 0 1px,
+    rgba(0,0,0,.10) 1px 1.55px,
+    transparent 1.55px 2.85px
+  )!important;
+}
+.phosphor-grid{
+  opacity:.062!important;
+  animation:none!important;
+  mix-blend-mode:soft-light!important;
+}
+
+/* Tube glass stays soft and dirty, with dark edge falloff instead of an outer
+   luminous ring. */
+.screen::before{
+  background:
+    radial-gradient(ellipse at 50% 47%,
+      transparent 27%,
+      rgba(0,0,0,.018) 48%,
+      rgba(0,0,0,.13) 72%,
+      rgba(0,0,0,.39) 91%,
+      rgba(0,0,0,.74) 100%),
+    linear-gradient(90deg,
+      rgba(0,0,0,.34),
+      transparent 9% 91%,
+      rgba(0,0,0,.36))!important;
+  box-shadow:
+    inset 0 0 3px rgba(214,238,219,.10),
+    inset 0 0 22px rgba(0,0,0,.70),
+    inset 0 0 68px rgba(0,0,0,.30)!important;
+}
+.screen::after{
+  background:
+    radial-gradient(ellipse at 50% 50%,
+      transparent 0 80%,
+      rgba(0,0,0,.17) 88%,
+      rgba(0,0,0,.52) 96%,
+      #000 100%)!important;
+}
+
+/* Restore the slight phosphor bloom/soft registration on emitted UI only.
+   Nothing moves: this is entirely static. */
+:is(
+  .masthead__row h1,
+  .masthead__node,
+  .masthead__clock,
+  .section-label,
+  .menu-node__copy b,
+  .menu-node__copy small,
+  .sub-node b,
+  .sub-node small,
+  .content-kicker,
+  .content-inner h2,
+  .content-inner h3,
+  .download-button,
+  .statusbar
+){
+  transform:none!important;
+  text-shadow:
+    -1.10px 0 .22px rgba(73,196,255,.60),
+    1.18px 0 .22px rgba(255,62,91,.57),
+    0 0 2.7px rgba(193,255,210,.18)!important;
+}
+.content-inner :is(p,li,code,td,th){
+  text-shadow:
+    -.52px 0 .14px rgba(73,196,255,.34),
+    .56px 0 .14px rgba(255,62,91,.32),
+    0 0 1.1px rgba(210,255,220,.08)!important;
+}
+.menu-node.is-selected,
+.sub-node.is-selected,
+.download-button{
+  transform:none!important;
+  box-shadow:
+    -1.1px 0 0 rgba(73,196,255,.61),
+    1.2px 0 0 rgba(255,62,91,.58),
+    0 0 5px rgba(243,255,246,.22),
+    0 0 10px rgba(104,239,132,.10)!important;
+}
+.connector-path.is-hot{
+  filter:
+    drop-shadow(-1px 0 .12px rgba(73,196,255,.55))
+    drop-shadow(1.05px 0 .12px rgba(255,62,91,.52))
+    drop-shadow(0 0 2px rgba(255,255,255,.20))!important;
+}
+
+/* Preserve performance decision: absolutely no continuous scan/jitter/fault
+   animations are allowed back in. */
+.rolling-band,
+.tracking-sweep,
+.tear-band,
+.mouse-glow,
+.boot__roll{
+  display:none!important;
+}
+.scanlines,
+.tube-grain,
+.phosphor-grid,
+.boot__raster,
+.boot__grain,
+.boot__signal,
+.boot__loading i{
+  animation:none!important;
+  will-change:auto!important;
+}
+
+/* Mobile keeps the same low-fi texture without the expensive full-screen SVG
+   filter. */
+@media(max-width:760px){
+  .tube-grain,.boot__grain{opacity:.20!important}
+  .scanlines{opacity:.39!important}
+  .phosphor-grid{opacity:.052!important}
+  .signal{
+    filter:none!important;
+    -webkit-filter:none!important;
+  }
+}

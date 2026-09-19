@@ -7,8 +7,8 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="MadeInMagius / MAGIUS LINK — software, tools and guides in a CRT terminal interface.">
   <title>MAGIUS LINK // Made In Magius</title>
-  <link rel="icon" href="./assets/magius-mark.svg?v=20260919-2125" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=20260919-2125">
+  <link rel="icon" href="./assets/magius-mark.svg?v=20260919-2358" type="image/svg+xml">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260919-2358">
 </head>
 <body>
   <svg class="svg-defs" aria-hidden="true" focusable="false">
@@ -18,17 +18,17 @@
 
         <!-- Static RGB registration only. No animated turbulence/noise. -->
         <feColorMatrix in="SourceGraphic" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1" result="reg-red"/>
-        <feOffset in="reg-red" dx=".55" dy=".08" result="reg-red-shift"/>
+        <feOffset in="reg-red" dx=".72" dy=".08" result="reg-red-shift"/>
         <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 0 1" result="reg-green"/>
         <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 0 1" result="reg-blue"/>
-        <feOffset in="reg-blue" dx="-.55" dy="-.08" result="reg-blue-shift"/>
+        <feOffset in="reg-blue" dx="-.72" dy="-.08" result="reg-blue-shift"/>
         <feComposite in="reg-red-shift" in2="reg-green" operator="arithmetic" k2="1" k3="1" result="reg-rg"/>
         <feComposite in="reg-rg" in2="reg-blue-shift" operator="arithmetic" k2="1" k3="1" result="reg-rgb"/>
         <feComposite in="reg-rgb" in2="SourceGraphic" operator="in" result="registered"/>
 
         <!-- Static tube curvature. -->
         <feDisplacementMap id="curve-displacement" in="registered" in2="lens" scale="46" xChannelSelector="R" yChannelSelector="G" result="curved"/>
-        <feGaussianBlur in="curved" stdDeviation=".10"/>
+        <feGaussianBlur in="curved" stdDeviation=".20"/>
       </filter>
     </defs>
   </svg>
@@ -38,8 +38,8 @@
     <div class="boot__grain" aria-hidden="true"></div>
     <div class="boot__roll" aria-hidden="true"></div>
     <div class="boot__signal">
-      <img class="boot__emblem" src="./assets/magius-mark.svg?v=20260919-2125" alt="">
-      <img class="boot__wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2125" alt="MAGIUS LINK">
+      <img class="boot__emblem" src="./assets/magius-mark.svg?v=20260919-2358" alt="">
+      <img class="boot__wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2358" alt="MAGIUS LINK">
       <div class="boot__loading">LOADING <i></i> 数据加载中</div>
     </div>
   </div>
@@ -103,8 +103,8 @@
 
           <section id="stage" class="stage" aria-live="polite">
             <div class="brand-watermark" aria-hidden="true">
-              <img class="brand-emblem" src="./assets/magius-mark.svg?v=20260919-2125" alt="">
-              <img class="brand-wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2125" alt="">
+              <img class="brand-emblem" src="./assets/magius-mark.svg?v=20260919-2358" alt="">
+              <img class="brand-wordmark" src="./assets/magius-link-wordmark.svg?v=20260919-2358" alt="">
             </div>
 
             <svg id="connectors" class="connectors" aria-hidden="true"></svg>
@@ -128,6 +128,6 @@
     </div>
   </div>
 
-  <script type="module" src="./assets/app.js?v=20260919-2125"></script>
+  <script type="module" src="./assets/app.js?v=20260919-2358"></script>
 </body>
 </html>

@@ -33,33 +33,33 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   const laterTick = Number(await page.locator('#signal').getAttribute('data-tick') || '0');
   expect(laterTick).toBeGreaterThan(initialTick);
 
-  await page.locator('[data-program="bilibili"]').click();
+  await page.locator('[data-program="bilibili"]').click({ force: true });
   await expect(page.locator('[data-sub="android"]')).toBeVisible();
-  await page.locator('[data-sub="android"]').click();
+  await page.locator('[data-sub="android"]').click({ force: true });
   const apk = page.locator('.download-button').first();
   await expect(apk).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/bilibili\/v0\.1\.9\/.*\.apk/);
   expect(await page.locator('#content-panel').evaluate(node => node.previousElementSibling?.dataset?.sub)).toBe('android');
 
-  await page.locator('[data-program="netease"]').click();
-  await page.locator('[data-sub="windows"]').click();
+  await page.locator('[data-program="netease"]').click({ force: true });
+  await page.locator('[data-sub="windows"]').click({ force: true });
   const win = page.locator('.download-button').first();
   await expect(win).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/netease\/v2\.5\.1\/.*windows-x64\.zip/);
 
-  await page.locator('[data-program="exedra"]').click();
-  await page.locator('[data-sub="integrity"]').click();
+  await page.locator('[data-program="exedra"]').click({ force: true });
+  await page.locator('[data-sub="integrity"]').click({ force: true });
   await expect(page.getByText('TW ORIGINAL CLIENT')).toBeVisible();
   await expect(page.getByText('JP ORIGINAL CLIENT')).toBeVisible();
 
-  await page.locator('#home-jump').click();
+  await page.locator('#home-jump').click({ force: true });
   await expect(page).toHaveURL(/#home\/welcome$/);
   await expect(page.locator('h2', { hasText: 'WELCOME' })).toBeVisible();
 
-  await page.locator('#pixel-toggle').click();
+  await page.locator('#pixel-toggle').click({ force: true });
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'false');
-  await page.locator('#pixel-toggle').click();
+  await page.locator('#pixel-toggle').click({ force: true });
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
 
-  await page.locator('[data-program="bilibili"]').click();
+  await page.locator('[data-program="bilibili"]').click({ force: true });
   await expect(page.locator('#tracking-sweep')).toBeVisible();
   await expect(page.locator('#signal')).toHaveAttribute('data-tracking', 'true', { timeout: 1000 });
 

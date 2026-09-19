@@ -41,6 +41,11 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   expect(await page.locator('#content-panel').evaluate(node => node.previousElementSibling?.dataset?.sub)).toBe('android');
 
   await page.locator('[data-program="netease"]').click({ force: true });
+  const selectedNetease = page.locator('[data-program="netease"]');
+  const selectedSubtitle = selectedNetease.locator('.menu-node__copy small');
+  await expect(selectedNetease).toHaveClass(/is-selected/);
+  expect(await selectedNetease.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+  expect(await selectedSubtitle.evaluate(el => getComputedStyle(el).color)).toBe('rgb(21, 54, 31)');
   await page.locator('[data-sub="windows"]').click({ force: true });
   const win = page.locator('.download-button').first();
   await expect(win).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/netease\/v2\.5\.1\/.*windows-x64\.zip/);

@@ -18,10 +18,15 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
     expect(computedFilter).not.toContain('url(');
   }
 
-  const initialJitter = await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--jitter-x'));
-  await page.waitForTimeout(160);
-  const laterJitter = await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--jitter-x'));
-  expect(laterJitter).not.toBe(initialJitter);
+  await page.bringToFront();
+  const initialTick = Number(await page.locator('#signal').getAttribute('data-tick') || '0');
+  await page.waitForFunction(
+    previous => Number(document.querySelector('#signal')?.dataset.tick || '0') > previous,
+    initialTick,
+    { timeout: 1500 }
+  );
+  const laterTick = Number(await page.locator('#signal').getAttribute('data-tick') || '0');
+  expect(laterTick).toBeGreaterThan(initialTick);
 
   await page.locator('[data-program="bilibili"]').click();
   await expect(page.locator('[data-sub="android"]')).toBeVisible();

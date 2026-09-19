@@ -1467,3 +1467,303 @@ html[data-crt-engine="webkit-svg"] .signal{
   box-shadow:0 0 8px rgba(75,255,127,.18);
 }
 .terminal-copy-button:disabled{opacity:.72;cursor:wait}
+
+
+/* === Alien-terminal fidelity pass / 2026-09-19 === */
+@font-face{
+  font-family:"MagiusPixel";
+  src:
+    url("https://cdn.jsdelivr.net/gh/TakWolf/fusion-pixel-font@latest/build/fusion-pixel-12px-monospaced-zh_hans.woff2") format("woff2"),
+    url("https://fusion-pixel-font.takwolf.com/fusion-pixel-12px-monospaced-zh_hans.otf.woff2") format("woff2");
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+}
+:root{
+  --pixel-face:"MagiusPixel","MS Gothic","Courier New",monospace;
+  --fringe-blue:rgba(65,204,255,.72);
+  --fringe-red:rgba(255,57,89,.68);
+}
+html[data-pixel-font="true"] .signal,
+html[data-pixel-font="true"] .signal :is(button,a,span,p,b,strong,small,label,h1,h2,h3,h4,li,dt,dd,code,summary,th,td){
+  font-family:var(--pixel-face)!important;
+  font-synthesis:none!important;
+  font-weight:400!important;
+}
+html[data-pixel-font="false"] .signal{
+  font-family:"Courier New","Lucida Console","Microsoft YaHei UI","PingFang SC",monospace;
+}
+html[data-pixel-font="false"] .content-inner :is(p,li){
+  font-family:"Microsoft YaHei UI","PingFang SC","Noto Sans CJK SC","Segoe UI",sans-serif!important;
+}
+
+/* The reader night surface has a quiet black surround and a dark optical edge,
+   not a glowing rounded neon frame. The displacement filter creates the actual
+   bulge; this radius only clips the physical glass. */
+.bezel{
+  padding:10px;
+  background:#000;
+}
+.screen{
+  border-radius:18px / 13px!important;
+  clip-path:none!important;
+  box-shadow:
+    0 0 0 1px rgba(40,55,44,.5),
+    0 0 34px rgba(0,0,0,.92),
+    inset 0 0 3px rgba(218,233,213,.18),
+    inset 0 0 17px rgba(0,0,0,.68)!important;
+}
+.screen::before{
+  border-radius:18px / 13px;
+  background:
+    radial-gradient(ellipse at 50% 47%,
+      transparent 34%,
+      rgba(0,0,0,.02) 57%,
+      rgba(0,0,0,.12) 76%,
+      rgba(0,0,0,.31) 91%,
+      rgba(0,0,0,.66) 100%),
+    linear-gradient(90deg,rgba(0,0,0,.28),transparent 8% 92%,rgba(0,0,0,.30));
+  box-shadow:
+    inset 0 0 3px rgba(218,233,213,.19),
+    inset 0 0 20px rgba(0,0,0,.66),
+    inset 0 0 56px rgba(0,0,0,.25);
+}
+.signal{
+  contain:strict;
+  isolation:isolate;
+  background:
+    radial-gradient(ellipse 64% 66% at 51% 46%,#263820 0%,#192814 43%,#0d170a 73%,#020502 100%)!important;
+}
+
+/* Reader-like raster: clear horizontal structure plus a constantly moving,
+   sparse emulsion grain. Canvas noise is disabled; the texture animation gives
+   stronger grain while removing repeated ImageData allocations on mobile. */
+.noise{display:none!important}
+.tube-grain{
+  position:absolute;
+  inset:0;
+  z-index:46;
+  pointer-events:none;
+  background:
+    url("./lofi-grain.svg") 17px 11px / 192px 192px repeat,
+    url("./lofi-grain.svg") 83px 47px / 271px 271px repeat;
+  background-blend-mode:screen;
+  mix-blend-mode:screen;
+  opacity:.23;
+  filter:sepia(.10) hue-rotate(33deg) saturate(.72);
+  -webkit-filter:sepia(.10) hue-rotate(33deg) saturate(.72);
+  will-change:background-position,transform;
+  animation:tube-grain-drift .105s steps(2,end) infinite;
+}
+@keyframes tube-grain-drift{
+  0%{background-position:17px 11px,83px 47px;transform:translate3d(0,0,0)}
+  25%{background-position:22px 7px,78px 53px;transform:translate3d(.18px,0,0)}
+  50%{background-position:13px 16px,89px 43px;transform:translate3d(-.15px,.08px,0)}
+  75%{background-position:20px 13px,81px 50px;transform:translate3d(.08px,-.05px,0)}
+  100%{background-position:17px 11px,83px 47px;transform:translate3d(0,0,0)}
+}
+.scanlines{
+  z-index:48;
+  opacity:.38!important;
+  mix-blend-mode:multiply;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(5,0,2,.57) 0 .65px,
+    transparent .65px 2px
+  )!important;
+}
+.phosphor-grid{
+  z-index:47;
+  opacity:.085!important;
+  mix-blend-mode:soft-light;
+}
+.rolling-band{
+  z-index:49;
+  opacity:.34!important;
+  filter:blur(.58px)!important;
+  -webkit-filter:blur(.58px)!important;
+}
+
+/* Random top-to-bottom tracking pass. This is separate from the slow roll:
+   a short tracking fault sweeps down the glass with a stepped bright seam,
+   blur and lateral colour echo. */
+.tracking-sweep{
+  position:absolute;
+  left:-3%;
+  right:-3%;
+  top:-18%;
+  height:13%;
+  z-index:52;
+  pointer-events:none;
+  opacity:0;
+  transform:translate3d(var(--tracking-shift,0px),0,0);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,.02) 0 2px,
+      rgba(116,255,153,.07) 2px 5px,
+      rgba(0,0,0,.18) 5px 7px
+    ),
+    linear-gradient(180deg,
+      transparent 0,
+      rgba(78,255,123,.06) 29%,
+      rgba(222,255,230,.26) 47%,
+      rgba(255,255,255,.52) 50%,
+      rgba(48,255,107,.12) 53%,
+      rgba(0,0,0,.28) 59%,
+      transparent 100%);
+  box-shadow:
+    -2px 0 0 var(--fringe-blue),
+    2px 0 0 var(--fringe-red),
+    0 2px 9px rgba(128,255,159,.16);
+  backdrop-filter:blur(.34px) brightness(1.08);
+  -webkit-backdrop-filter:blur(.34px) brightness(1.08);
+  will-change:top,transform,opacity;
+}
+.tracking-sweep::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;
+  top:48%;
+  height:1px;
+  background:rgba(235,255,240,.8);
+  box-shadow:
+    -1px 0 var(--fringe-blue),
+    1px 0 var(--fringe-red),
+    0 0 5px rgba(217,255,227,.48);
+}
+.signal[data-tracking="true"] .tracking-sweep{
+  opacity:.74;
+  animation:tracking-sweep-pass var(--tracking-duration,1.08s) steps(34,end) both;
+}
+@keyframes tracking-sweep-pass{
+  0%{top:-18%;transform:translate3d(var(--tracking-shift,0px),0,0)}
+  18%{transform:translate3d(calc(var(--tracking-shift,0px) * -0.35),0,0)}
+  43%{transform:translate3d(calc(var(--tracking-shift,0px) * .7),0,0)}
+  69%{transform:translate3d(calc(var(--tracking-shift,0px) * -.55),0,0)}
+  100%{top:108%;transform:translate3d(0,0,0)}
+}
+
+/* Registration orientation from the supplied Alien reference:
+   cool/cyan fringe on the LEFT, red/magenta fringe on the RIGHT. */
+.masthead__row h1,
+.menu-node__copy b,
+.sub-node b,
+.content-inner h2,
+.content-inner h3,
+.download-button,
+.statusbar,
+.section-label{
+  text-shadow:
+    -1.0px 0 .18px var(--fringe-blue),
+    1.15px 0 .18px var(--fringe-red),
+    0 0 3px rgba(187,255,203,.18)!important;
+}
+.menu-node.is-selected,
+.sub-node.is-selected,
+.download-button{
+  box-shadow:
+    -2px 0 0 var(--fringe-blue),
+    2px 0 0 var(--fringe-red),
+    0 0 6px rgba(238,255,242,.34),
+    0 0 14px rgba(100,255,137,.18)!important;
+}
+
+/* Header hardware controls live inside the green machine bar. */
+.masthead__bar{
+  display:grid!important;
+  grid-template-columns:auto 1fr auto;
+  gap:8px;
+}
+.pixel-toggle,.home-jump{
+  appearance:none;
+  -webkit-appearance:none;
+  align-self:center;
+  height:22px;
+  margin:0;
+  padding:0 7px;
+  border:1px solid rgba(0,28,9,.72);
+  border-radius:0;
+  color:#001707;
+  background:rgba(213,255,223,.15);
+  font-family:var(--pixel-face)!important;
+  font-size:9px;
+  line-height:20px;
+  letter-spacing:.05em;
+  cursor:pointer;
+  text-shadow:none!important;
+}
+.home-jump{width:27px;padding:0;font-size:15px}
+.pixel-toggle:hover,.pixel-toggle:focus-visible,
+.home-jump:hover,.home-jump:focus-visible{
+  color:#001707;
+  background:rgba(255,255,255,.36);
+  outline:1px solid rgba(0,0,0,.72);
+  outline-offset:1px;
+}
+.pixel-toggle[aria-pressed="false"]{opacity:.58}
+
+/* Reader loading wordmark: exact vector outlines, then CRT damage on top. */
+.boot__signal{
+  width:min(62vw,440px);
+  filter:blur(.24px) brightness(1.02)!important;
+  -webkit-filter:blur(.24px) brightness(1.02)!important;
+}
+.boot__wordmark{
+  display:block;
+  width:100%;
+  height:auto;
+  opacity:.91;
+  filter:
+    drop-shadow(-1.1px 0 .15px var(--fringe-blue))
+    drop-shadow(1.25px 0 .15px var(--fringe-red))
+    drop-shadow(0 0 4px rgba(220,255,231,.68))
+    drop-shadow(0 0 16px rgba(94,255,143,.38));
+  -webkit-filter:
+    drop-shadow(-1.1px 0 .15px var(--fringe-blue))
+    drop-shadow(1.25px 0 .15px var(--fringe-red))
+    drop-shadow(0 0 4px rgba(220,255,231,.68))
+    drop-shadow(0 0 16px rgba(94,255,143,.38));
+}
+.boot__mark,.boot__name{display:none!important}
+.boot__loading{
+  margin-top:18px!important;
+  font-family:var(--pixel-face);
+  text-shadow:
+    -1px 0 .15px var(--fringe-blue),
+    1.1px 0 .15px var(--fringe-red),
+    0 0 7px rgba(177,255,202,.56)!important;
+}
+.boot__grain{
+  background:url("./lofi-grain.svg") 0 0 / 192px 192px repeat!important;
+  opacity:.28!important;
+  mix-blend-mode:screen;
+  animation:tube-grain-drift .105s steps(2,end) infinite!important;
+}
+.boot__raster{
+  opacity:.46!important;
+  background:
+    repeating-linear-gradient(0deg,rgba(0,0,0,.6) 0 .65px,transparent .65px 2px),
+    repeating-linear-gradient(90deg,rgba(255,44,79,.08) 0 1px,rgba(49,255,122,.045) 1px 2px,rgba(73,190,255,.07) 2px 3px,transparent 3px 4px)!important;
+}
+
+/* Mobile keeps the same optical quality; only layout changes. */
+@media(max-width:760px){
+  .bezel{padding:7px}
+  .screen{
+    border-radius:18px / 13px!important;
+  }
+  .tube-grain{opacity:.21}
+  .scanlines{opacity:.36!important}
+  .phosphor-grid{opacity:.075!important}
+  .rolling-band{opacity:.29!important}
+  .boot__signal{width:min(72vw,380px)}
+  .pixel-toggle{font-size:8px;padding:0 5px}
+  html[data-pixel-font="true"] .content-inner :is(p,li){
+    font-size:15px!important;
+    line-height:1.82!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .tube-grain,.tracking-sweep,.boot__grain{animation:none!important}
+}

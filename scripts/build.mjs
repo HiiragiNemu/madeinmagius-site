@@ -26,7 +26,7 @@ const index = await readFile('index.html','utf8');
 for (const token of ['./assets/styles.css','./assets/app.js','FOLDERS','BILIBILI','NETEASE','EXEDRA TW / JP','MADE IN MAGIUS']) {
   if (!index.includes(token)) throw new Error(`index.html missing required token: ${token}`);
 }
-for (const rejected of ['独立分发','HTTPS 直链','本站直链','版本可核对','左侧选择程序，连接线会点亮','商店版','GOOGLE PLAY AAB','SOURCE ZIP','SOURCE TAR.GZ']) {
+for (const rejected of ['独立分发','HTTPS 直链','本站直链','版本可核对','左侧选择程序，连接线会点亮','商店版','GOOGLE PLAY AAB','SOURCE ZIP','SOURCE TAR.GZ','MUMU DEMO SCRIPT','演示脚本']) {
   if (index.includes(rejected)) throw new Error(`rejected homepage copy returned: ${rejected}`);
 }
 const contentSource = await readFile('assets/content.js','utf8');
@@ -43,8 +43,9 @@ for (const forbiddenKey of ['androidStore','androidAab','source']) {
 const exedraDocs = JSON.parse(await readFile('data/exedra-docs.json','utf8'));
 const exedraIntegrity = JSON.parse(await readFile('data/exedra-integrity.json','utf8'));
 
-const requiredDocIds = ['tw-mumu','tw-phone','jp-android','steam','tw-client-113','tw-demo','tw-mumu-en','tw-phone-en'];
+const requiredDocIds = ['tw-mumu','tw-phone','jp-android','steam','tw-client-113','tw-mumu-en','tw-phone-en'];
 const availableDocIds = new Set((exedraDocs.docs || []).map(item => item.id));
+if (availableDocIds.has('tw-demo')) throw new Error('Internal MuMu demo script leaked into public tutorial data');
 for (const id of requiredDocIds) {
   if (!availableDocIds.has(id)) throw new Error(`Missing migrated Exedra guide: ${id}`);
 }

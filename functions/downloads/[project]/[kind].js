@@ -110,6 +110,15 @@ const PROJECTS = {
   exedra: {
     repo: 'HiiragiNemu/MagiaExedraTWTools',
     mode: 'scan',
+    legacy: {
+      'jp-xapk': {
+        name: 'com.aniplex.magia.exedra.jp-3.18.0.xapk',
+        size: 923195400,
+        digest: 'sha256:43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514',
+        content_type: 'application/xapk-package-archive',
+        legacy_url: 'https://d.apkpure.net/b/XAPK/com.aniplex.magia.exedra.jp?version=latest',
+      },
+    },
     kinds: {
       'tw-xapk': /^tw\.sonet\.magiaexedra-.*\.xapk$/i,
       'jp-xapk': /^com\.aniplex\.magia\.exedra\.jp-.*\.xapk$/i,
@@ -170,6 +179,8 @@ async function getAsset(config, kind, token) {
       const found = (release.assets || []).find(candidate => matcher.test(candidate.name));
       if (found) return found;
     }
+    const fallback = config.legacy?.[kind];
+    if (fallback) return fallback;
     throw new Error(`asset not found: ${kind}`);
   }
 

@@ -14,7 +14,7 @@ export function setupCrtEffects(options) {
   let rafId = 0;
   let lastSignalFrame = 0;
   let lastNoiseFrame = 0;
-  let nextTracking = performance.now() + 1200 + Math.random() * 2200;
+  let nextTracking = performance.now() + 850 + Math.random() * 1500;
   let trackingTimer = 0;
   let signalTickCount = 0;
   let noiseTickCount = 0;
@@ -132,7 +132,7 @@ export function setupCrtEffects(options) {
     // A vertical-sync / timebase disturbance is a moving field boundary with
     // a small horizontal phase error, not a full-screen geometry mutation.
     root.style.setProperty('--tracking-shift', ((Math.random() - .5) * 7.2).toFixed(1) + 'px');
-    root.style.setProperty('--tracking-duration', (.78 + Math.random() * .46).toFixed(2) + 's');
+    root.style.setProperty('--tracking-duration', (.88 + Math.random() * .52).toFixed(2) + 's');
     root.style.setProperty('--tracking-brightness', (1.04 + Math.random() * .09).toFixed(3));
 
     signal.dataset.tracking = 'true';
@@ -150,7 +150,7 @@ export function setupCrtEffects(options) {
 
     // The supplied reference does not sit perfectly still: a stronger field
     // rolls through every few seconds even without user input.
-    nextTracking = now + 1900 + Math.random() * 4300;
+    nextTracking = now + 1350 + Math.random() * 2850;
   }
 
   function updateSignal(now) {
@@ -184,14 +184,14 @@ export function setupCrtEffects(options) {
     root.style.setProperty('--flicker', (0.994 + breath + (Math.random() - .5) * .006).toFixed(3));
 
     // Continuous slow field roll underneath the rarer tracking fault.
-    roll += .50;
+    roll += .72;
     if (roll > 112) roll = -24;
     root.style.setProperty('--roll-y', roll.toFixed(1) + '%');
 
     pointerEnergy *= .92;
 
     // Short horizontal sync disturbances happen independently of clicks.
-    if (Math.random() < .014) triggerSyncBurst(.50 + Math.random() * .48);
+    if (Math.random() < .020) triggerSyncBurst(.52 + Math.random() * .54);
 
     // Full luminance dropout is rare and short.
     if (Math.random() < .0018) {

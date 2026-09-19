@@ -17,6 +17,7 @@ const connectorSvg = document.getElementById('connectors');
 const statusLine = document.getElementById('status-line');
 const clock = document.getElementById('clock');
 const homeJump = document.getElementById('home-jump');
+const pixelFontToggle = document.getElementById('pixel-font-toggle');
 const pixelToggle = document.getElementById('pixel-toggle');
 const warpImage = document.getElementById('crt-warp-map');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -420,6 +421,23 @@ function bootSequence() {
     }, 380);
   }, wait);
 }
+
+function applyPixelFont(enabled, persist = true) {
+  document.documentElement.dataset.pixelFont = enabled ? 'on' : 'off';
+  if (pixelFontToggle) {
+    pixelFontToggle.setAttribute('aria-pressed', String(enabled));
+    pixelFontToggle.textContent = enabled ? 'PIXEL FONT / ON' : 'PIXEL FONT / OFF';
+  }
+  if (persist) localStorage.setItem('magius-link-pixel-font', enabled ? 'on' : 'off');
+}
+
+applyPixelFont(localStorage.getItem('magius-link-pixel-font') !== 'off', false);
+
+pixelFontToggle?.addEventListener('click', () => {
+  const enabled = document.documentElement.dataset.pixelFont !== 'on';
+  applyPixelFont(enabled);
+  crt.pulse(.45);
+});
 
 homeJump.addEventListener('click', () => {
   selectProgram('home', false, false);

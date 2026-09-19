@@ -11,20 +11,6 @@ const NETEASE_LEGACY_251 = {
       content_type: 'application/vnd.android.package-archive',
       download: './downloads/netease/android-full',
     },
-    androidStore: {
-      name: '网易云已下架音乐完整名字导出器_v2.5.1_商店版.apk',
-      size: 896943,
-      digest: 'sha256:8371437808c723441e81b1eb373f0f35ff296e6bcef79250c1e2f6e84efa6558',
-      content_type: 'application/vnd.android.package-archive',
-      download: './downloads/netease/android-store',
-    },
-    androidAab: {
-      name: '网易云已下架音乐完整名字导出器_v2.5.1_GooglePlay.aab',
-      size: 873418,
-      digest: 'sha256:631a30b4facecf6720ad5ea9851904d4c2374e0e15fd9819beae999cacc864e5',
-      content_type: 'application/octet-stream',
-      download: './downloads/netease/android-aab',
-    },
     windows: {
       name: 'NeteasePlaylistExporter-v2.5.1-windows-x64.zip',
       size: 18331073,
@@ -38,13 +24,6 @@ const NETEASE_LEGACY_251 = {
       digest: 'sha256:9a4670a02e2fbbd200e6f5764f302dcd83518616d11a92c9c33186bde5e01d38',
       content_type: 'application/zip',
       download: './downloads/netease/python',
-    },
-    source: {
-      name: 'NeteasePlaylistExporter-v2.5.1-source.tar.gz',
-      size: 1154458,
-      digest: 'sha256:48e278561b9f780ea99dc01bc08e5b0770d363b39660366283b25b3878a00b2d',
-      content_type: 'application/gzip',
-      download: './downloads/netease/source',
     },
     wheel: {
       name: 'netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl',
@@ -91,7 +70,6 @@ const PROJECTS = {
     assets: {
       android: /\.apk$/i,
       userscript: /\.user\.js$/i,
-      sourceZip: /source\.zip$/i,
     },
   },
   netease: {
@@ -101,11 +79,8 @@ const PROJECTS = {
     fallback: NETEASE_LEGACY_251,
     routes: {
       androidFull: 'android-full',
-      androidStore: 'android-store',
-      androidAab: 'android-aab',
       windows: 'windows',
       python: 'python',
-      source: 'source',
       wheel: 'wheel',
       manifest: 'manifest',
       sums: 'sums',
@@ -114,11 +89,8 @@ const PROJECTS = {
     },
     assets: {
       androidFull: /完整版\.apk$/i,
-      androidStore: /商店版\.apk$/i,
-      androidAab: /GooglePlay\.aab$/i,
       windows: /windows-x64\.zip$/i,
       python: /-python\.zip$/i,
-      source: /source\.tar\.gz$/i,
       wheel: /\.whl$/i,
       manifest: /^RELEASE_MANIFEST\.json$/i,
       sums: /^SHA256SUMS\.txt$/i,
@@ -205,7 +177,6 @@ async function latestProject(key, config, token) {
   );
 
   if (key === 'bilibili') {
-    if (assets.sourceZip) assets.sourceZip.download = './downloads/bilibili/source';
     assets.consoleScript = {
       name: 'bilibili-follower-snapshot-console.js',
       size: null,

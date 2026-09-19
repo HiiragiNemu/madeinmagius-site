@@ -6,10 +6,17 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
 
   await expect(page.locator('.screen')).toBeVisible();
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'true');
+  await page.evaluate(() => document.fonts.load('12px MagiusPixel'));
+  expect(await page.evaluate(() => document.fonts.check('12px MagiusPixel'))).toBeTruthy();
   await expect(page.locator('.boot__wordmark')).toHaveAttribute('src', /magius-link-wordmark\.svg/);
 
   const engine = await page.locator('html').getAttribute('data-crt-engine');
   expect(['svg', 'webkit-svg', 'ios-safe']).toContain(engine);
+  if (testInfo.project.name === 'ios27-webkit-safe') {
+    expect(engine).toBe('ios-safe');
+    const computedFilter = await page.locator('#signal').evaluate(el => getComputedStyle(el).filter);
+    expect(computedFilter).not.toContain('url(');
+  }
 
   const initialJitter = await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--jitter-x'));
   await page.waitForTimeout(160);

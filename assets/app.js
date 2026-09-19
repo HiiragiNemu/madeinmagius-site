@@ -1,5 +1,6 @@
 import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260920-optics1';
 import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260920-optics1';
+import { paintScrollRequested, startIOSPaintScroll } from './ios-paint-scroll.js?v=20260920-boot2';
 
 const body = document.body;
 const signal = document.getElementById('signal');
@@ -38,6 +39,14 @@ const crt = setupCrtEffects({
   warpImage,
   reducedMotion
 });
+
+// Diagnostic trial only. Keep normal URLs and non-iOS browsers unchanged.
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const usePaintScroll = paintScrollRequested(isIOS, location.search);
+if (usePaintScroll) document.documentElement.dataset.iosPaintScroll = 'true';
+const stopPaintScroll = usePaintScroll ? startIOSPaintScroll(signal) : () => {};
+const scrollBehavior = () => usePaintScroll ? 'instant' : reducedMotion.matches ? 'auto' : 'smooth';
 
 function applyPixelFont(enabled) {
   document.documentElement.dataset.pixelFont = enabled ? 'true' : 'false';
@@ -102,7 +111,7 @@ function placeContentPanel(scrollIntoView = false) {
   if (scrollIntoView) {
     requestAnimationFrame(() => {
       selected.scrollIntoView({
-        behavior: reducedMotion.matches ? 'auto' : 'smooth',
+        behavior: scrollBehavior(),
         block: 'start',
         inline: 'nearest'
       });
@@ -247,7 +256,7 @@ function scrollSubsystemIntoView() {
   if (!mobileMode.matches) return;
   requestAnimationFrame(() => {
     subsystem.scrollIntoView({
-      behavior: reducedMotion.matches ? 'auto' : 'smooth',
+      behavior: scrollBehavior(),
       block: 'start',
       inline: 'nearest'
     });
@@ -341,6 +350,7 @@ function setupProgramInteractions() {
 }
 
 function keyboardNavigation(event) {
+  if (event.defaultPrevented) return;
   const active = document.activeElement;
   const programIndex = programButtons.indexOf(active);
   const subButtons = Array.from(subMenu.querySelectorAll('.sub-node'));
@@ -482,7 +492,7 @@ homeJump.addEventListener('click', event => {
     requestAnimationFrame(() => {
       terminalUi.scrollTo({
         top: 0,
-        behavior: reducedMotion.matches ? 'auto' : 'smooth'
+        behavior: scrollBehavior()
       });
     });
   }
@@ -538,6 +548,10 @@ addEventListener('hashchange', () => {
   renderCurrentContent();
 });
 
-addEventListener('pagehide', () => {
+addEventListener('pagehide', event => {
+  // A cached trial page resumes with the same DOM. Retain its scroll owner;
+  // visibilitychange already cancels gestures while the page is hidden.
+  if (event.persisted && usePaintScroll) return;
+  stopPaintScroll();
   crt.destroy();
 });

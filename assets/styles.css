@@ -664,7 +664,8 @@ button,
 .controls{color:#aaf2bf}
 
 .boot{
-  position:fixed;
+  /* Inside the signal: share its optical lens and the physical screen mask. */
+  position:absolute;
   inset:0;
   z-index:200;
   display:grid;
@@ -1288,7 +1289,7 @@ html[data-crt-engine="webkit-svg"] .signal{
 .boot{
   isolation:isolate;
   background:
-    radial-gradient(ellipse at 50% 48%,rgba(29,91,67,.42),rgba(5,31,23,.88) 48%,#020b08 100%);
+    radial-gradient(ellipse at 50% 48%,#123b2b,#051f17 48%,#020b08 100%);
 }
 .boot__raster,.boot__grain,.boot__roll{
   position:absolute;
@@ -1714,8 +1715,8 @@ html[data-pixel-font="false"] .content-inner :is(p,li){
 /* Reader loading wordmark: exact vector outlines, then CRT damage on top. */
 .boot__signal{
   width:min(62vw,440px);
-  filter:blur(.24px) brightness(1.02)!important;
-  -webkit-filter:blur(.24px) brightness(1.02)!important;
+  filter:blur(.65px) brightness(.98)!important;
+  -webkit-filter:blur(.65px) brightness(.98)!important;
 }
 .boot__wordmark{
   display:block;
@@ -3156,4 +3157,17 @@ html[data-crt-engine="ios-safe"] .signal{
   .tube-grain,.boot__grain{opacity:.24!important}
   .scanlines{opacity:.49!important}
   .phosphor-grid{opacity:.052!important}
+}
+
+/* Opt-in iOS composition trial. Static materials and the single root lens are
+   unchanged. Accelerated descendant transitions can escape SVG URL filters
+   (WebKit 219729), so the trial paints their final state in the root instead. */
+html[data-ios-paint-scroll="true"] .signal,
+html[data-ios-paint-scroll="true"] .signal *{
+  animation:none!important;
+  transition:none!important;
+  will-change:auto!important;
+  backface-visibility:visible!important;
+  -webkit-backface-visibility:visible!important;
+  scroll-behavior:auto!important;
 }

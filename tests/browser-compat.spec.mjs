@@ -5,6 +5,8 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(420);
   await expect(page.locator('.boot__wordmark')).toBeVisible();
+  await expect(page.locator('#signal #boot')).toHaveCount(1);
+  expect(await page.locator('#boot').evaluate(el => !!el.closest('.screen'))).toBe(true);
   await expect(page.locator('.boot__raster')).toBeVisible();
   await expect(page.locator('.boot__grain')).toBeVisible();
   await page.screenshot({ path: `test-results/${testInfo.project.name}-boot.png`, fullPage: false });

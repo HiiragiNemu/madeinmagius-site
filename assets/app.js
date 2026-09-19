@@ -421,7 +421,8 @@ function bootSequence() {
   }, wait);
 }
 
-homeJump.addEventListener('click', () => {
+homeJump.addEventListener('click', event => {
+  event.preventDefault();
   selectProgram('home', false, false);
   if (terminalUi) {
     terminalUi.scrollTo({

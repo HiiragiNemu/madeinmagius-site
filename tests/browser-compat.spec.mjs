@@ -40,6 +40,7 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   }
 
   await page.locator('[data-program="bilibili"]').evaluate(el => el.click());
+  await expect(page.locator('[data-sub="source"]')).toHaveCount(0);
   await expect(page.locator('[data-sub="android"]')).toBeVisible();
   await page.locator('[data-sub="android"]').evaluate(el => el.click());
   const apk = page.locator('.download-button').first();
@@ -47,12 +48,19 @@ test('terminal optics, mobile accordion, home jump and public downloads work', a
   expect(await page.locator('#content-panel').evaluate(node => node.previousElementSibling?.dataset?.sub)).toBe('android');
 
   await page.locator('[data-program="netease"]').evaluate(el => el.click());
+  await expect(page.locator('[data-sub="netease-source"]')).toHaveCount(0);
   const selectedNetease = page.locator('[data-program="netease"]');
   const selectedSubtitle = selectedNetease.locator('.menu-node__copy small');
   await expect(selectedNetease).toHaveClass(/is-selected/);
   expect(await selectedNetease.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
   expect(await selectedSubtitle.evaluate(el => getComputedStyle(el).color)).toBe('rgb(21, 54, 31)');
   await page.locator('[data-sub="windows"]').evaluate(el => el.click());
+  if (testInfo.project.name.includes('ios') || testInfo.project.name.includes('android')) {
+    await page.locator('[data-sub="windows"]').evaluate(el => el.click());
+    await expect(page.locator('#content-panel')).toBeHidden();
+    await page.locator('[data-sub="windows"]').evaluate(el => el.click());
+    await expect(page.locator('#content-panel')).toBeVisible();
+  }
   const win = page.locator('.download-button').first();
   await expect(win).toHaveAttribute('href', /bilibili-follower-snapshot\.pages\.dev\/downloads\/netease\/v2\.5\.1\/.*windows-x64\.zip/);
 

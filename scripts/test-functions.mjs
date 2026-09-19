@@ -11,7 +11,6 @@ const fixtures = {
     assets:[
       {id:11,name:'Bilibili-Follower-Snapshot-Companion-v9.9.9.apk',size:3,digest:'sha256:aaa',content_type:'application/vnd.android.package-archive',url:'https://api.github.test/assets/11'},
       {id:12,name:'bilibili-follower-snapshot-v9.9.9.user.js',size:4,digest:'sha256:bbb',content_type:'application/javascript',url:'https://api.github.test/assets/12'},
-      {id:13,name:'Bilibili-Follower-Snapshot-v9.9.9-source.zip',size:7,digest:'sha256:src',content_type:'application/zip',url:'https://api.github.test/assets/13'},
     ],
   },
   'HiiragiNemu/netease-cloudmusic-delisted-exporter': {
@@ -113,7 +112,7 @@ try {
   assert.equal(data.source,'cloudflare-live');
   assert.equal(data.projects.bilibili.tag,'v9.9.9');
   assert.equal(data.projects.bilibili.assets.android.download,'./downloads/bilibili/android');
-  assert.equal(data.projects.bilibili.assets.sourceZip.download,'./downloads/bilibili/source');
+  assert.equal(data.projects.bilibili.assets.sourceZip, undefined);
   assert.equal(data.projects.bilibili.assets.consoleScript.download,'./downloads/bilibili-follower-snapshot-console.js');
   assert.equal(data.projects.bilibili.assets.consoleText.download,'./downloads/bilibili-follower-snapshot-console.txt');
 
@@ -123,6 +122,9 @@ try {
   assert.equal(data.projects.netease.source,'legacy-public-fallback');
   assert.equal(data.projects.netease.assets.windows.name,'NeteasePlaylistExporter-v2.5.1-windows-x64.zip');
   assert.equal(data.projects.netease.assets.androidFull.download,'./downloads/netease/android-full');
+  assert.equal(data.projects.netease.assets.androidStore, undefined);
+  assert.equal(data.projects.netease.assets.androidAab, undefined);
+  assert.equal(data.projects.netease.assets.source, undefined);
 
   assert.equal(data.projects.exedra.assets.twXapk.name,'tw.sonet.magiaexedra-9.0.0-99999999.xapk');
   assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-3.18.0.xapk');
@@ -148,14 +150,33 @@ try {
   assert.equal(partial.headers.get('content-range'),'bytes 0-1/3');
   assert.equal(partial.headers.get('content-length'),'2');
 
-  const sourceZip = await download({
+  const removedSource = await download({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},
     params:{project:'bilibili',kind:'source'},
     request:new Request('https://site.test/downloads/bilibili/source'),
   });
-  assert.equal(sourceZip.status,200);
-  assert.match(sourceZip.headers.get('content-disposition') || '',/source\.zip/);
-  assert.equal(sourceZip.headers.get('x-release-digest'),'sha256:src');
+  assert.equal(removedSource.status,404);
+
+  const removedStore = await download({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'netease',kind:'android-store'},
+    request:new Request('https://site.test/downloads/netease/android-store'),
+  });
+  assert.equal(removedStore.status,404);
+
+  const removedAab = await download({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'netease',kind:'android-aab'},
+    request:new Request('https://site.test/downloads/netease/android-aab'),
+  });
+  assert.equal(removedAab.status,404);
+
+  const removedNeteaseSource = await download({
+    env:{GITHUB_RELEASES_TOKEN:'fake-token'},
+    params:{project:'netease',kind:'source'},
+    request:new Request('https://site.test/downloads/netease/source'),
+  });
+  assert.equal(removedNeteaseSource.status,404);
 
   const neteaseHead = await headDownload({
     env:{GITHUB_RELEASES_TOKEN:'fake-token'},

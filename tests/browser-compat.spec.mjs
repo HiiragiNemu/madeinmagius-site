@@ -41,6 +41,14 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   await page.bringToFront();
   await expect(page.locator('#tracking-sweep')).toBeAttached();
   await expect(page.locator('.tube-grain')).toBeAttached();
+  const continuousAnimations = await page.evaluate(() => ({
+    field: getComputedStyle(document.querySelector('.rolling-band')).animationName,
+    raster: getComputedStyle(document.querySelector('.scanlines')).animationName,
+    grain: getComputedStyle(document.querySelector('.tube-grain')).animationName,
+  }));
+  expect(continuousAnimations.field).toContain('analog-field-roll');
+  expect(continuousAnimations.raster).toContain('raster-phase');
+  expect(continuousAnimations.grain).toContain('tube-grain-drift');
 
   await page.locator('[data-program="bilibili"]').evaluate(el => el.click());
   await expect(page.locator('[data-sub="source"]')).toHaveCount(0);

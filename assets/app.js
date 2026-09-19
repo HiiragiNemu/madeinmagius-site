@@ -451,10 +451,15 @@ function bootSequence() {
 homeJump.addEventListener('click', event => {
   event.preventDefault();
   selectProgram('home', false, false);
+  if (mobileMode.matches) {
+    selectSub('welcome', false);
+  }
   if (terminalUi) {
-    terminalUi.scrollTo({
-      top: 0,
-      behavior: reducedMotion.matches ? 'auto' : 'smooth'
+    requestAnimationFrame(() => {
+      terminalUi.scrollTo({
+        top: 0,
+        behavior: reducedMotion.matches ? 'auto' : 'smooth'
+      });
     });
   }
 });

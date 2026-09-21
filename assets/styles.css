@@ -3159,20 +3159,6 @@ html[data-crt-engine="ios-safe"] .signal{
   .phosphor-grid{opacity:.052!important}
 }
 
-/* Opt-in iOS composition trial. Static materials and the single root lens are
-   unchanged. Accelerated descendant transitions can escape SVG URL filters
-   (WebKit 219729), so the trial paints their final state in the root instead. */
-html[data-ios-paint-scroll="true"] .signal,
-html[data-ios-paint-scroll="true"] .signal *{
-  animation:none!important;
-  transition:none!important;
-  will-change:auto!important;
-  backface-visibility:visible!important;
-  -webkit-backface-visibility:visible!important;
-  scroll-behavior:auto!important;
-}
-
-
 /* Loading hierarchy: the winged lance is the subject, the name is a caption.
    Tight-viewBox asset changes empty margins only; original emblem paths survive. */
 .boot__signal{
@@ -3196,4 +3182,13 @@ html[data-ios-paint-scroll="true"] .signal *{
 .boot__loading{
   margin:0;
   font-size:clamp(10px,1.4svh,13px);
+}
+
+
+/* iOS policy: retain soft CRT light/materials, omit only the unsupported
+   whole-screen SVG curvature path. The boot is inside this same signal.
+   Existing local RGB shadows, bloom, grain, scanlines and black bezel stay. */
+html[data-crt-platform="ios-webkit"] .signal{
+  filter:blur(.6px) brightness(1.035) contrast(1.035) saturate(.84)!important;
+  -webkit-filter:blur(.6px) brightness(1.035) contrast(1.035) saturate(.84)!important;
 }

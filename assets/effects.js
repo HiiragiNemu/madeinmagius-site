@@ -2,7 +2,15 @@ export function setupCrtEffects(options) {
   const root = document.documentElement;
   const warpImage = options.warpImage;
   const curveDisplacement = document.getElementById('curve-displacement');
-  // One static optical path on every viewport. A phone is not a reason to
+  // iOS WebKit uses the existing CSS materials, without any reference-filter
+  // curvature or displacement map allocation. Bootstrap already chose this
+  // before first paint; runtime never changes a saved cross-device preference.
+  if (root.dataset.crtPlatform === 'ios-webkit') {
+    root.dataset.crtEngine = 'ios-static-css';
+    curveDisplacement?.setAttribute('scale', '0');
+    return { pulse() {}, scan() {}, addEnergy() {}, destroy() {} };
+  }
+  // Other platforms keep the existing static optical path. A phone is not a reason to
   // discard the lens. There is no animation or per-frame texture allocation.
   root.dataset.crtEngine = 'static-svg';
 

@@ -46,10 +46,18 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   expect(await page.evaluate(() => document.fonts.check('12px MagiusPixel'))).toBeTruthy();
   await expect(page.locator('.boot__wordmark')).toHaveAttribute('src', /magius-link-wordmark\.svg/);
 
-  await expect(page.locator('html')).toHaveAttribute('data-crt-engine', 'static-svg');
-  expect(await page.locator('#signal').evaluate(el => getComputedStyle(el).filter)).toContain('url(');
-  expect(Number(await page.locator('#curve-displacement').getAttribute('scale'))).toBeGreaterThan(0);
-  await expect(page.locator('#crt-warp-map')).toHaveAttribute('href', /^data:image\/png/);
+  const iosCSS = await page.locator('html').getAttribute('data-crt-platform') === 'ios-webkit';
+  await expect(page.locator('html')).toHaveAttribute('data-crt-engine', iosCSS ? 'ios-static-css' : 'static-svg');
+  const signalFilter = await page.locator('#signal').evaluate(el => getComputedStyle(el).filter);
+  expect(signalFilter.includes('url(')).toBe(!iosCSS);
+  if (iosCSS) expect(signalFilter).toContain('blur(');
+  if (iosCSS) {
+    await expect(page.locator('#curve-displacement')).toHaveAttribute('scale', '0');
+    expect(await page.locator('#crt-warp-map').getAttribute('href')).toBeNull();
+  } else {
+    expect(Number(await page.locator('#curve-displacement').getAttribute('scale'))).toBeGreaterThan(0);
+    await expect(page.locator('#crt-warp-map')).toHaveAttribute('href', /^data:image\/png/);
+  }
   const controlsContained = await page.evaluate(() => {
     const bar = document.querySelector('.masthead__bar').getBoundingClientRect();
     return ['#pixel-toggle', '#home-jump'].every(selector => {

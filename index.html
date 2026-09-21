@@ -7,8 +7,18 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="MadeInMagius / MAGIUS LINK — software, tools and guides in a CRT terminal interface.">
   <title>MAGIUS LINK // Made In Magius</title>
+  <!-- Apply the platform policy before CSS or body paint; do not touch saved preferences. -->
+  <script id="crt-platform-bootstrap">
+    (() => {
+      const ios = /AppleWebKit/.test(navigator.userAgent) &&
+        (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+      document.documentElement.dataset.crtPlatform = ios ? 'ios-webkit' : 'standard';
+      if (ios) document.documentElement.dataset.crtEngine = 'ios-static-css';
+    })();
+  </script>
   <link rel="icon" href="./assets/magius-mark.svg?v=20260920-boot2" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=20260921-logo1">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260921-iosnative1">
 </head>
 <body>
   <svg class="svg-defs" aria-hidden="true" focusable="false">
@@ -37,7 +47,7 @@
           <div class="boot__grain" aria-hidden="true"></div>
           <div class="boot__roll" aria-hidden="true"></div>
           <div class="boot__signal">
-            <img class="boot__emblem" src="./assets/magius-emblem-tight.svg?v=20260921-logo1" alt="">
+            <img class="boot__emblem" src="./assets/magius-emblem-tight.svg?v=20260921-iosnative1" alt="">
             <img class="boot__wordmark" src="./assets/magius-link-wordmark.svg?v=20260920-boot2" alt="MAGIUS LINK">
             <div class="boot__loading">LOADING <i></i> 数据加载中</div>
           </div>
@@ -124,6 +134,6 @@
     </div>
   </div>
 
-  <script type="module" src="./assets/app.js?v=20260921-position1"></script>
+  <script type="module" src="./assets/app.js?v=20260921-iosnative1"></script>
 </body>
 </html>

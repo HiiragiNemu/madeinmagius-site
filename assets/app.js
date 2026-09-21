@@ -1,6 +1,5 @@
 import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260920-optics1';
-import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260920-optics1';
-import { paintScrollRequested, startIOSPaintScroll } from './ios-paint-scroll.js?v=20260920-boot2';
+import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260921-iosnative1';
 
 const body = document.body;
 const signal = document.getElementById('signal');
@@ -40,13 +39,8 @@ const crt = setupCrtEffects({
   reducedMotion
 });
 
-// Diagnostic trial only. Keep normal URLs and non-iOS browsers unchanged.
-const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const usePaintScroll = paintScrollRequested(isIOS, location.search);
-if (usePaintScroll) document.documentElement.dataset.iosPaintScroll = 'true';
-const stopPaintScroll = usePaintScroll ? startIOSPaintScroll(signal) : () => {};
-const scrollBehavior = () => usePaintScroll ? 'instant' : reducedMotion.matches ? 'auto' : 'smooth';
+// Native scrolling on every platform. Retired query parameters have no effect.
+const scrollBehavior = () => reducedMotion.matches ? 'auto' : 'smooth';
 
 function applyPixelFont(enabled) {
   document.documentElement.dataset.pixelFont = enabled ? 'true' : 'false';
@@ -553,9 +547,7 @@ addEventListener('hashchange', () => {
 });
 
 addEventListener('pagehide', event => {
-  // A cached trial page resumes with the same DOM. Retain its scroll owner;
-  // visibilitychange already cancels gestures while the page is hidden.
-  if (event.persisted && usePaintScroll) return;
-  stopPaintScroll();
+  // Cached pages resume with the existing optical observer.
+  if (event.persisted) return;
   crt.destroy();
 });

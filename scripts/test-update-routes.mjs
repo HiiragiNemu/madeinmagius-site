@@ -21,6 +21,9 @@ try {
  for(const key of Object.keys(legacyData)){
   const r=await legacy({env,params:{path:key.split('/')},request:new Request('https://site.test')});assert.equal(r.status,200);assert.equal(r.headers.get('x-release-digest'),legacyData[key].digest);
  }
+ for(const key of Object.keys(legacyData).filter(k=>/[^\x00-\x7f]/.test(k))){
+  const r=await legacy({env,params:{path:key.split('/').map(encodeURIComponent)},request:new Request('https://site.test')});assert.equal(r.status,200,'encoded original filenames');
+ }
  assert.equal((await pinned({env,params:{project:'bilibili',version:'999.0.0'}})).status,404);
  assert.equal((await legacy({env,params:{path:['__proto__']}})).status,404);
  console.log('UPDATE_ROUTES_PASS: 2 pinned identities, '+Object.keys(legacyData).length+' legacy paths, unknown routes rejected, credentials isolated');

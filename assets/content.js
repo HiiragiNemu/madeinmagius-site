@@ -1,3 +1,12 @@
+// Static GitHub Pages has no Functions. Keep static files local, but route
+// release metadata and files to the existing Cloudflare download service.
+export function serviceUrl(path, page = typeof location === 'undefined' ? null : location) {
+  if (page?.hostname === 'hiiraginemu.github.io' && /^(?:\.\/|\/)?(?:api|downloads)\//.test(path)) {
+    return 'https://madeinmagius-site.pages.dev/' + path.replace(/^(?:\.\/|\/)/, '');
+  }
+  return path;
+}
+
 // Add future website entries here; keep the existing HOME hash routes stable.
 export const HOME_WEBSITES = [
   { title: 'MAGIREADER', description: '魔法纪录剧情中日双语阅读网站', url: 'https://magireader.pages.dev/' },
@@ -166,13 +175,14 @@ export function renderMarkdown(markdown, docPath) {
 function downloadCard(data, project, key, title, subtitle, stablePath, installPath) {
   const projectData = data.releases && data.releases.projects ? data.releases.projects[project] : null;
   const item = projectData && projectData.assets ? projectData.assets[key] : null;
-  const href = installPath || (item ? (item.download || item.browser_download_url || stablePath || '#') : '#');
-  const target = href.startsWith('http') ? ' target="_blank" rel="noreferrer"' : '';
+  const rawHref = installPath || item?.download || item?.browser_download_url || stablePath;
+  const href = serviceUrl(rawHref);
+  const target = (rawHref || '').startsWith('http') ? ' target="_blank" rel="noreferrer"' : '';
   return '<article class="download-card">' +
     '<h3>' + escapeHtml(title) + '</h3>' +
     '<p>' + escapeHtml(subtitle) + (item ? ' · ' + formatBytes(item.size) : '') + '</p>' +
-    '<a class="download-button" href="' + escapeHtml(href) + '"' + target + '>' + (installPath ? '安装到油猴' : 'DOWNLOAD') + '</a>' +
-    (installPath ? '<p><a href="' + escapeHtml(stablePath) + '">下载脚本文件</a></p>' : '') +
+    (href ? '<a class="download-button" href="' + escapeHtml(href) + '"' + target + '>' + (installPath ? '安装到油猴' : 'DOWNLOAD') + '</a>' : '<p role="status">下载信息尚未就绪，请稍后重试。</p>') +
+    (installPath ? '<p><a href="' + escapeHtml(serviceUrl(stablePath)) + '">下载脚本文件</a></p>' : '') +
     '<p class="meta-line">' + (item && item.digest ? escapeHtml(item.digest) : 'release metadata loading') + '</p>' +
     '</article>';
 }
@@ -191,7 +201,7 @@ function magirecoClientHtml(current) {
   let download = '<p role="status">正在读取最新正式版本…</p>';
   if (current?.state === 'ready') {
     download = '<p><strong>客户端版本 ' + escapeHtml(current.version) + '</strong> · ' + formatBytes(current.size) + '</p>' +
-      '<a class="download-button" href="' + escapeHtml(current.download) + '">下载 APK</a>' +
+      '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
       '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
   } else if (current?.state === 'error') {
     download = '<p role="status">发布信息正在同步或暂时不可用，请稍后重新检查。</p>';
@@ -267,8 +277,8 @@ export function renderContent(programId, subId, data) {
       return '<p class="content-kicker">BILIBILI / F12 CONSOLE</p><h2>F12 CONSOLE</h2>' +
         '<p>桌面浏览器临时运行入口，不安装扩展。先登录 B站并打开自己的个人空间，再打开开发者工具的 Console。</p>' +
         '<div class="quick-links">' +
-        '<button class="terminal-copy-button" type="button" data-copy-url="' + escapeHtml(scriptUrl) + '" data-copy-fallback="' + escapeHtml(textUrl) + '">COPY FULL SCRIPT</button>' +
-        '<a href="' + escapeHtml(textUrl) + '" target="_blank" rel="noreferrer">OPEN PLAIN TEXT ↗</a>' +
+        '<button class="terminal-copy-button" type="button" data-copy-url="' + escapeHtml(serviceUrl(scriptUrl)) + '" data-copy-fallback="' + escapeHtml(serviceUrl(textUrl)) + '">COPY FULL SCRIPT</button>' +
+        '<a href="' + escapeHtml(serviceUrl(textUrl)) + '" target="_blank" rel="noreferrer">OPEN PLAIN TEXT ↗</a>' +
         '</div>' +
         '<ol><li>按 F12，切换到 Console。</li><li>复制完整脚本并粘贴后回车运行。</li><li>读取并保存快照；需要比较时导入旧记录。</li></ol>';
     }
@@ -292,7 +302,7 @@ export function renderContent(programId, subId, data) {
       return '<p class="content-kicker">NETEASE / ANDROID / v2.5.2</p><h2>ANDROID</h2>' +
         '<p>Android 8.0+ 完整版。日常登录、选择、比较和导出不需要电脑、Root 或 ADB。</p>' +
         '<div class="download-stack">' +
-        downloadCard(data, 'netease', 'androidFull', '完整版 APK', 'Android 8.0+ · 推荐', '') +
+        downloadCard(data, 'netease', 'androidFull', '完整版 APK', 'Android 8.0+ · 推荐', './downloads/netease/android-full') +
         '</div>' +
         '<p>打开“应用更新与文件访问”可检查新版并交给系统确认安装；Android 11+ 可手动开启所有文件访问，也可继续用系统选择位置保存 JSON。首次从本页覆盖安装旧版，后续在应用内检查更新。</p>' +
         '<p>完整版可由用户主动启用刷新助手处理长久未打开的歌单。</p>';
@@ -301,15 +311,15 @@ export function renderContent(programId, subId, data) {
       return '<p class="content-kicker">NETEASE / WINDOWS / v2.5.1</p><h2>WINDOWS X64</h2>' +
         '<p>免安装 ZIP。解压后双击“一键导出.cmd”，或直接运行 bin/NeteaseDelistedExporter.exe；运行程序不依赖本机 Python。</p>' +
         '<div class="download-stack">' +
-        downloadCard(data, 'netease', 'windows', 'WINDOWS X64 ZIP', 'Windows x64 · 免安装', '') +
+        downloadCard(data, 'netease', 'windows', 'WINDOWS X64 ZIP', 'Windows x64 · 免安装', './downloads/netease/windows') +
         '</div>';
     }
     if (subId === 'python') {
       return '<p class="content-kicker">NETEASE / PYTHON / v2.5.1</p><h2>PYTHON</h2>' +
         '<p>Windows、macOS、Linux 均可使用。便携 ZIP 解压后安装 requirements.txt；wheel 可直接由 pip 安装。</p>' +
         '<div class="download-stack">' +
-        downloadCard(data, 'netease', 'python', 'PYTHON ZIP', 'Python 3 · 跨平台', '') +
-        downloadCard(data, 'netease', 'wheel', 'PYTHON WHEEL', 'py3-none-any', '') +
+        downloadCard(data, 'netease', 'python', 'PYTHON ZIP', 'Python 3 · 跨平台', './downloads/netease/python') +
+        downloadCard(data, 'netease', 'wheel', 'PYTHON WHEEL', 'py3-none-any', './downloads/netease/wheel') +
         '</div>';
     }
     if (subId === 'netease-verify') {
@@ -318,7 +328,8 @@ export function renderContent(programId, subId, data) {
       function verificationLink(key, label) {
         const item = assets[key];
         if (!item) return '';
-        const href = item.download || item.browser_download_url || '#';
+        const href = serviceUrl(item.download || item.browser_download_url);
+        if (!href) return '';
         return '<a href="' + escapeHtml(href) + '" target="_blank" rel="noreferrer">' + escapeHtml(label) + ' ↗</a>';
       }
       return '<p class="content-kicker">NETEASE / VERIFY / ANDROID v2.5.2</p><h2>清单与签名</h2>' +

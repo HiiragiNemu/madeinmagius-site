@@ -70,7 +70,13 @@ await cp('updates','dist/updates',{ recursive:true });
 await writeFile('dist/.nojekyll','');
 await writeFile('dist/404.html',`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><script>
 const base = location.pathname.includes('/madeinmagius-site/') ? '/madeinmagius-site/' : '/';
-location.replace(base);
+const path = location.pathname.slice(base.length);
+// Recover old bookmarked/cached mirror download links, not a silent homepage refresh.
+if (location.hostname === 'hiiraginemu.github.io' && path.startsWith('downloads/')) {
+  location.replace('https://madeinmagius-site.pages.dev/' + path + location.search);
+} else {
+  location.replace(base);
+}
 </script><a href="./">Open MadeInMagius Terminal</a>`);
 await writeFile('dist/_headers',`/*
   X-Content-Type-Options: nosniff

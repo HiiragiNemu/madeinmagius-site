@@ -1,4 +1,4 @@
-import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260922-magireco1';
+import { PROGRAMS, escapeHtml, renderContent, serviceUrl } from './content.js?v=20260922-download2';
 import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260921-iosnative1';
 
 const body = document.body;
@@ -438,7 +438,7 @@ async function loadMagirecoRelease() {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
-    const response = await fetch('./api/magireco', { cache: 'no-store', signal: controller.signal });
+    const response = await fetch(serviceUrl('./api/magireco'), { cache: 'no-store', signal: controller.signal });
     if (!response.ok) throw new Error('Release sync unavailable');
     const current = await response.json();
     data.magireco = { ...current, state: 'ready' };
@@ -462,7 +462,7 @@ async function loadData() {
   } catch {}
 
   try {
-    const live = await fetch('./api/releases', {
+    const live = await fetch(serviceUrl('./api/releases'), {
       headers: { accept: 'application/json' },
       cache: 'no-store'
     });

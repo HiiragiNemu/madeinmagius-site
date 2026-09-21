@@ -3185,10 +3185,25 @@ html[data-crt-engine="ios-safe"] .signal{
 }
 
 
-/* iOS policy: retain soft CRT light/materials, omit only the unsupported
-   whole-screen SVG curvature path. The boot is inside this same signal.
-   Existing local RGB shadows, bloom, grain, scanlines and black bezel stay. */
+/* iOS: keep the native scroller out of a whole-screen filter surface.
+   A constant CSS blur still cached/repainted inconsistently after FOLDERS taps
+   on the reported device. Softness now comes from the existing local text
+   shadows, logo treatment and static CRT textures, not ancestor filtering. */
 html[data-crt-platform="ios-webkit"] .signal{
-  filter:blur(.6px) brightness(1.035) contrast(1.035) saturate(.84)!important;
-  -webkit-filter:blur(.6px) brightness(1.035) contrast(1.035) saturate(.84)!important;
+  filter:none!important;
+  -webkit-filter:none!important;
+  animation:none!important;
+  backface-visibility:visible!important;
+  -webkit-backface-visibility:visible!important;
+}
+/* Boot and menu transitions must not create temporary filtered scroll layers. */
+html[data-crt-platform="ios-webkit"] .content-inner,
+html[data-crt-platform="ios-webkit"] .sub-menu>.content-panel{
+  animation:none!important;
+  filter:none!important;
+  -webkit-filter:none!important;
+  transform:none!important;
+}
+html[data-crt-platform="ios-webkit"] .boot{
+  transition:none!important;
 }

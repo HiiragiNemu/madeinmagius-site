@@ -2,6 +2,7 @@ import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260920-opt
 import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260921-iosnative1';
 
 const body = document.body;
+const iosStatic = document.documentElement.dataset.crtPlatform === 'ios-webkit';
 const signal = document.getElementById('signal');
 const screen = document.querySelector('.screen');
 const boot = document.getElementById('boot');
@@ -130,6 +131,8 @@ function syncProgramButtons() {
 }
 
 function animateRedraw() {
+  // No forced layout or transient blur surfaces on the native iOS path.
+  if (iosStatic) return;
   contentInner.classList.remove('is-redrawing');
   void contentInner.offsetWidth;
   contentInner.classList.add('is-redrawing');
@@ -470,11 +473,11 @@ function bootSequence() {
   const wait = reducedMotion.matches ? 100 : (seen ? 760 : 1800);
 
   setTimeout(() => {
-    body.dataset.wake = 'true';
+    if (!iosStatic) body.dataset.wake = 'true';
     boot.classList.add('is-hidden');
     sessionStorage.setItem('magius-link-booted', '1');
 
-    setTimeout(() => {
+    if (!iosStatic) setTimeout(() => {
       body.dataset.wake = 'false';
     }, 380);
   }, wait);

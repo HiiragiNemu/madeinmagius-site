@@ -50,7 +50,7 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   await expect(page.locator('html')).toHaveAttribute('data-crt-engine', iosCSS ? 'ios-static-css' : 'static-svg');
   const signalFilter = await page.locator('#signal').evaluate(el => getComputedStyle(el).filter);
   expect(signalFilter.includes('url(')).toBe(!iosCSS);
-  if (iosCSS) expect(signalFilter).toContain('blur(');
+  if (iosCSS) expect(signalFilter).toBe('none');
   if (iosCSS) {
     await expect(page.locator('#curve-displacement')).toHaveAttribute('scale', '0');
     expect(await page.locator('#crt-warp-map').getAttribute('href')).toBeNull();

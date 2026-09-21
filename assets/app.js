@@ -85,6 +85,18 @@ function restoreContentPanel() {
   }
 }
 
+// Scroll only the real mobile content viewport. scrollIntoView also moves
+// overflow:hidden optical ancestors whose decorative overscan extends 12px.
+function scrollWithinTerminal(target) {
+  if (!terminalUi || !target || !terminalUi.contains(target)) return;
+  const viewport = terminalUi.getBoundingClientRect();
+  const box = target.getBoundingClientRect();
+  const max = Math.max(0, terminalUi.scrollHeight - terminalUi.clientHeight);
+  const top = Math.max(0, Math.min(max,
+    terminalUi.scrollTop + box.top - viewport.top - terminalUi.clientTop));
+  terminalUi.scrollTo({ top, behavior: scrollBehavior() });
+}
+
 function placeContentPanel(scrollIntoView = false) {
   if (!mobileMode.matches) {
     contentPanel.hidden = false;
@@ -110,11 +122,7 @@ function placeContentPanel(scrollIntoView = false) {
 
   if (scrollIntoView) {
     requestAnimationFrame(() => {
-      selected.scrollIntoView({
-        behavior: scrollBehavior(),
-        block: 'start',
-        inline: 'nearest'
-      });
+      scrollWithinTerminal(selected);
     });
   }
 }
@@ -255,11 +263,7 @@ function buildSubMenu() {
 function scrollSubsystemIntoView() {
   if (!mobileMode.matches) return;
   requestAnimationFrame(() => {
-    subsystem.scrollIntoView({
-      behavior: scrollBehavior(),
-      block: 'start',
-      inline: 'nearest'
-    });
+    scrollWithinTerminal(subsystem);
   });
 }
 

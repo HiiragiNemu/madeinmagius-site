@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const app=readFileSync(new URL('../assets/app.js',import.meta.url),'utf8').replace(/\r\n/g,'\n');
+const start=app.indexOf('function scrollWithinTerminal(target) {');
+assert.ok(start>=0);
+const end=app.indexOf('\n}\n',start)+2;
+assert.ok(end>start);
+const source=app.slice(start,end);
+assert.doesNotMatch(app,/\.scrollIntoView\(/);
+assert.match(app,/scrollWithinTerminal\(selected\)/);
+assert.match(app,/scrollWithinTerminal\(subsystem\)/);
+let calls=[];
+const target={getBoundingClientRect:()=>({top:400})};
+const terminal={clientTop:2,scrollTop:100,scrollHeight:1500,clientHeight:600,
+ contains:n=>n===target,getBoundingClientRect:()=>({top:100}),scrollTo:options=>calls.push(options)};
+const scroll=new Function('terminalUi','scrollBehavior',`${source}; return scrollWithinTerminal;`)(terminal,()=> 'smooth');
+scroll(target);assert.deepEqual(calls,[{top:398,behavior:'smooth'}]);
+terminal.scrollTop=1300;scroll(target);assert.equal(calls.at(-1).top,900);
+terminal.scrollTop=-400;scroll(target);assert.equal(calls.at(-1).top,0);
+scroll(null);scroll({});assert.equal(calls.length,3);
+console.log('PASS mobile menu scroll owner, border offset, clamps, out-of-tree guard; no ancestor scrollIntoView');

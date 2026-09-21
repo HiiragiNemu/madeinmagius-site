@@ -3171,3 +3171,29 @@ html[data-ios-paint-scroll="true"] .signal *{
   -webkit-backface-visibility:visible!important;
   scroll-behavior:auto!important;
 }
+
+
+/* Loading hierarchy: the winged lance is the subject, the name is a caption.
+   Tight-viewBox asset changes empty margins only; original emblem paths survive. */
+.boot__signal{
+  width:min(86vw,620px);
+  max-height:calc(100svh - 48px);
+  row-gap:clamp(10px,1.8svh,18px);
+}
+.boot__emblem{
+  display:block;
+  width:min(78vw,54svh,500px);
+  height:auto;
+  max-height:none;
+  margin:0;
+  opacity:.91;
+}
+.boot__wordmark{
+  width:min(34vw,22svh,190px);
+  height:auto;
+  margin:0;
+}
+.boot__loading{
+  margin:0;
+  font-size:clamp(10px,1.4svh,13px);
+}

@@ -1,7 +1,16 @@
+// Add future website entries here; keep the existing HOME hash routes stable.
+export const HOME_WEBSITES = [
+  { title: 'MAGIREADER', description: '魔法纪录剧情中日双语阅读网站', url: 'https://magireader.pages.dev/' },
+  { title: '角色称呼与身高查询', description: '魔法少女称呼关系搜索与身高对比网站', url: 'https://magireco-call-search-cn.pages.dev/' },
+  { title: 'MAGIUS 3D VIEWER', description: 'Magia Exedra 3D 网站', url: 'https://magius3dviewer.pages.dev/' },
+  { title: 'LIVE2D / ADV', description: '魔法纪录 / Magia Exedra Live2D 和战斗小人网站，含剧情播放功能', url: 'https://magiaexedralive2dviewer.pages.dev/' },
+  { title: 'MAGIUS LINK', description: 'MadeInMagius 下载中心和教程网站 · 当前站点', url: 'https://madeinmagius-site.pages.dev/', current: true },
+];
+
 export const PROGRAMS = {
   home: { subs: [
-    { id: 'welcome', label: 'WELCOME', note: '入口' },
-    { id: 'programs', label: 'PROGRAMS', note: '工具清单' },
+    { id: 'welcome', label: '魔法纪录系列网站', note: '作品导航' },
+    { id: 'programs', label: '未来将添加更多网站', note: '预留' },
     { id: 'contact', label: 'CONTACT', note: '联系' }
   ]},
   bilibili: { subs: [
@@ -154,15 +163,16 @@ export function renderMarkdown(markdown, docPath) {
   return html;
 }
 
-function downloadCard(data, project, key, title, subtitle, stablePath) {
+function downloadCard(data, project, key, title, subtitle, stablePath, installPath) {
   const projectData = data.releases && data.releases.projects ? data.releases.projects[project] : null;
   const item = projectData && projectData.assets ? projectData.assets[key] : null;
-  const href = item ? (item.download || item.browser_download_url || stablePath || '#') : '#';
+  const href = installPath || (item ? (item.download || item.browser_download_url || stablePath || '#') : '#');
   const target = href.startsWith('http') ? ' target="_blank" rel="noreferrer"' : '';
   return '<article class="download-card">' +
     '<h3>' + escapeHtml(title) + '</h3>' +
     '<p>' + escapeHtml(subtitle) + (item ? ' · ' + formatBytes(item.size) : '') + '</p>' +
-    '<a class="download-button" href="' + escapeHtml(href) + '"' + target + '>DOWNLOAD</a>' +
+    '<a class="download-button" href="' + escapeHtml(href) + '"' + target + '>' + (installPath ? '安装到油猴' : 'DOWNLOAD') + '</a>' +
+    (installPath ? '<p><a href="' + escapeHtml(stablePath) + '">下载脚本文件</a></p>' : '') +
     '<p class="meta-line">' + (item && item.digest ? escapeHtml(item.digest) : 'release metadata loading') + '</p>' +
     '</article>';
 }
@@ -180,23 +190,21 @@ function contactHtml() {
 export function renderContent(programId, subId, data) {
   if (programId === 'home') {
     if (subId === 'programs') {
-      return '<p class="content-kicker">MAGIUS LINK / PROGRAM TABLE</p><h2>PROGRAMS</h2>' +
-        '<div class="tool-list">' +
-        '<div><b>BILIBILI SNAPSHOT</b><small>粉丝快照、Android 伴侣、userscript</small></div>' +
-        '<div><b>NETEASE EXPORTER</b><small>歌单完整曲目与下架记录导出</small></div>' +
-        '<div><b>EXEDRA TW / JP</b><small>原版客户端、安装工具与完整教程</small></div>' +
-        '</div>';
+      return '<p class="content-kicker">MAGIUS LINK / UPCOMING</p><h2>未来将添加更多网站</h2>' +
+        '<p>这里预留给未来的更多项目。新的网站与作品会陆续加入 HOME。</p>';
     }
     if (subId === 'contact') return contactHtml();
-    return '<p class="content-kicker">MAGIUS LINK / HOME</p><h2>WELCOME</h2>' +
-      '<div class="hero-copy"><div>' +
-      '<p class="lead">MadeInMagius 的软件、工具与资料入口。</p>' +
-      '<div class="tool-list">' +
-      '<div><b>BILIBILI SNAPSHOT</b><small>粉丝快照与 Android 伴侣</small></div>' +
-      '<div><b>NETEASE EXPORTER</b><small>歌单与下架记录导出</small></div>' +
-      '<div><b>EXEDRA TW / JP</b><small>客户端、安装工具与完整教程</small></div>' +
-      '</div>' +
-      '</div></div>';
+    return '<p class="content-kicker">MAGIUS LINK / WEBSITES</p><h2>魔法纪录系列网站</h2>' +
+      '<div class="download-stack">' + HOME_WEBSITES.map(function(site) {
+        return '<article class="download-card">' +
+          '<h3>' + escapeHtml(site.title) + '</h3>' +
+          '<p>' + escapeHtml(site.description) + '</p>' +
+          '<p class="meta-line">' + escapeHtml(new URL(site.url).hostname) + '</p>' +
+          (site.current
+            ? '<div class="quick-links"><a href="#bilibili/android">BILIBILI 下载</a><a href="#netease/android-full">NETEASE 下载</a><a href="#exedra/exedra-downloads">EXEDRA 下载与教程</a></div>'
+            : '<a class="download-button" href="' + escapeHtml(site.url) + '" target="_blank" rel="noopener noreferrer">打开网站 ↗</a>') +
+          '</article>';
+      }).join('') + '</div>';
   }
 
   if (programId === 'bilibili') {
@@ -212,9 +220,10 @@ export function renderContent(programId, subId, data) {
     if (subId === 'userscript') {
       return '<p class="content-kicker">BILIBILI / USERSCRIPT</p><h2>USERSCRIPT</h2>' +
         '<p>适用于 Chrome、Edge、Firefox 以及支持用户脚本扩展的手机浏览器。</p><div class="download-stack">' +
-        downloadCard(data, 'bilibili', 'userscript', 'BILIBILI USERSCRIPT', 'Tampermonkey 用户脚本', './downloads/bilibili/userscript') +
+        downloadCard(data, 'bilibili', 'userscript', 'BILIBILI USERSCRIPT', 'Tampermonkey 用户脚本', './downloads/bilibili/userscript', './downloads/bilibili-follower-snapshot.user.js') +
         '</div>' +
-        '<p>安装 Tampermonkey 后打开自己的 B站空间，进入“粉丝快照”，完成读取后保存 JSON / CSV；以后可以导入旧快照比较。</p>';
+        '<p>已安装并启用 Tampermonkey？点击“安装到油猴”，在插件打开的确认页点击“安装”。安装完成后打开自己的 B站空间，进入“粉丝快照”，读取并保存 JSON / CSV；以后可以导入旧快照比较。</p>' +
+        '<p>若只显示代码或下载文件，请检查油猴已启用并获准访问本站；Chrome / Edge 用户还需在扩展设置中允许用户脚本运行。也可用“下载脚本文件”，在油猴管理面板中导入。</p>';
     }
     if (subId === 'console') {
       const project = data.releases && data.releases.projects ? data.releases.projects.bilibili : null;
@@ -386,7 +395,7 @@ export function renderContent(programId, subId, data) {
 
   if (subId === 'contact-about') return contactHtml();
   return '<p class="content-kicker">OPERATOR / PROFILE</p><h2>MadeInMagius</h2>' +
-    '<p>个人项目、工具、研究与发布入口。MAGIUS LINK 作为统一主页继续接入新的程序；旧的独立工具站会逐步并入或重定向到这里。</p>' +
+    '<p>我进行插画、角色创作和 Cosplay以及程序开发。我会把自己喜欢的作品从单纯的游戏内容进一步制作成可以阅读、搜索、互动和长期保存的数字项目。</p><p>目前主要围绕《魔法纪录》《Magia Exedra》等作品进行开发。也在逐渐尝试把这些项目中积累的经验扩展到更多游戏和作品上。</p><p>在《魔法纪录》相关项目中，我制作了基于美服私服的中文化国服， L2D 网站，并整合 ADV 剧情播放。同时开发角色称呼、身高等资料查询、角色剧情搜索、角色同时出场统计以及魔女文字 OCR 等功能，并将这些系统互相连接，让搜索到的内容可以直接进入剧情阅读、游戏剧情播放。剧情阅读部分也在逐渐从一个单独作品的网站，发展成更通用的 ADV 浏览器，也在尝试兼容不同作品，并继续完善这套通用的保存与播放框架。</p><p>在《Magia Exedra》相关项目中，我正在制作 3D 角色互动系统，计划实现舞台调度、关键帧时间轴和完整的实时演出系统。</p><p>我也会制作其他独立工具，例如网易云下架音乐歌单导出工具、Bilibili 粉丝取关记录与查询工具等。</p>' +
     '<div class="quick-links"><a href="https://github.com/HiiragiNemu" target="_blank" rel="noreferrer">GITHUB ↗</a>' +
     '<a href="https://space.bilibili.com/625821" target="_blank" rel="noreferrer">BILIBILI ↗</a></div>';
 }

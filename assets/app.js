@@ -1,4 +1,4 @@
-import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260920-optics1';
+import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260922-home-hub1';
 import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260921-iosnative1';
 
 const body = document.body;
@@ -298,7 +298,7 @@ function selectSub(id, focus = false) {
       button.setAttribute('aria-expanded', 'false');
     });
     placeContentPanel(false);
-    statusLine.textContent = programId.toUpperCase() + ' // ' + id.toUpperCase() + ' // COLLAPSED';
+    statusLine.textContent = programId.toUpperCase() + ' // ' + (programId === 'home' ? PROGRAMS.home.subs.find(item => item.id === id).label : id.toUpperCase()) + ' // COLLAPSED';
     crt.pulse(.42);
     return;
   }
@@ -315,7 +315,7 @@ function selectSub(id, focus = false) {
   renderCurrentContent();
   placeContentPanel(mobileMode.matches);
 
-  statusLine.textContent = programId.toUpperCase() + ' // ' + id.toUpperCase();
+  statusLine.textContent = programId.toUpperCase() + ' // ' + (programId === 'home' ? PROGRAMS.home.subs.find(item => item.id === id).label : id.toUpperCase());
   history.replaceState(null, '', '#' + programId + '/' + subId);
   crt.pulse(.78);
   drawConnectors();

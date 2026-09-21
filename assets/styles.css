@@ -3207,15 +3207,3 @@ html[data-crt-platform="ios-webkit"] .sub-menu>.content-panel{
 html[data-crt-platform="ios-webkit"] .boot{
   transition:none!important;
 }
-
-/* Slight iOS softness only on bounded text runs, never a scroll container.
-   Keep #signal and every scroll/content ancestor unfiltered. */
-html[data-crt-platform="ios-webkit"] :is(
-  .masthead__row h1, .masthead__node, .masthead__clock, .section-label,
-  .menu-node__copy b, .menu-node__copy small, .sub-node b, .sub-node small,
-  .content-kicker, .content-inner h2, .content-inner h3, .content-inner p,
-  .content-inner td, .content-inner th, .statusbar
-){
-  filter:blur(.22px)!important;
-  -webkit-filter:blur(.22px)!important;
-}

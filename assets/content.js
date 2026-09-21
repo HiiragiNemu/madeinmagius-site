@@ -201,11 +201,12 @@ export function renderContent(programId, subId, data) {
 
   if (programId === 'bilibili') {
     if (subId === 'android') {
-      return '<p class="content-kicker">BILIBILI / ANDROID</p><h2>粉丝快照伴侣</h2>' +
+      return '<p class="content-kicker">BILIBILI / ANDROID / v0.1.10</p><h2>粉丝快照伴侣</h2>' +
         '<p>Android 10+ 独立伴侣。无需 root、ADB、Frida 或 Tampermonkey；在伴侣内登录后读取粉丝页并使用同一套快照逻辑。</p>' +
         '<div class="download-stack">' +
         downloadCard(data, 'bilibili', 'android', 'ANDROID APK', '签名 Android 伴侣', './downloads/bilibili/android') +
         '</div>' +
+        '<p>打开“应用更新与文件访问”可检查新版并交给系统确认安装；Android 11+ 可手动开启所有文件访问，也可继续用系统选择位置保存 JSON。首次从本页覆盖安装旧版，后续在应用内检查更新。</p>' +
         '<p>安装后可选择保存目录；默认启动备份会把快照、账本及已有比较/待处理 JSON 写入 Download。退出或换号不会删除历史快照和导出文件。</p>';
     }
     if (subId === 'userscript') {
@@ -220,10 +221,10 @@ export function renderContent(programId, subId, data) {
       const assets = project && project.assets ? project.assets : {};
       const scriptUrl = assets.consoleScript
         ? (assets.consoleScript.download || assets.consoleScript.browser_download_url)
-        : 'https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.js';
+        : './downloads/bilibili-follower-snapshot-console.js';
       const textUrl = assets.consoleText
         ? (assets.consoleText.download || assets.consoleText.browser_download_url)
-        : 'https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.txt';
+        : './downloads/bilibili-follower-snapshot-console.txt';
       return '<p class="content-kicker">BILIBILI / F12 CONSOLE</p><h2>F12 CONSOLE</h2>' +
         '<p>桌面浏览器临时运行入口，不安装扩展。先登录 B站并打开自己的个人空间，再打开开发者工具的 Console。</p>' +
         '<div class="quick-links">' +
@@ -249,11 +250,12 @@ export function renderContent(programId, subId, data) {
 
   if (programId === 'netease') {
     if (subId === 'android-full') {
-      return '<p class="content-kicker">NETEASE / ANDROID / v2.5.1</p><h2>ANDROID</h2>' +
+      return '<p class="content-kicker">NETEASE / ANDROID / v2.5.2</p><h2>ANDROID</h2>' +
         '<p>Android 8.0+ 完整版。日常登录、选择、比较和导出不需要电脑、Root 或 ADB。</p>' +
         '<div class="download-stack">' +
         downloadCard(data, 'netease', 'androidFull', '完整版 APK', 'Android 8.0+ · 推荐', '') +
         '</div>' +
+        '<p>打开“应用更新与文件访问”可检查新版并交给系统确认安装；Android 11+ 可手动开启所有文件访问，也可继续用系统选择位置保存 JSON。首次从本页覆盖安装旧版，后续在应用内检查更新。</p>' +
         '<p>完整版可由用户主动启用刷新助手处理长久未打开的歌单。</p>';
     }
     if (subId === 'windows') {
@@ -280,7 +282,7 @@ export function renderContent(programId, subId, data) {
         const href = item.download || item.browser_download_url || '#';
         return '<a href="' + escapeHtml(href) + '" target="_blank" rel="noreferrer">' + escapeHtml(label) + ' ↗</a>';
       }
-      return '<p class="content-kicker">NETEASE / VERIFY / v2.5.1</p><h2>清单与签名</h2>' +
+      return '<p class="content-kicker">NETEASE / VERIFY / ANDROID v2.5.2</p><h2>清单与签名</h2>' +
         '<p>公开资料只包含发布清单、SHA-256 与公钥/验证记录，不包含签名私钥或密码。</p>' +
         '<div class="quick-links">' +
         verificationLink('manifest','RELEASE_MANIFEST.json') +
@@ -289,7 +291,7 @@ export function renderContent(programId, subId, data) {
         verificationLink('signature','签名验证记录') +
         '</div>';
     }
-    return '<p class="content-kicker">NETEASE / USAGE / v2.5.1</p><h2>使用说明</h2>' +
+    return '<p class="content-kicker">NETEASE / USAGE</p><h2>使用说明</h2>' +
       '<p>TXT 按来源歌单分组：歌单名称只写一次，下面只列完整曲名；CSV / JSON 保留完整字段。支持 Android、Windows、Python、固定基准和仅新增下架。</p>' +
       '<h3>Android：日常无需 Root / ADB</h3><ol>' +
       '<li>普通用户安装完整版 APK；日常登录、选择、比较和导出不需要电脑、Root 或 ADB。</li>' +

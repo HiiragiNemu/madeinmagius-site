@@ -1,0 +1,11 @@
+{
+  "schema": "madeinmagius-android-update/v1",
+  "packageName": "io.github.hiiraginemu.ncmexporter",
+  "version": "2.5.2",
+  "versionCode": 252,
+  "minSdk": 26,
+  "apk_url": "https://madeinmagius-site.pages.dev/downloads/pinned/netease/2.5.2",
+  "size": 908807,
+  "sha256": "b1fc5296a065866a4e1b047dd975459e2a7c35148aee8755ef887443c7b32324",
+  "releaseNotes": "增加手动检查新版 APK、大小/SHA-256/包名/版本/原签名验证和系统安装确认；增加可选 Android 11+ 所有文件访问及授权后的直接 Download 导出。原有系统文件选择保存仍可用。首次从 https://madeinmagius-site.pages.dev/ 覆盖安装旧版；后续可在应用内检查更新。保留应用包名和签名。真机安装、权限返回和 JSON 保存待用户验收。 Windows / Python / wheel 沿用已验证的 v2.5.1，文件原样保留，未改标。"
+}

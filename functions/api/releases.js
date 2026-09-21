@@ -2,7 +2,7 @@ const NETEASE_LEGACY_251 = {
   tag: 'v2.5.1',
   name: '网易云已下架音乐完整名字导出器 v2.5.1',
   published_at: null,
-  release_url: 'https://bilibili-follower-snapshot.pages.dev/netease/',
+  release_url: 'https://madeinmagius-site.pages.dev/#netease',
   assets: {
     androidFull: {
       name: '网易云已下架音乐完整名字导出器_v2.5.1_完整版.apk',
@@ -88,7 +88,7 @@ const PROJECTS = {
       signature: 'signature',
     },
     assets: {
-      androidFull: /完整版\.apk$/i,
+      androidFull: /(?:完整版|NeteasePlaylistExporter-v[0-9.]+-android-full)\.apk$/i,
       windows: /windows-x64\.zip$/i,
       python: /-python\.zip$/i,
       wheel: /\.whl$/i,

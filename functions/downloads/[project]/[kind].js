@@ -4,56 +4,56 @@ const NETEASE_LEGACY = {
     size: 897805,
     digest: 'sha256:9309450db4918cdb2e5d2e04ffa85b35597d77b191a8d1aea3c8d9e94fe393c1',
     content_type: 'application/vnd.android.package-archive',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/%E7%BD%91%E6%98%93%E4%BA%91%E5%B7%B2%E4%B8%8B%E6%9E%B6%E9%9F%B3%E4%B9%90%E5%AE%8C%E6%95%B4%E5%90%8D%E5%AD%97%E5%AF%BC%E5%87%BA%E5%99%A8_v2.5.1_%E5%AE%8C%E6%95%B4%E7%89%88.apk',
+    legacy_url: 'https://madeinmagius-site.pages.dev/downloads/legacy/netease/v2.5.1/%E7%BD%91%E6%98%93%E4%BA%91%E5%B7%B2%E4%B8%8B%E6%9E%B6%E9%9F%B3%E4%B9%90%E5%AE%8C%E6%95%B4%E5%90%8D%E5%AD%97%E5%AF%BC%E5%87%BA%E5%99%A8_v2.5.1_%E5%AE%8C%E6%95%B4%E7%89%88.apk',
   },
   windows: {
     name: 'NeteasePlaylistExporter-v2.5.1-windows-x64.zip',
     size: 18331073,
     digest: 'sha256:2cca372d639cb0a1d3fb0d53ef7188246d44e3ce2eeaa2e06e86fc7e366daa73',
     content_type: 'application/zip',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-windows-x64.zip',
+    legacy_url: 'https://madeinmagius-site.pages.dev/downloads/legacy/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-windows-x64.zip',
   },
   python: {
     name: 'NeteasePlaylistExporter-v2.5.1-python.zip',
     size: 1218343,
     digest: 'sha256:9a4670a02e2fbbd200e6f5764f302dcd83518616d11a92c9c33186bde5e01d38',
     content_type: 'application/zip',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-python.zip',
+    legacy_url: 'https://madeinmagius-site.pages.dev/downloads/legacy/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-python.zip',
   },
   wheel: {
     name: 'netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl',
     size: 54861,
     digest: 'sha256:4223c69aa8cfee4d5aff50489f4260de4834de2861ab8be0b489e71a1dac2e1e',
     content_type: 'application/zip',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl',
+    legacy_url: 'https://madeinmagius-site.pages.dev/downloads/legacy/netease/v2.5.1/netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl',
   },
   manifest: {
     name: 'RELEASE_MANIFEST.json',
     size: 1888,
     digest: 'sha256:b9c98cacee24afce2fdaa146d7ba8ba48211bd96b41a75f499281bfb15577378',
     content_type: 'application/json',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/RELEASE_MANIFEST.json',
+    legacy_url: 'https://madeinmagius-site.pages.dev/downloads/legacy/netease/v2.5.1/RELEASE_MANIFEST.json',
   },
   sums: {
     name: 'SHA256SUMS.txt',
     size: 1144,
     digest: null,
     content_type: 'text/plain; charset=utf-8',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/SHA256SUMS.txt',
+    legacy_url: 'https://madeinmagius-site.pages.dev/downloads/legacy/netease/v2.5.1/SHA256SUMS.txt',
   },
   cert: {
     name: 'ncm-exporter-upload-cert.pem',
     size: 1896,
     digest: 'sha256:b014ef0614bf874c90583c9fd81aca4c08941ca8ab187e6469e93a73df239e56',
     content_type: 'application/x-pem-file',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/ncm-exporter-upload-cert.pem',
+    legacy_url: 'https://madeinmagius-site.pages.dev/downloads/legacy/netease/v2.5.1/ncm-exporter-upload-cert.pem',
   },
   signature: {
     name: 'SIGNATURE-VERIFICATION.txt',
     size: 7436,
     digest: 'sha256:18efa13ec3d76425617e4df5f3d5da4a12d57dfa853312b73f7d557495a2bc9b',
     content_type: 'text/plain; charset=utf-8',
-    legacy_url: 'https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/SIGNATURE-VERIFICATION.txt',
+    legacy_url: 'https://madeinmagius-site.pages.dev/downloads/legacy/netease/v2.5.1/SIGNATURE-VERIFICATION.txt',
   },
 };
 
@@ -72,7 +72,7 @@ const PROJECTS = {
     minimumVersion: '2.5.1',
     legacy: NETEASE_LEGACY,
     kinds: {
-      'android-full': /完整版\.apk$/i,
+      'android-full': /(?:完整版|NeteasePlaylistExporter-v[0-9.]+-android-full)\.apk$/i,
       windows: /windows-x64\.zip$/i,
       python: /-python\.zip$/i,
       wheel: /\.whl$/i,
@@ -208,17 +208,17 @@ function copyHeader(target, source, name) {
   if (value) target.set(name, value);
 }
 
-async function handle(context, headOnly = false) {
+async function handle(context, headOnly = false, pinnedAsset = null) {
   const token = context.env.GITHUB_RELEASES_TOKEN;
   if (!token) return error('Release mirror is not configured yet.', 503);
 
   const project = String(context.params.project || '');
   const kind = String(context.params.kind || '');
   const config = PROJECTS[project];
-  if (!config || !config.kinds[kind]) return error('Unknown release route.', 404);
+  if (!pinnedAsset && (!config || !config.kinds[kind])) return error('Unknown release route.', 404);
 
   try {
-    const asset = await getAsset(config, kind, token);
+    const asset = pinnedAsset || await getAsset(config, kind, token);
     // This public fallback accepts browser downloads but rejects Worker proxying.
     // GitHub-hosted assets still use the normal authenticated streaming path.
     if (asset.redirect_to_origin) {
@@ -279,4 +279,9 @@ export function onRequestGet(context) {
 
 export function onRequestHead(context) {
   return handle(context, true);
+}
+
+export function servePinnedAsset(context, asset, headOnly = false) {
+  if (!asset) return error("Unknown archived asset.", 404);
+  return handle(context, headOnly, asset);
 }

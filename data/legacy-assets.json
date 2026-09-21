@@ -1,0 +1,247 @@
+{
+  "bilibili/v0.1.9/Bilibili-Follower-Snapshot-Companion-v0.1.9.apk": {
+    "name": "Bilibili-Follower-Snapshot-Companion-v0.1.9.apk",
+    "size": 2467189,
+    "digest": "sha256:33e6413c1f344fe5b1cf474e468bb1e04a944332742850cb1eee0eddeec954af",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579471874"
+  },
+  "bilibili/v0.1.9/Bilibili-Follower-Snapshot-v0.1.9-source.zip": {
+    "name": "Bilibili-Follower-Snapshot-v0.1.9-source.zip",
+    "size": 791040,
+    "digest": "sha256:089cda974dde761597d4d8e3e2c5dec8ef14dca8e221fb541dc2d453038c56e9",
+    "content_type": "application/x-zip-compressed",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579472019"
+  },
+  "bilibili/v0.1.9/bilibili-follower-snapshot-v0.2.9.user.js": {
+    "name": "bilibili-follower-snapshot-v0.2.9.user.js",
+    "size": 138434,
+    "digest": "sha256:74449434b775fa53a1973558cc5bd8f0dae7a0017af8a61d7dd714e675ae2fae",
+    "content_type": "text/javascript",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579472139"
+  },
+  "bilibili/v0.1.9/RELEASE_MANIFEST.json": {
+    "name": "RELEASE_MANIFEST.json",
+    "size": 731,
+    "digest": "sha256:93bf89e9b46509a2e8be382d765cc658a92b2c488b677fde38f59547bc0a7f81",
+    "content_type": "application/json",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579472249"
+  },
+  "bilibili/v0.1.9/SHA256SUMS.txt": {
+    "name": "SHA256SUMS.txt",
+    "size": 336,
+    "digest": "sha256:732304c8f9f6037e62767c4c2d1e6825b8e825c0119247cde152587196e1b224",
+    "content_type": "text/plain",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579472367"
+  },
+  "bilibili-follower-snapshot-console.js": {
+    "name": "bilibili-follower-snapshot-console.js",
+    "size": 72512,
+    "digest": "sha256:7d445fec7c3e1629ec2a1c36859f7a851b70cea026494c163fbf57a4dda96ee0",
+    "content_type": "text/javascript",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579472501"
+  },
+  "bilibili-follower-snapshot-console.txt": {
+    "name": "bilibili-follower-snapshot-console.txt",
+    "size": 72512,
+    "digest": "sha256:7d445fec7c3e1629ec2a1c36859f7a851b70cea026494c163fbf57a4dda96ee0",
+    "content_type": "text/plain",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579472501"
+  },
+  "bilibili-follower-snapshot.user.js": {
+    "name": "bilibili-follower-snapshot.user.js",
+    "size": 138434,
+    "digest": "sha256:74449434b775fa53a1973558cc5bd8f0dae7a0017af8a61d7dd714e675ae2fae",
+    "content_type": "text/javascript",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579472139"
+  },
+  "B站粉丝快照伴侣-v0.1.7.apk": {
+    "name": "B站粉丝快照伴侣-v0.1.7.apk",
+    "size": 2224070,
+    "digest": "sha256:8798b60c6d8f82159a0d65750d80a6a463f937734afa4e9d40bdba1faa850db5",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579472623"
+  },
+  "catalog.json": {
+    "name": "catalog.json",
+    "size": 7109,
+    "digest": "sha256:169b9abae8b2bf4a7ed3d02b8909a2742bffd67dc638fa5d70bb4727a6ab8d5b",
+    "content_type": "application/json",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/579472770"
+  },
+  "netease/netease-removed-tracks-exporter-v2.4.2-full.apk": {
+    "name": "netease-removed-tracks-exporter-v2.4.2-full.apk",
+    "size": 893975,
+    "digest": "sha256:535f91d2821ec25ab37598721d6e1ff42578b3280350a3c8f28bf0d81d927505",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579473905"
+  },
+  "netease/netease-removed-tracks-exporter-v2.4.2-google-play.aab": {
+    "name": "netease-removed-tracks-exporter-v2.4.2-google-play.aab",
+    "size": 869573,
+    "digest": "sha256:33d4052f3e052977b9daf852923469284e5c730819bbc7125476f50f6252e623",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579474053"
+  },
+  "netease/netease-removed-tracks-exporter-v2.4.2-store.apk": {
+    "name": "netease-removed-tracks-exporter-v2.4.2-store.apk",
+    "size": 893117,
+    "digest": "sha256:42e1de34d826af1a08ec7e733f91488298bad58923ad5555cfdc1a7bbbb71314",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579474170"
+  },
+  "netease/v2.5.0/ncm-exporter-upload-cert.pem": {
+    "name": "ncm-exporter-upload-cert.pem",
+    "size": 1896,
+    "digest": "sha256:b014ef0614bf874c90583c9fd81aca4c08941ca8ab187e6469e93a73df239e56",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579474339"
+  },
+  "netease/v2.5.0/netease_cloudmusic_delisted_exporter-2.5.0-py3-none-any.whl": {
+    "name": "netease_cloudmusic_delisted_exporter-2.5.0-py3-none-any.whl",
+    "size": 54817,
+    "digest": "sha256:a3f69578e643ef6bc5396aeb4b6e028dca92c796463a47bfb6e5148f6b9a49de",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579474443"
+  },
+  "netease/v2.5.0/NeteasePlaylistExporter-v2.5.0-python.zip": {
+    "name": "NeteasePlaylistExporter-v2.5.0-python.zip",
+    "size": 1217776,
+    "digest": "sha256:922e5eda5ab77d6d9f4abea0017381a82f7f484a53e53d1557a42509cf455bdd",
+    "content_type": "application/x-zip-compressed",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579474512"
+  },
+  "netease/v2.5.0/NeteasePlaylistExporter-v2.5.0-source.tar.gz": {
+    "name": "NeteasePlaylistExporter-v2.5.0-source.tar.gz",
+    "size": 1154145,
+    "digest": "sha256:98989394dfce09e683e4f5046c338d290bb5f65c6dda223f4e569d9020837b94",
+    "content_type": "application/x-tar",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579474653"
+  },
+  "netease/v2.5.0/NeteasePlaylistExporter-v2.5.0-windows-x64.zip": {
+    "name": "NeteasePlaylistExporter-v2.5.0-windows-x64.zip",
+    "size": 18330124,
+    "digest": "sha256:e79bfd969a20b1c691b5f67b10af0cc192f86e705dafd6bf671e7316e3370197",
+    "content_type": "application/x-zip-compressed",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579474806"
+  },
+  "netease/v2.5.0/RELEASE_MANIFEST.json": {
+    "name": "RELEASE_MANIFEST.json",
+    "size": 1888,
+    "digest": "sha256:0151f7d24b8d79ec25889bb58afc09e670fb3ed4926bbf10c5abae31d2d39026",
+    "content_type": "application/json",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579475136"
+  },
+  "netease/v2.5.0/SHA256SUMS.txt": {
+    "name": "SHA256SUMS.txt",
+    "size": 1144,
+    "digest": "sha256:87b21a50674e2175121ad237033b9154d0ed858656cdfcc001976f0afad05dd9",
+    "content_type": "text/plain",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579475218"
+  },
+  "netease/v2.5.0/SIGNATURE-VERIFICATION.txt": {
+    "name": "SIGNATURE-VERIFICATION.txt",
+    "size": 7436,
+    "digest": "sha256:becf9da9fbec1b3dcb1bcd1ba98ad224f785058a031c147e8b831e9ae3d19af5",
+    "content_type": "text/plain",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579475303"
+  },
+  "netease/v2.5.0/网易云已下架音乐完整名字导出器_v2.5.0_GooglePlay.aab": {
+    "name": "网易云已下架音乐完整名字导出器_v2.5.0_GooglePlay.aab",
+    "size": 873386,
+    "digest": "sha256:3c211a64333361974ad5f116fa42de4be62de4b5ac47545ce835f751a19a74a3",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579475426"
+  },
+  "netease/v2.5.0/网易云已下架音乐完整名字导出器_v2.5.0_商店版.apk": {
+    "name": "网易云已下架音乐完整名字导出器_v2.5.0_商店版.apk",
+    "size": 896929,
+    "digest": "sha256:c8836c0a0629cd98fa013541c8ebdc65c6e7db758ab8d45ff965d6f63af86292",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579475603"
+  },
+  "netease/v2.5.0/网易云已下架音乐完整名字导出器_v2.5.0_完整版.apk": {
+    "name": "网易云已下架音乐完整名字导出器_v2.5.0_完整版.apk",
+    "size": 897780,
+    "digest": "sha256:fc80724bd0732c5404f17cfba9caf46ba0549e4907247f5ed8c1fd8bbe726c14",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579475757"
+  },
+  "netease/v2.5.1/ncm-exporter-upload-cert.pem": {
+    "name": "ncm-exporter-upload-cert.pem",
+    "size": 1896,
+    "digest": "sha256:b014ef0614bf874c90583c9fd81aca4c08941ca8ab187e6469e93a73df239e56",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579474339"
+  },
+  "netease/v2.5.1/netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl": {
+    "name": "netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl",
+    "size": 54861,
+    "digest": "sha256:4223c69aa8cfee4d5aff50489f4260de4834de2861ab8be0b489e71a1dac2e1e",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579475883"
+  },
+  "netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-python.zip": {
+    "name": "NeteasePlaylistExporter-v2.5.1-python.zip",
+    "size": 1218343,
+    "digest": "sha256:9a4670a02e2fbbd200e6f5764f302dcd83518616d11a92c9c33186bde5e01d38",
+    "content_type": "application/x-zip-compressed",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579476011"
+  },
+  "netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-source.tar.gz": {
+    "name": "NeteasePlaylistExporter-v2.5.1-source.tar.gz",
+    "size": 1154458,
+    "digest": "sha256:48e278561b9f780ea99dc01bc08e5b0770d363b39660366283b25b3878a00b2d",
+    "content_type": "application/x-tar",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579476168"
+  },
+  "netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-windows-x64.zip": {
+    "name": "NeteasePlaylistExporter-v2.5.1-windows-x64.zip",
+    "size": 18331073,
+    "digest": "sha256:2cca372d639cb0a1d3fb0d53ef7188246d44e3ce2eeaa2e06e86fc7e366daa73",
+    "content_type": "application/x-zip-compressed",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579476394"
+  },
+  "netease/v2.5.1/RELEASE_MANIFEST.json": {
+    "name": "RELEASE_MANIFEST.json",
+    "size": 1888,
+    "digest": "sha256:b9c98cacee24afce2fdaa146d7ba8ba48211bd96b41a75f499281bfb15577378",
+    "content_type": "application/json",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579477066"
+  },
+  "netease/v2.5.1/SHA256SUMS.txt": {
+    "name": "SHA256SUMS.txt",
+    "size": 1144,
+    "digest": "sha256:36a436d234c87af65c79ca7936d39b23ae7ccfbbc6f2f3e5d2b81ca418145747",
+    "content_type": "text/plain",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579477187"
+  },
+  "netease/v2.5.1/SIGNATURE-VERIFICATION.txt": {
+    "name": "SIGNATURE-VERIFICATION.txt",
+    "size": 7436,
+    "digest": "sha256:18efa13ec3d76425617e4df5f3d5da4a12d57dfa853312b73f7d557495a2bc9b",
+    "content_type": "text/plain",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579477319"
+  },
+  "netease/v2.5.1/网易云已下架音乐完整名字导出器_v2.5.1_GooglePlay.aab": {
+    "name": "网易云已下架音乐完整名字导出器_v2.5.1_GooglePlay.aab",
+    "size": 873418,
+    "digest": "sha256:631a30b4facecf6720ad5ea9851904d4c2374e0e15fd9819beae999cacc864e5",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579477404"
+  },
+  "netease/v2.5.1/网易云已下架音乐完整名字导出器_v2.5.1_商店版.apk": {
+    "name": "网易云已下架音乐完整名字导出器_v2.5.1_商店版.apk",
+    "size": 896943,
+    "digest": "sha256:8371437808c723441e81b1eb373f0f35ff296e6bcef79250c1e2f6e84efa6558",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579477497"
+  },
+  "netease/v2.5.1/网易云已下架音乐完整名字导出器_v2.5.1_完整版.apk": {
+    "name": "网易云已下架音乐完整名字导出器_v2.5.1_完整版.apk",
+    "size": 897805,
+    "digest": "sha256:9309450db4918cdb2e5d2e04ffa85b35597d77b191a8d1aea3c8d9e94fe393c1",
+    "content_type": "application/octet-stream",
+    "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579477585"
+  }
+}

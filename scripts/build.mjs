@@ -66,6 +66,7 @@ await mkdir('dist',{ recursive:true });
 await cp('index.html','dist/index.html');
 await cp('assets','dist/assets',{ recursive:true });
 await cp('data','dist/data',{ recursive:true });
+await cp('updates','dist/updates',{ recursive:true });
 await writeFile('dist/.nojekyll','');
 await writeFile('dist/404.html',`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><script>
 const base = location.pathname.includes('/madeinmagius-site/') ? '/madeinmagius-site/' : '/';
@@ -76,6 +77,8 @@ await writeFile('dist/_headers',`/*
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Cross-Origin-Opener-Policy: same-origin-allow-popups
+/updates/*
+  Cache-Control: no-store
 /assets/*
   Cache-Control: public, max-age=3600
 /data/*

@@ -58,7 +58,7 @@ globalThis.fetch = async (input, init = {}) => {
       : new Response('missing',{status:404});
   }
 
-  if (url.startsWith('https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/')) {
+  if (url.startsWith('https://madeinmagius-site.pages.dev/downloads/legacy/netease/v2.5.1/')) {
     const range = new Headers(init.headers || {}).get('range');
     if (range === 'bytes=0-1') {
       return new Response(new Uint8Array([1,2]),{

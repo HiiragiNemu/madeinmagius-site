@@ -1,91 +1,97 @@
 {
   "schema": "madeinmagius-release-snapshot/v1",
-  "generated_at": "2026-09-19T00:00:00Z",
-  "source": "github-connector-snapshot",
+  "generated_at": "2026-09-22",
+  "source": "verified-maintainer-release-snapshot",
   "projects": {
     "bilibili": {
-      "tag": "v0.1.9",
-      "name": "B站粉丝快照伴侣 v0.1.9 · 固定面板与启动备份",
-      "published_at": "2026-09-16T13:08:36Z",
-      "release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/tag/v0.1.9",
+      "tag": "v0.1.10",
+      "name": "B站粉丝快照伴侣 v0.1.10 · 应用更新与文件访问",
+      "release_url": "https://madeinmagius-site.pages.dev/#bilibili",
       "assets": {
         "android": {
-          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.9.apk",
-          "size": 2467189,
-          "digest": "sha256:33e6413c1f344fe5b1cf474e468bb1e04a944332742850cb1eee0eddeec954af",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili/v0.1.9/Bilibili-Follower-Snapshot-Companion-v0.1.9.apk",
-          "github_release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/download/v0.1.9/Bilibili-Follower-Snapshot-Companion-v0.1.9.apk"
+          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.10.apk",
+          "size": 2495161,
+          "digest": "sha256:89999ea9941128f53d9dcec7ebeaf23d5c981c59e974445042e90933f06956fd",
+          "content_type": "application/vnd.android.package-archive",
+          "download": "./downloads/bilibili/android"
         },
         "userscript": {
-          "name": "bilibili-follower-snapshot-v0.2.9.user.js",
-          "size": 138434,
-          "digest": "sha256:74449434b775fa53a1973558cc5bd8f0dae7a0017af8a61d7dd714e675ae2fae",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot.user.js",
-          "github_release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/download/v0.1.9/bilibili-follower-snapshot-v0.2.9.user.js"
-        },
-        "consoleText": {
-          "name": "bilibili-follower-snapshot-console.txt",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.txt"
+          "name": "bilibili-follower-snapshot-v0.2.10.user.js",
+          "size": 138417,
+          "digest": "sha256:7a477071eb7ed48fc60bf05b62dc3049a91d05e56ddaa081081e3d34549cbe48",
+          "content_type": "application/javascript",
+          "download": "./downloads/bilibili/userscript"
         },
         "consoleScript": {
           "name": "bilibili-follower-snapshot-console.js",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/bilibili-follower-snapshot-console.js"
+          "download": "./downloads/bilibili-follower-snapshot-console.js"
+        },
+        "consoleText": {
+          "name": "bilibili-follower-snapshot-console.txt",
+          "download": "./downloads/bilibili-follower-snapshot-console.txt"
         }
       }
     },
     "netease": {
-      "tag": "v2.5.1",
-      "name": "网易云已下架音乐完整名字导出器 v2.5.1",
-      "published_at": null,
-      "release_url": "https://bilibili-follower-snapshot.pages.dev/netease/",
+      "tag": "v2.5.2",
+      "name": "网易云完整曲名导出器 v2.5.2 · 应用更新与文件访问",
+      "release_url": "https://madeinmagius-site.pages.dev/#netease",
       "assets": {
         "androidFull": {
-          "name": "网易云已下架音乐完整名字导出器_v2.5.1_完整版.apk",
-          "size": 897805,
-          "digest": "sha256:9309450db4918cdb2e5d2e04ffa85b35597d77b191a8d1aea3c8d9e94fe393c1",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/%E7%BD%91%E6%98%93%E4%BA%91%E5%B7%B2%E4%B8%8B%E6%9E%B6%E9%9F%B3%E4%B9%90%E5%AE%8C%E6%95%B4%E5%90%8D%E5%AD%97%E5%AF%BC%E5%87%BA%E5%99%A8_v2.5.1_%E5%AE%8C%E6%95%B4%E7%89%88.apk"
+          "name": "NeteasePlaylistExporter-v2.5.2-android-full.apk",
+          "size": 908807,
+          "digest": "sha256:b1fc5296a065866a4e1b047dd975459e2a7c35148aee8755ef887443c7b32324",
+          "content_type": "application/vnd.android.package-archive",
+          "download": "./downloads/netease/android-full"
         },
         "windows": {
           "name": "NeteasePlaylistExporter-v2.5.1-windows-x64.zip",
           "size": 18331073,
           "digest": "sha256:2cca372d639cb0a1d3fb0d53ef7188246d44e3ce2eeaa2e06e86fc7e366daa73",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-windows-x64.zip"
+          "content_type": "application/zip",
+          "download": "./downloads/netease/windows"
         },
         "python": {
           "name": "NeteasePlaylistExporter-v2.5.1-python.zip",
           "size": 1218343,
           "digest": "sha256:9a4670a02e2fbbd200e6f5764f302dcd83518616d11a92c9c33186bde5e01d38",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/NeteasePlaylistExporter-v2.5.1-python.zip"
+          "content_type": "application/zip",
+          "download": "./downloads/netease/python"
         },
         "wheel": {
           "name": "netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl",
           "size": 54861,
           "digest": "sha256:4223c69aa8cfee4d5aff50489f4260de4834de2861ab8be0b489e71a1dac2e1e",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl"
+          "content_type": "application/octet-stream",
+          "download": "./downloads/netease/wheel"
         },
         "manifest": {
           "name": "RELEASE_MANIFEST.json",
-          "size": 1888,
-          "digest": "sha256:b9c98cacee24afce2fdaa146d7ba8ba48211bd96b41a75f499281bfb15577378",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/RELEASE_MANIFEST.json"
+          "size": 1692,
+          "digest": "sha256:364e95e94eb2b3613efab5ce38da5302e9cdbe4f9fe75ad6432f35aea0859ad3",
+          "content_type": "application/json",
+          "download": "./downloads/netease/manifest"
         },
         "sums": {
           "name": "SHA256SUMS.txt",
-          "size": 1144,
-          "digest": null,
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/SHA256SUMS.txt"
+          "size": 844,
+          "digest": "sha256:ae6c33d853cd18f3376838f6341fbc50f836cd3675aca9ce0d8791e567e94327",
+          "content_type": "text/plain; charset=utf-8",
+          "download": "./downloads/netease/sums"
         },
         "cert": {
           "name": "ncm-exporter-upload-cert.pem",
           "size": 1896,
           "digest": "sha256:b014ef0614bf874c90583c9fd81aca4c08941ca8ab187e6469e93a73df239e56",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/ncm-exporter-upload-cert.pem"
+          "content_type": "application/octet-stream",
+          "download": "./downloads/netease/cert"
         },
         "signature": {
           "name": "SIGNATURE-VERIFICATION.txt",
-          "size": 7436,
-          "digest": "sha256:18efa13ec3d76425617e4df5f3d5da4a12d57dfa853312b73f7d557495a2bc9b",
-          "browser_download_url": "https://bilibili-follower-snapshot.pages.dev/downloads/netease/v2.5.1/SIGNATURE-VERIFICATION.txt"
+          "size": 989,
+          "digest": "sha256:d983fc3307c201da3e6ad22dd83726e818b274a5a1a124235948af0fada20148",
+          "content_type": "text/plain; charset=utf-8",
+          "download": "./downloads/netease/signature"
         }
       }
     },

@@ -1,4 +1,4 @@
-import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260922-home-hub1';
+import { PROGRAMS, escapeHtml, renderContent } from './content.js?v=20260922-magireco1';
 import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260921-iosnative1';
 
 const body = document.body;
@@ -23,7 +23,8 @@ const warpImage = document.getElementById('crt-warp-map');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mobileMode = matchMedia('(max-width: 760px)');
 
-const data = { releases: null, docs: new Map(), integrity: null };
+const data = { releases: null, docs: new Map(), integrity: null, magireco: null };
+let magirecoLoading = false;
 let programId = 'home';
 let subId = 'welcome';
 let hoverSubId = null;
@@ -304,6 +305,7 @@ function selectSub(id, focus = false) {
   }
 
   subId = id;
+  if (programId === 'home' && id === 'magireco-private-server') loadMagirecoRelease();
   if (mobileMode.matches) mobileExpandedSub = id;
 
   Array.from(subMenu.querySelectorAll('.sub-node')).forEach(button => {
@@ -428,6 +430,31 @@ contentPanel.addEventListener('click', async event => {
   }
 });
 
+async function loadMagirecoRelease() {
+  if (magirecoLoading) return;
+  magirecoLoading = true;
+  data.magireco = { state: 'loading' };
+  if (programId === 'home' && subId === 'magireco-private-server') renderCurrentContent();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch('./api/magireco', { cache: 'no-store', signal: controller.signal });
+    if (!response.ok) throw new Error('Release sync unavailable');
+    const current = await response.json();
+    data.magireco = { ...current, state: 'ready' };
+  } catch {
+    data.magireco = { state: 'error' };
+  } finally {
+    clearTimeout(timeout);
+    magirecoLoading = false;
+    if (programId === 'home' && subId === 'magireco-private-server') renderCurrentContent();
+  }
+}
+
+contentInner.addEventListener('click', event => {
+  if (event.target.closest('[data-magireco-refresh]')) loadMagirecoRelease();
+});
+
 async function loadData() {
   try {
     const response = await fetch('./data/releases.json', { cache: 'no-cache' });
@@ -526,6 +553,7 @@ syncProgramButtons();
 buildSubMenu();
 renderCurrentContent();
 loadData();
+if (programId === 'home' && subId === 'magireco-private-server') loadMagirecoRelease();
 updateClock();
 bootSequence();
 
@@ -544,6 +572,7 @@ addEventListener('resize', () => {
 
 addEventListener('hashchange', () => {
   parseHash();
+  if (programId === 'home' && subId === 'magireco-private-server') loadMagirecoRelease();
   syncProgramButtons();
   buildSubMenu();
   renderCurrentContent();

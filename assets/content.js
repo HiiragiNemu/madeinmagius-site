@@ -4,12 +4,12 @@ export const HOME_WEBSITES = [
   { title: '角色称呼与身高查询', description: '魔法少女称呼关系搜索与身高对比网站', url: 'https://magireco-call-search-cn.pages.dev/' },
   { title: 'MAGIUS 3D VIEWER', description: 'Magia Exedra 3D 网站', url: 'https://magius3dviewer.pages.dev/' },
   { title: 'LIVE2D / ADV', description: '魔法纪录 / Magia Exedra Live2D 和战斗小人网站，含剧情播放功能', url: 'https://magiaexedralive2dviewer.pages.dev/' },
-  { title: 'MAGIUS LINK', description: 'MadeInMagius 下载中心和教程网站 · 当前站点', url: 'https://madeinmagius-site.pages.dev/', current: true },
 ];
 
 export const PROGRAMS = {
   home: { subs: [
-    { id: 'welcome', label: '魔法纪录系列网站', note: '作品导航' },
+    { id: 'welcome', label: '魔法纪录相关网站', note: '作品导航' },
+    { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: 'APK / 教程' },
     { id: 'programs', label: '未来将添加更多网站', note: '预留' },
     { id: 'contact', label: 'CONTACT', note: '联系' }
   ]},
@@ -187,22 +187,52 @@ function contactHtml() {
     '</div>';
 }
 
+function magirecoClientHtml(current) {
+  let download = '<p role="status">正在读取最新正式版本…</p>';
+  if (current?.state === 'ready') {
+    download = '<p><strong>客户端版本 ' + escapeHtml(current.version) + '</strong> · ' + formatBytes(current.size) + '</p>' +
+      '<a class="download-button" href="' + escapeHtml(current.download) + '">下载 APK</a>' +
+      '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
+  } else if (current?.state === 'error') {
+    download = '<p role="status">发布信息正在同步或暂时不可用，请稍后重新检查。</p>';
+  }
+  return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2>' +
+    '<p>魔法纪录汉化客户端（Android）。无需 Root；安装包不包含随后下载的全部游戏资源。</p>' +
+    '<div class="download-stack"><article class="download-card"><h3>ANDROID APK</h3>' + download +
+    '<p><button class="terminal-copy-button" type="button" data-magireco-refresh' +
+    (current?.state === 'loading' ? ' disabled' : '') + '>重新检查版本</button></p></article></div>' +
+    '<p>这里自动读取正式发布版本。本页显示客户端内置版本，可能与系统安装详情中的版本号不同。</p>' +
+    '<h3>初次安装</h3><ol>' +
+    '<li>点击“下载 APK”，下载完成后打开文件。</li>' +
+    '<li>如系统询问，允许当前浏览器或文件管理器安装未知来源应用，再按提示完成安装。</li>' +
+    '<li>打开客户端。资源服务器地址已经内置，无需手工填写。</li>' +
+    '<li>在应用内下载资源，保持联网并预留下载与解压空间，以界面的进度和空间提示为准。完成后按“进入游戏”或界面启动提示继续。</li></ol>' +
+    '<h3>下载资源与线路</h3>' +
+    '<p>网络较慢但进度仍在增加时，可以继续等待。低速提示中的“关闭”和“继续下载”都会保留当前任务；Logo 右侧的“线路”可手动选择下载线路。</p>' +
+    '<p>资源行中的“重下”表示从头下载，不是继续当前下载。已有兼容下载内容会保留断点。</p>' +
+    '<h3>已有客户端如何更新</h3><ol>' +
+    '<li>同来源、同签名的版本可以直接安装新版覆盖更新，不要先卸载或清除数据。</li>' +
+    '<li>更新后打开客户端，保留已有资源与本地状态，并按版本检查下载所需更新。</li>' +
+    '<li>若系统提示安装冲突，先核对旧包来源、包名和签名并保留原数据，不要用卸载作为通用解决办法。</li></ol>' +
+    '<h3>文件权限</h3>' +
+    '<p>正常资源下载使用应用目录，无需开启所有文件访问。只有需要读写共享存储时，再使用 Logo 右侧的“文件权限”，手动进入系统设置授权。</p>';
+}
+
 export function renderContent(programId, subId, data) {
   if (programId === 'home') {
+    if (subId === 'magireco-private-server') return magirecoClientHtml(data.magireco);
     if (subId === 'programs') {
       return '<p class="content-kicker">MAGIUS LINK / UPCOMING</p><h2>未来将添加更多网站</h2>' +
         '<p>这里预留给未来的更多项目。新的网站与作品会陆续加入 HOME。</p>';
     }
     if (subId === 'contact') return contactHtml();
-    return '<p class="content-kicker">MAGIUS LINK / WEBSITES</p><h2>魔法纪录系列网站</h2>' +
+    return '<p class="content-kicker">MAGIUS LINK / WEBSITES</p><h2>魔法纪录相关网站</h2>' +
       '<div class="download-stack">' + HOME_WEBSITES.map(function(site) {
         return '<article class="download-card">' +
           '<h3>' + escapeHtml(site.title) + '</h3>' +
           '<p>' + escapeHtml(site.description) + '</p>' +
           '<p class="meta-line">' + escapeHtml(new URL(site.url).hostname) + '</p>' +
-          (site.current
-            ? '<div class="quick-links"><a href="#bilibili/android">BILIBILI 下载</a><a href="#netease/android-full">NETEASE 下载</a><a href="#exedra/exedra-downloads">EXEDRA 下载与教程</a></div>'
-            : '<a class="download-button" href="' + escapeHtml(site.url) + '" target="_blank" rel="noopener noreferrer">打开网站 ↗</a>') +
+          '<a class="download-button" href="' + escapeHtml(site.url) + '" target="_blank" rel="noopener noreferrer">打开网站 ↗</a>' +
           '</article>';
       }).join('') + '</div>';
   }

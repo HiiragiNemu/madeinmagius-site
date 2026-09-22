@@ -1,0 +1,65 @@
+name: Verify NetEase Android update route
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Wait for Cloudflare deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          META='https://madeinmagius-site.pages.dev/updates/netease/android.json'
+          expected_version="$(node -p "require('./data/releases.json').projects.netease.tag.replace(/^v/,'')")"
+          expected_sha="$(node -p "require('./data/releases.json').projects.netease.assets.androidFull.digest.replace(/^sha256:/,'').toLowerCase()")"
+          expected_size="$(node -p "require('./data/releases.json').projects.netease.assets.androidFull.size")"
+          expected_apk_url="https://madeinmagius-site.pages.dev/downloads/pinned/netease/$expected_version"
+
+          echo "expected version=$expected_version size=$expected_size sha256=$expected_sha"
+
+          ok=0
+          for attempt in $(seq 1 24); do
+            code="$(curl -sS -D /tmp/meta-headers -o /tmp/meta-body -w '%{http_code}' "$META?verify=$GITHUB_RUN_ID-$attempt")"
+            version="$(node -e "const x=require('fs').readFileSync('/tmp/meta-body','utf8');try{process.stdout.write(String(JSON.parse(x).version||''))}catch{}")"
+            version_code="$(node -e "const x=require('fs').readFileSync('/tmp/meta-body','utf8');try{process.stdout.write(String(JSON.parse(x).versionCode||''))}catch{}")"
+            sha256="$(node -e "const x=require('fs').readFileSync('/tmp/meta-body','utf8');try{process.stdout.write(String(JSON.parse(x).sha256||'').toLowerCase())}catch{}")"
+            apk_url="$(node -e "const x=require('fs').readFileSync('/tmp/meta-body','utf8');try{process.stdout.write(String(JSON.parse(x).apk_url||''))}catch{}")"
+            package_name="$(node -e "const x=require('fs').readFileSync('/tmp/meta-body','utf8');try{process.stdout.write(String(JSON.parse(x).packageName||''))}catch{}")"
+
+            echo "attempt=$attempt http=$code version=$version versionCode=$version_code"
+
+            if [[ "$code" = "200" &&
+                  "$version" = "$expected_version" &&
+                  "$sha256" = "$expected_sha" &&
+                  "$apk_url" = "$expected_apk_url" &&
+                  "$package_name" = "io.github.hiiraginemu.ncmexporter" &&
+                  "$version_code" =~ ^[0-9]+$ ]]; then
+              head_code="$(curl -sS -I -D /tmp/apk-headers -o /dev/null -w '%{http_code}' "$apk_url?verify=$GITHUB_RUN_ID-$attempt")"
+              content_length="$(tr -d '\r' </tmp/apk-headers | sed -n 's/^content-length: //Ip' | tail -1)"
+              release_digest="$(tr -d '\r' </tmp/apk-headers | sed -n 's/^x-release-digest: sha256://Ip' | tail -1 | tr '[:upper:]' '[:lower:]')"
+              echo "download http=$head_code size=$content_length sha256=$release_digest"
+              if [[ "$head_code" = "200" &&
+                    "$content_length" = "$expected_size" &&
+                    "$release_digest" = "$expected_sha" ]]; then
+                ok=1
+                break
+              fi
+            fi
+
+            sleep 10
+          done
+
+          test "$ok" = 1
+          echo NETEASE_ANDROID_UPDATE_ROUTE_PASS

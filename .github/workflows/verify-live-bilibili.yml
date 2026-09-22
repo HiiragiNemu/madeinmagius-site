@@ -1,0 +1,60 @@
+name: Verify live Bilibili distribution
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for Cloudflare and verify live routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          CF='https://madeinmagius-site.pages.dev'
+          GH='https://hiiraginemu.github.io/madeinmagius-site'
+          EXPECTED_SCRIPT_SHA='831c82dcfc86b3eac0127dad2485bb48825159201bbf189882e476bf89345eb2'
+          EXPECTED_APK_SHA='89999ea9941128f53d9dcec7ebeaf23d5c981c59e974445042e90933f06956fd'
+
+          ok=0
+          for attempt in $(seq 1 18); do
+            echo "Cloudflare verification attempt $attempt"
+            if curl -fsSL "$CF/api/releases?verify=$GITHUB_RUN_ID-$attempt" -o /tmp/releases.json               && grep -q 'bilibili-follower-snapshot-v0.2.11.user.js' /tmp/releases.json               && grep -q "$EXPECTED_SCRIPT_SHA" /tmp/releases.json; then
+              ok=1
+              break
+            fi
+            sleep 10
+          done
+          test "$ok" = 1
+
+          curl -fsSL "$CF/downloads/bilibili-follower-snapshot.user.js?verify=$GITHUB_RUN_ID" -o /tmp/install.user.js
+          curl -fsSL "$CF/downloads/bilibili/userscript?verify=$GITHUB_RUN_ID" -o /tmp/manual.user.js
+          grep -q '^// @version      0.2.11$' /tmp/install.user.js
+          cmp /tmp/install.user.js /tmp/manual.user.js
+          echo "$EXPECTED_SCRIPT_SHA  /tmp/install.user.js" | sha256sum -c -
+
+          curl -fsSL "$CF/updates/bilibili/android.json?verify=$GITHUB_RUN_ID" -o /tmp/android.json
+          grep -q '"version": "0.1.10"' /tmp/android.json
+          grep -q '"versionCode": 11' /tmp/android.json
+          if grep -q '"version": "0.1.11"' /tmp/android.json; then
+            echo 'ERROR: unsigned 0.1.11 metadata was exposed' >&2
+            exit 1
+          fi
+
+          curl -fsSL "$CF/downloads/bilibili/android?verify=$GITHUB_RUN_ID" -o /tmp/current.apk
+          echo "$EXPECTED_APK_SHA  /tmp/current.apk" | sha256sum -c -
+
+          curl -fsSL "$GH/data/releases.json?verify=$GITHUB_RUN_ID" -o /tmp/gh-releases.json
+          grep -q 'bilibili-follower-snapshot-v0.2.11.user.js' /tmp/gh-releases.json
+          grep -q "$EXPECTED_SCRIPT_SHA" /tmp/gh-releases.json
+
+          curl -fsSL "$GH/assets/content.js?verify=$GITHUB_RUN_ID" -o /tmp/content.js
+          grep -q 'MediaStore' /tmp/content.js
+          grep -q 'N-1' /tmp/content.js
+
+          echo "LIVE_DISTRIBUTION_PASS"

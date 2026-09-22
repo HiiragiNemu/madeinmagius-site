@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { onRequestGet as releases } from '../functions/api/releases.js';
 import { onRequestGet as download, onRequestHead as headDownload } from '../functions/downloads/[project]/[kind].js';
 
@@ -242,7 +243,9 @@ try {
 }
 
 
-test('Cloudflare routes include dynamic update endpoints', async () => {
-  const build = await readFile(new URL('./build.mjs', import.meta.url), 'utf8');
-  assert.match(build, /include:\['\/api\/\*','\/downloads\/\*','\/updates\/\*'\]/);
-});
+const buildScript = await readFile(new URL('./build.mjs', import.meta.url), 'utf8');
+assert.match(
+  buildScript,
+  /include:\['\/api\/\*','\/downloads\/\*','\/updates\/\*'\]/,
+  'Cloudflare routes must include dynamic update endpoints'
+);

@@ -95,7 +95,7 @@ await writeFile('dist/_headers',`/*
 `);
 await writeFile('dist/_routes.json',JSON.stringify({
   version:1,
-  include:['/api/*','/downloads/*'],
+  include:['/api/*','/downloads/*','/updates/*'],
   exclude:['/assets/*','/data/*']
 },null,2)+'\n');
 

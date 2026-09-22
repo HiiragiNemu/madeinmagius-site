@@ -112,6 +112,11 @@ try {
   assert.equal(data.source,'cloudflare-live');
   assert.equal(data.projects.bilibili.tag,'v9.9.9');
   assert.equal(data.projects.bilibili.assets.android.download,'./downloads/bilibili/android');
+  assert.equal(data.projects.bilibili.assets.userscript.name,'bilibili-follower-snapshot-v0.2.11.user.js');
+  assert.equal(data.projects.bilibili.assets.userscript.size,139359);
+  assert.equal(data.projects.bilibili.assets.userscript.digest,'sha256:831c82dcfc86b3eac0127dad2485bb48825159201bbf189882e476bf89345eb2');
+  assert.equal(data.projects.bilibili.assets.userscript.source_commit,'c59d10534333bb31f65d689e9fc7ddbb03d4a058');
+  assert.equal(data.projects.bilibili.assets.userscript.download,'./downloads/bilibili/userscript');
   assert.equal(data.projects.bilibili.assets.sourceZip, undefined);
   assert.equal(data.projects.bilibili.assets.consoleScript.download,'./downloads/bilibili-follower-snapshot-console.js');
   assert.equal(data.projects.bilibili.assets.consoleText.download,'./downloads/bilibili-follower-snapshot-console.txt');

@@ -133,7 +133,7 @@ test('terminal optics, responsive information hierarchy, home jump and public do
 
   await page.locator('#home-jump').click();
   await expect(page).toHaveURL(/#home\/welcome$/);
-  await expect(page.locator('h2', { hasText: 'WELCOME' })).toBeVisible();
+  await expect(page.locator('h2', { hasText: '魔法纪录相关网站' })).toBeVisible();
 
   await page.locator('#pixel-toggle').click();
   await expect(page.locator('#pixel-toggle')).toHaveAttribute('aria-pressed', 'false');

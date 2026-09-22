@@ -113,9 +113,10 @@ function validatedUpdate(release, manifest) {
     throw new Error('Android component/version mismatch');
   }
 
-  const apkAsset = (release.assets || []).find(asset =>
-    new RegExp(`^NeteasePlaylistExporter-v${manifest.version.replace(/\\./g, '\\\\.')}\\-android-full\\.apk$`, 'i')
-      .test(asset.name)
+  const expectedApkName =
+    `NeteasePlaylistExporter-v${manifest.version}-android-full.apk`;
+  const apkAsset = (release.assets || []).find(
+    asset => asset.name === expectedApkName,
   );
   const manifestApk = Array.isArray(manifest.assets)
     ? manifest.assets.find(asset => asset?.name === apkAsset?.name)

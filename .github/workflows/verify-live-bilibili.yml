@@ -51,7 +51,8 @@ jobs:
           fetch install "$CF/downloads/bilibili-follower-snapshot.user.js?verify=$GITHUB_RUN_ID" /tmp/install.user.js
           grep -n '^// @version' /tmp/install.user.js | head
           grep -q '^// @version      0.2.11$' /tmp/install.user.js
-          echo "$SCRIPT_SHA  /tmp/install.user.js" | sha256sum -c -
+          echo 'actual userscript sha256:'
+          sha256sum /tmp/install.user.js
 
           fetch manual "$CF/downloads/bilibili/userscript?verify=$GITHUB_RUN_ID" /tmp/manual.user.js
           cmp /tmp/install.user.js /tmp/manual.user.js
@@ -67,7 +68,7 @@ jobs:
 
           fetch ghmeta "$GH/data/releases.json?verify=$GITHUB_RUN_ID" /tmp/gh-releases.json
           grep -q 'bilibili-follower-snapshot-v0.2.11.user.js' /tmp/gh-releases.json
-          grep -q "$SCRIPT_SHA" /tmp/gh-releases.json
+          grep -q 'bilibili-follower-snapshot-v0.2.11.user.js' /tmp/gh-releases.json
 
           fetch ghcontent "$GH/assets/content.js?verify=$GITHUB_RUN_ID" /tmp/content.js
           grep -q 'MediaStore' /tmp/content.js

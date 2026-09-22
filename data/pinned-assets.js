@@ -12,5 +12,12 @@ export default {
     "digest": "sha256:b1fc5296a065866a4e1b047dd975459e2a7c35148aee8755ef887443c7b32324",
     "content_type": "application/vnd.android.package-archive",
     "url": "https://api.github.com/repos/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/assets/579472995"
+  },
+  "bilibili/0.1.11": {
+    "name": "Bilibili-Follower-Snapshot-Companion-v0.1.11.apk",
+    "size": 2495841,
+    "digest": "sha256:eae1150187588657280b849f779031ffe857f09dbd673ec9b388c5d411cdfc3d",
+    "content_type": "application/vnd.android.package-archive",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/581638092"
   }
 };

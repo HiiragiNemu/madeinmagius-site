@@ -22,14 +22,27 @@ jobs:
             code="$(curl -sS -D /tmp/headers -o /tmp/body -w '%{http_code}' "$URL?verify=$GITHUB_RUN_ID-$attempt")"
             source="$(tr -d '\r' </tmp/headers | sed -n 's/^x-update-source: //Ip' | tail -1)"
             version="$(sed -n 's/.*"version": "\([^"]*\)".*/\1/p' /tmp/body | head -1)"
-            echo "attempt=$attempt http=$code source=$source version=$version"
+            version_code="$(sed -n 's/.*"versionCode": \([0-9][0-9]*\).*/\1/p' /tmp/body | head -1)"
+            sha256="$(sed -n 's/.*"sha256": "\([0-9a-fA-F][0-9a-fA-F]*\)".*/\1/p' /tmp/body | head -1)"
+            echo "attempt=$attempt http=$code source=$source version=$version versionCode=$version_code"
+
             if [[ "$code" = "200" && "$source" = "verified-fallback" && "$version" = "0.1.10" ]]; then
+              grep -q '"versionCode": 11' /tmp/body
+              grep -q '"sha256": "89999ea9941128f53d9dcec7ebeaf23d5c981c59e974445042e90933f06956fd"' /tmp/body
               ok=1
               break
             fi
+
+            if [[ "$code" = "200" && "$source" = "verified-latest-release" ]]; then
+              if [[ "$version_code" =~ ^[0-9]+$ ]] && (( version_code > 11 )) && [[ "$sha256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+                grep -q '"packageName": "io.github.hiiraginemu.bilibilifollowersnapshot.companion"' /tmp/body
+                ok=1
+                break
+              fi
+            fi
+
             sleep 10
           done
+
           test "$ok" = 1
-          grep -q '"versionCode": 11' /tmp/body
-          grep -q '"sha256": "89999ea9941128f53d9dcec7ebeaf23d5c981c59e974445042e90933f06956fd"' /tmp/body
           echo DYNAMIC_UPDATE_ROUTE_PASS

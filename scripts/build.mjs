@@ -33,6 +33,9 @@ const contentSource = await readFile('assets/content.js','utf8');
 if (contentSource.includes('github.com/HiiragiNemu/Bilibili-Follower-Snapshot#readme')) {
   throw new Error('private Bilibili repository link returned to public UI');
 }
+if (/BILIBILI \/ ANDROID \/ v\d+\.\d+\.\d+/.test(contentSource)) {
+  throw new Error('Bilibili Android version must come from release metadata, not hard-coded UI copy');
+}
 const releaseData = JSON.parse(await readFile('data/releases.json','utf8'));
 for (const forbiddenKey of ['sourceZip']) {
   if (releaseData.projects?.bilibili?.assets?.[forbiddenKey]) throw new Error(`Forbidden public Bilibili asset returned: ${forbiddenKey}`);

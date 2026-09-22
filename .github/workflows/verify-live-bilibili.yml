@@ -12,49 +12,65 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Wait for Cloudflare and verify live routes
+      - name: Verify production routes with diagnostics
         shell: bash
         run: |
           set -euo pipefail
           CF='https://madeinmagius-site.pages.dev'
           GH='https://hiiraginemu.github.io/madeinmagius-site'
-          EXPECTED_SCRIPT_SHA='831c82dcfc86b3eac0127dad2485bb48825159201bbf189882e476bf89345eb2'
-          EXPECTED_APK_SHA='89999ea9941128f53d9dcec7ebeaf23d5c981c59e974445042e90933f06956fd'
+          SCRIPT_SHA='831c82dcfc86b3eac0127dad2485bb48825159201bbf189882e476bf89345eb2'
+          APK_SHA='89999ea9941128f53d9dcec7ebeaf23d5c981c59e974445042e90933f06956fd'
 
-          ok=0
+          fetch() {
+            local label="$1" url="$2" out="$3"
+            echo "===== $label ====="
+            local code
+            code="$(curl -sS -L -D "/tmp/${label}.headers" -o "$out" -w '%{http_code}' "$url")"
+            echo "HTTP $code"
+            sed -n '1,30p' "/tmp/${label}.headers"
+            echo "bytes=$(wc -c <"$out")"
+            if [[ "$code" != "200" && "$code" != "206" ]]; then
+              head -c 2000 "$out" || true
+              echo
+              return 1
+            fi
+          }
+
+          ready=0
           for attempt in $(seq 1 18); do
-            echo "Cloudflare verification attempt $attempt"
-            if curl -fsSL "$CF/api/releases?verify=$GITHUB_RUN_ID-$attempt" -o /tmp/releases.json               && grep -q 'bilibili-follower-snapshot-v0.2.11.user.js' /tmp/releases.json               && grep -q "$EXPECTED_SCRIPT_SHA" /tmp/releases.json; then
-              ok=1
+            if fetch releases "$CF/api/releases?verify=$GITHUB_RUN_ID-$attempt" /tmp/releases.json \
+              && grep -q 'bilibili-follower-snapshot-v0.2.11.user.js' /tmp/releases.json \
+              && grep -q "$SCRIPT_SHA" /tmp/releases.json; then
+              ready=1
               break
             fi
             sleep 10
           done
-          test "$ok" = 1
+          test "$ready" = 1
 
-          curl -fsSL "$CF/downloads/bilibili-follower-snapshot.user.js?verify=$GITHUB_RUN_ID" -o /tmp/install.user.js
-          curl -fsSL "$CF/downloads/bilibili/userscript?verify=$GITHUB_RUN_ID" -o /tmp/manual.user.js
+          fetch install "$CF/downloads/bilibili-follower-snapshot.user.js?verify=$GITHUB_RUN_ID" /tmp/install.user.js
+          grep -n '^// @version' /tmp/install.user.js | head
           grep -q '^// @version      0.2.11$' /tmp/install.user.js
-          cmp /tmp/install.user.js /tmp/manual.user.js
-          echo "$EXPECTED_SCRIPT_SHA  /tmp/install.user.js" | sha256sum -c -
+          echo "$SCRIPT_SHA  /tmp/install.user.js" | sha256sum -c -
 
-          curl -fsSL "$CF/updates/bilibili/android.json?verify=$GITHUB_RUN_ID" -o /tmp/android.json
+          fetch manual "$CF/downloads/bilibili/userscript?verify=$GITHUB_RUN_ID" /tmp/manual.user.js
+          cmp /tmp/install.user.js /tmp/manual.user.js
+
+          fetch update "$CF/updates/bilibili/android.json?verify=$GITHUB_RUN_ID" /tmp/android.json
+          cat /tmp/android.json
           grep -q '"version": "0.1.10"' /tmp/android.json
           grep -q '"versionCode": 11' /tmp/android.json
-          if grep -q '"version": "0.1.11"' /tmp/android.json; then
-            echo 'ERROR: unsigned 0.1.11 metadata was exposed' >&2
-            exit 1
-          fi
+          ! grep -q '"version": "0.1.11"' /tmp/android.json
 
-          curl -fsSL "$CF/downloads/bilibili/android?verify=$GITHUB_RUN_ID" -o /tmp/current.apk
-          echo "$EXPECTED_APK_SHA  /tmp/current.apk" | sha256sum -c -
+          fetch apk "$CF/downloads/bilibili/android?verify=$GITHUB_RUN_ID" /tmp/current.apk
+          echo "$APK_SHA  /tmp/current.apk" | sha256sum -c -
 
-          curl -fsSL "$GH/data/releases.json?verify=$GITHUB_RUN_ID" -o /tmp/gh-releases.json
+          fetch ghmeta "$GH/data/releases.json?verify=$GITHUB_RUN_ID" /tmp/gh-releases.json
           grep -q 'bilibili-follower-snapshot-v0.2.11.user.js' /tmp/gh-releases.json
-          grep -q "$EXPECTED_SCRIPT_SHA" /tmp/gh-releases.json
+          grep -q "$SCRIPT_SHA" /tmp/gh-releases.json
 
-          curl -fsSL "$GH/assets/content.js?verify=$GITHUB_RUN_ID" -o /tmp/content.js
+          fetch ghcontent "$GH/assets/content.js?verify=$GITHUB_RUN_ID" /tmp/content.js
           grep -q 'MediaStore' /tmp/content.js
           grep -q 'N-1' /tmp/content.js
 
-          echo "LIVE_DISTRIBUTION_PASS"
+          echo 'LIVE_DISTRIBUTION_PASS'

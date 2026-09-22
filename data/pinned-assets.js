@@ -19,5 +19,12 @@ export default {
     "digest": "sha256:eae1150187588657280b849f779031ffe857f09dbd673ec9b388c5d411cdfc3d",
     "content_type": "application/vnd.android.package-archive",
     "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/581638092"
+  },
+  "bilibili/0.1.12": {
+    "name": "Bilibili-Follower-Snapshot-Companion-v0.1.12.apk",
+    "size": 2497957,
+    "digest": "sha256:c601881fbb6d2a01955ed71f317abd26383ce1fe9e167f7265f60c66e61b78c4",
+    "content_type": "application/vnd.android.package-archive",
+    "url": "https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/releases/assets/581805651"
   }
 };

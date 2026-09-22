@@ -4,14 +4,14 @@
   "source": "verified-maintainer-release-snapshot",
   "projects": {
     "bilibili": {
-      "tag": "v0.1.10",
-      "name": "B站粉丝快照伴侣 v0.1.10 · 应用更新与文件访问",
+      "tag": "v0.1.11",
+      "name": "B站粉丝快照伴侣 v0.1.11 · 保存与滚动比较热修复",
       "release_url": "https://madeinmagius-site.pages.dev/#bilibili",
       "assets": {
         "android": {
-          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.10.apk",
-          "size": 2495161,
-          "digest": "sha256:89999ea9941128f53d9dcec7ebeaf23d5c981c59e974445042e90933f06956fd",
+          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.11.apk",
+          "size": 2495841,
+          "digest": "sha256:eae1150187588657280b849f779031ffe857f09dbd673ec9b388c5d411cdfc3d",
           "content_type": "application/vnd.android.package-archive",
           "download": "./downloads/bilibili/android"
         },

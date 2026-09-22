@@ -16,11 +16,12 @@
           "download": "./downloads/bilibili/android"
         },
         "userscript": {
-          "name": "bilibili-follower-snapshot-v0.2.10.user.js",
-          "size": 138417,
-          "digest": "sha256:7a477071eb7ed48fc60bf05b62dc3049a91d05e56ddaa081081e3d34549cbe48",
-          "content_type": "application/javascript",
-          "download": "./downloads/bilibili/userscript"
+          "name": "bilibili-follower-snapshot-v0.2.11.user.js",
+          "size": 139359,
+          "digest": "sha256:831c82dcfc86b3eac0127dad2485bb48825159201bbf189882e476bf89345eb2",
+          "content_type": "application/javascript; charset=utf-8",
+          "download": "./downloads/bilibili/userscript",
+          "source_commit": "c59d10534333bb31f65d689e9fc7ddbb03d4a058"
         },
         "consoleScript": {
           "name": "bilibili-follower-snapshot-console.js",

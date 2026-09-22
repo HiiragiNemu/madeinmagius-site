@@ -1,3 +1,11 @@
+const BILIBILI_PINNED_USERSCRIPT = {
+  name: 'bilibili-follower-snapshot-v0.2.11.user.js',
+  size: 139359,
+  digest: 'sha256:831c82dcfc86b3eac0127dad2485bb48825159201bbf189882e476bf89345eb2',
+  content_type: 'application/javascript; charset=utf-8',
+  github_blob_url: 'https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/git/blobs/4e3866b7fdef21e8e8814757685d8f065e74462c',
+};
+
 const NETEASE_LEGACY = {
   'android-full': {
     name: '网易云已下架音乐完整名字导出器_v2.5.1_完整版.apk',
@@ -61,6 +69,9 @@ const PROJECTS = {
   bilibili: {
     repo: 'HiiragiNemu/Bilibili-Follower-Snapshot',
     mode: 'latest',
+    pinned: {
+      userscript: BILIBILI_PINNED_USERSCRIPT,
+    },
     kinds: {
       android: /\.apk$/i,
       userscript: /\.user\.js$/i,
@@ -145,6 +156,7 @@ function atLeast(tag, minimum) {
 
 async function getAsset(config, kind, token) {
   const matcher = config.kinds[kind];
+  if (config.pinned?.[kind]) return config.pinned[kind];
 
   if (config.mode === 'scan') {
     const releases = await githubJson(
@@ -179,7 +191,60 @@ async function getAsset(config, kind, token) {
   throw new Error(`asset not found: ${kind}`);
 }
 
+function parseSingleRange(range, size) {
+  if (!range) return null;
+  const match = String(range).match(/^bytes=(\d+)-(\d*)$/);
+  if (!match) return { invalid: true };
+  const start = Number(match[1]);
+  const requestedEnd = match[2] ? Number(match[2]) : size - 1;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(requestedEnd)
+      || start < 0 || start >= size || requestedEnd < start) {
+    return { invalid: true };
+  }
+  return { start, end: Math.min(requestedEnd, size - 1) };
+}
+
+async function getPinnedSource(asset, token, range) {
+  const response = await fetch(asset.github_blob_url, {
+    headers: githubHeaders(token, 'application/vnd.github.raw+json'),
+  });
+  if (!response.ok) return response;
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength !== asset.size) {
+    return new Response('Pinned source size mismatch.\n', { status: 502 });
+  }
+  const parsed = parseSingleRange(range, bytes.byteLength);
+  if (parsed?.invalid) {
+    return new Response(null, {
+      status: 416,
+      headers: { 'content-range': `bytes */${bytes.byteLength}` },
+    });
+  }
+  if (parsed) {
+    const body = bytes.slice(parsed.start, parsed.end + 1);
+    return new Response(body, {
+      status: 206,
+      headers: {
+        'content-range': `bytes ${parsed.start}-${parsed.end}/${bytes.byteLength}`,
+        'content-length': String(body.byteLength),
+        'accept-ranges': 'bytes',
+      },
+    });
+  }
+  return new Response(bytes, {
+    status: 200,
+    headers: {
+      'content-length': String(bytes.byteLength),
+      'accept-ranges': 'bytes',
+    },
+  });
+}
+
 async function getBinary(asset, token, range) {
+  if (asset.github_blob_url) {
+    return getPinnedSource(asset, token, range);
+  }
+
   if (asset.legacy_url) {
     const headers = range ? { Range: range } : undefined;
     return fetch(asset.legacy_url, { headers, redirect: 'follow' });

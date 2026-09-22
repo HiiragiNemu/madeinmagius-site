@@ -256,8 +256,8 @@ export function renderContent(programId, subId, data) {
         '<div class="download-stack">' +
         downloadCard(data, 'bilibili', 'android', 'ANDROID APK', '签名 Android 伴侣', './downloads/bilibili/android') +
         '</div>' +
-        '<p>打开“应用更新与文件访问”可检查新版并交给系统确认安装；Android 11+ 可手动开启所有文件访问，也可继续用系统选择位置保存 JSON。首次从本页覆盖安装旧版，后续在应用内检查更新。</p>' +
-        '<p>安装后可选择保存目录；默认启动备份会把快照、账本及已有比较/待处理 JSON 写入 Download。退出或换号不会删除历史快照和导出文件。</p>';
+        '<p>打开“应用更新与文件访问”可检查新版并交给系统确认安装。默认 Download 始终优先使用 Android MediaStore；Android 11+ 的所有文件访问仅在 MediaStore 失败时作为兼容回退，系统选择位置保存 JSON 不依赖该权限。</p>' +
+        '<p>完整扫描会把本轮快照推进为下一轮比较基线；历史待处理变化单独保留，不再覆盖最新一轮 N-1 → N 比较。退出或换号不会删除历史快照和导出文件。</p>';
     }
     if (subId === 'userscript') {
       return '<p class="content-kicker">BILIBILI / USERSCRIPT</p><h2>USERSCRIPT</h2>' +

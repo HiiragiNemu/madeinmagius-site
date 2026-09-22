@@ -23,6 +23,34 @@ assert.ok(future.includes('未来将添加更多网站'));
 assert.ok(!future.includes('工具清单'));
 assert.ok(!future.includes('BILIBILI SNAPSHOT'));
 assert.ok(renderContent('home', 'contact', {}).includes('CONTACT'));
+
+const android010 = renderContent('bilibili', 'android', {
+  releases: {
+    projects: {
+      bilibili: {
+        tag: 'v0.1.10',
+        assets: { android: { download: './downloads/bilibili/android', size: 2495161 } },
+      },
+    },
+  },
+});
+assert.ok(android010.includes('当前公开正式 APK 为 v0.1.10'));
+assert.ok(android010.includes('0.1.11 的 MediaStore-first'));
+assert.ok(!android010.includes('默认 Download 始终优先使用 Android MediaStore'));
+
+const android011 = renderContent('bilibili', 'android', {
+  releases: {
+    projects: {
+      bilibili: {
+        tag: 'v0.1.11',
+        assets: { android: { download: './downloads/bilibili/android', size: 2500000 } },
+      },
+    },
+  },
+});
+assert.ok(android011.includes('默认 Download 始终优先使用 Android MediaStore'));
+assert.ok(android011.includes('N-1 → N'));
+assert.ok(!android011.includes('当前公开正式 APK 为 v0.1.10'));
 const profile = renderContent('about', 'profile', {});
 for (const phrase of [
   '我进行插画、角色创作和 Cosplay以及程序开发。',

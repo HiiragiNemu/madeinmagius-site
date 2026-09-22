@@ -1,3 +1,12 @@
+const BILIBILI_PINNED_USERSCRIPT = {
+  name: 'bilibili-follower-snapshot-v0.2.11.user.js',
+  size: 139359,
+  digest: 'sha256:831c82dcfc86b3eac0127dad2485bb48825159201bbf189882e476bf89345eb2',
+  content_type: 'application/javascript; charset=utf-8',
+  download: './downloads/bilibili/userscript',
+  source_commit: 'c59d10534333bb31f65d689e9fc7ddbb03d4a058',
+};
+
 const NETEASE_LEGACY_251 = {
   tag: 'v2.5.1',
   name: '网易云已下架音乐完整名字导出器 v2.5.1',
@@ -67,6 +76,9 @@ const PROJECTS = {
   bilibili: {
     repo: 'HiiragiNemu/Bilibili-Follower-Snapshot',
     mode: 'latest',
+    pinnedAssets: {
+      userscript: BILIBILI_PINNED_USERSCRIPT,
+    },
     assets: {
       android: /\.apk$/i,
       userscript: /\.user\.js$/i,
@@ -176,6 +188,7 @@ async function latestProject(key, config, token) {
       return [assetKey, assetShape(found, key, assetKey, config.routes?.[assetKey] || assetKey)];
     }),
   );
+  Object.assign(assets, config.pinnedAssets || {});
 
   if (key === 'bilibili') {
     assets.consoleScript = {

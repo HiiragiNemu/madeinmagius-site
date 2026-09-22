@@ -152,6 +152,9 @@ function validatedUpdate(release, manifest) {
 }
 
 export async function onRequestGet(context) {
+  if (String(context.params?.file || '') !== 'android.json') {
+    return new Response('Not found.\n', { status: 404 });
+  }
   const token = context.env.GITHUB_RELEASES_TOKEN;
   if (!token) return jsonResponse(FALLBACK, 'verified-fallback');
 

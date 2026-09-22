@@ -251,13 +251,29 @@ export function renderContent(programId, subId, data) {
     if (subId === 'android') {
       const project = data.releases?.projects?.bilibili;
       const releaseTag = project?.tag || 'LATEST';
+      const releaseMatch = releaseTag.match(/(\d+)\.(\d+)\.(\d+)/);
+      const releaseParts = releaseMatch ? releaseMatch.slice(1).map(Number) : null;
+      const has011Fix = Boolean(
+        releaseParts &&
+        (
+          releaseParts[0] > 0 ||
+          releaseParts[1] > 1 ||
+          (releaseParts[1] === 1 && releaseParts[2] >= 11)
+        )
+      );
+      const androidBehavior = has011Fix
+        ? '<p>打开“应用更新与文件访问”可检查新版并交给系统确认安装。默认 Download 始终优先使用 Android MediaStore；Android 11+ 的所有文件访问仅在 MediaStore 失败时作为兼容回退，系统选择位置保存 JSON 不依赖该权限。</p>' +
+          '<p>完整扫描会把本轮快照推进为下一轮比较基线；历史待处理变化单独保留，不再覆盖最新一轮 N-1 → N 比较。退出或换号不会删除历史快照和导出文件。</p>'
+        : releaseParts
+          ? '<p>当前公开正式 APK 为 ' + escapeHtml(releaseTag) + '。该版本仍保持原有 Download 存储分流和比较状态行为；0.1.11 的 MediaStore-first、原生保存超时恢复与 N-1 → N 滚动比较修复，需要安装同签名的 0.1.11 或更高正式 APK 后才生效。</p>' +
+            '<p>系统“每次选择文件位置”仍可用于独立保存 JSON；升级正式版时请直接覆盖安装，不要先卸载，以保留伴侣 WebView 会话与本地数据。</p>'
+          : '<p>正在读取当前正式 APK 版本。下载按钮只指向已经发布的正式签名包；版本信息就绪前不会提前宣称尚未发布的修复已经生效。</p>';
       return '<p class="content-kicker">BILIBILI / ANDROID / ' + escapeHtml(releaseTag) + '</p><h2>粉丝快照伴侣</h2>' +
         '<p>Android 10+ 独立伴侣。无需 root、ADB、Frida 或 Tampermonkey；在伴侣内登录后读取粉丝页并使用同一套快照逻辑。</p>' +
         '<div class="download-stack">' +
         downloadCard(data, 'bilibili', 'android', 'ANDROID APK', '签名 Android 伴侣', './downloads/bilibili/android') +
         '</div>' +
-        '<p>打开“应用更新与文件访问”可检查新版并交给系统确认安装。默认 Download 始终优先使用 Android MediaStore；Android 11+ 的所有文件访问仅在 MediaStore 失败时作为兼容回退，系统选择位置保存 JSON 不依赖该权限。</p>' +
-        '<p>完整扫描会把本轮快照推进为下一轮比较基线；历史待处理变化单独保留，不再覆盖最新一轮 N-1 → N 比较。退出或换号不会删除历史快照和导出文件。</p>';
+        androidBehavior;
     }
     if (subId === 'userscript') {
       return '<p class="content-kicker">BILIBILI / USERSCRIPT</p><h2>USERSCRIPT</h2>' +

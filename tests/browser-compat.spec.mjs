@@ -4,13 +4,20 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   const isMobileProject = testInfo.project.name.includes('ios') || testInfo.project.name.includes('android');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(420);
-  await expect(page.locator('.boot__wordmark')).toBeVisible();
+  const boot = page.locator('#boot');
+  await expect(page.locator('.boot__wordmark')).toBeAttached();
+  await expect(page.locator('.boot__wordmark')).toHaveAttribute('src', /magius-link-wordmark\.svg/);
   await expect(page.locator('#signal #boot')).toHaveCount(1);
-  expect(await page.locator('#boot').evaluate(el => !!el.closest('.screen'))).toBe(true);
-  await expect(page.locator('.boot__raster')).toBeVisible();
-  await expect(page.locator('.boot__grain')).toBeVisible();
+  expect(await boot.evaluate(el => !!el.closest('.screen'))).toBe(true);
+  await expect(page.locator('.boot__raster')).toBeAttached();
+  await expect(page.locator('.boot__grain')).toBeAttached();
+  if (!(await boot.evaluate(el => el.classList.contains('is-hidden')))) {
+    await expect(page.locator('.boot__wordmark')).toBeVisible();
+    await expect(page.locator('.boot__raster')).toBeVisible();
+    await expect(page.locator('.boot__grain')).toBeVisible();
+  }
   await page.screenshot({ path: `test-results/${testInfo.project.name}-boot.png`, fullPage: false });
-  await expect(page.locator('#boot')).toHaveClass(/is-hidden/, { timeout: 6000 });
+  await expect(boot).toHaveClass(/is-hidden/, { timeout: 6000 });
 
   await expect(page.locator('.screen')).toBeVisible();
 

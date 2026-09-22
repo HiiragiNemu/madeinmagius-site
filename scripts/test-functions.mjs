@@ -240,3 +240,9 @@ try {
 } finally {
   globalThis.fetch = originalFetch;
 }
+
+
+test('Cloudflare routes include dynamic update endpoints', async () => {
+  const build = await readFile(new URL('./build.mjs', import.meta.url), 'utf8');
+  assert.match(build, /include:\['\/api\/\*','\/downloads\/\*','\/updates\/\*'\]/);
+});

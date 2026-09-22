@@ -1,0 +1,36 @@
+name: Inspect Bilibili APK signer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools build-tools;36.0.0'
+      - name: Download current public APK
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3             https://madeinmagius-site.pages.dev/downloads/bilibili/android             -o /tmp/current.apk
+          ls -l /tmp/current.apk
+          sha256sum /tmp/current.apk
+      - name: Print installed release signer
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs /tmp/current.apk
+      - name: Compare with AOSP testkey certificate
+        run: |
+          set -euo pipefail
+          curl -fL             'https://android.googlesource.com/platform/build/+/refs/heads/master/target/product/security/testkey.x509.pem?format=TEXT'             | base64 -d > /tmp/aosp-testkey.x509.pem
+          keytool -printcert -file /tmp/aosp-testkey.x509.pem -rfc >/tmp/aosp-cert.txt
+          echo '=== AOSP TESTKEY SHA-256 ==='
+          keytool -printcert -file /tmp/aosp-testkey.x509.pem | grep -i 'SHA256:' || true

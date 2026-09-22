@@ -3,7 +3,7 @@ import {
   FALLBACK,
   onRequestGet,
   validatedUpdate,
-} from '../functions/updates/bilibili/android.json.js';
+} from '../functions/updates/bilibili/[file].js';
 
 const APK_SHA = 'a'.repeat(64);
 const EXPECTED_SIGNER =
@@ -84,7 +84,7 @@ async function responseJson(response) {
   };
 }
 
-const noToken = await responseJson(await onRequestGet({ env: {} }));
+const noToken = await responseJson(await onRequestGet({ env: {}, params: { file: 'android.json' } }));
 assert.equal(noToken.source, 'verified-fallback');
 assert.deepEqual(noToken.body, FALLBACK);
 
@@ -149,6 +149,7 @@ try {
     [mode] = expected;
     const response = await onRequestGet({
       env: { GITHUB_RELEASES_TOKEN: 'fixture-token' },
+      params: { file: 'android.json' },
     });
     const parsed = await responseJson(response);
     assert.equal(parsed.source, expected[1], mode);

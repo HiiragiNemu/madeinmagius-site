@@ -249,7 +249,9 @@ export function renderContent(programId, subId, data) {
 
   if (programId === 'bilibili') {
     if (subId === 'android') {
-      return '<p class="content-kicker">BILIBILI / ANDROID / v0.1.10</p><h2>粉丝快照伴侣</h2>' +
+      const project = data.releases?.projects?.bilibili;
+      const releaseTag = project?.tag || 'LATEST';
+      return '<p class="content-kicker">BILIBILI / ANDROID / ' + escapeHtml(releaseTag) + '</p><h2>粉丝快照伴侣</h2>' +
         '<p>Android 10+ 独立伴侣。无需 root、ADB、Frida 或 Tampermonkey；在伴侣内登录后读取粉丝页并使用同一套快照逻辑。</p>' +
         '<div class="download-stack">' +
         downloadCard(data, 'bilibili', 'android', 'ANDROID APK', '签名 Android 伴侣', './downloads/bilibili/android') +

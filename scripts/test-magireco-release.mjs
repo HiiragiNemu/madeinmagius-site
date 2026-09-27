@@ -6,7 +6,7 @@ import { renderContent } from '../assets/content.js';
 
 const originalFetch = globalThis.fetch;
 const env = { GITHUB_RELEASES_TOKEN: 'fixture-private-token' };
-const base = 'https://api.github.com/repos/HiiragiNemu/magireco-cn-patch';
+const base = 'https://api.github.com/repos/HiiragiNemu/ProgettoMagius-1';
 let version='1.0.184', fault=null, id=184, calls=[];
 const body=()=>Buffer.from('APK-fixture-'+version);
 const sha=()=>createHash('sha256').update(body()).digest('hex');
@@ -18,7 +18,7 @@ globalThis.fetch = async (input, init={}) => {
     assert.equal(headers.get('authorization'),null);
     if (fault==='config') return new Response('unavailable',{status:503});
     return Response.json({updated:'2026-09-22T00:00:00Z',client:{version:fault==='version'?'invalid':version,
-      apk_url:'https://magireco-personal-release.pages.dev/magireco-latest-legacy-client.apk',
+      apk_url:'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-latest-legacy-client.apk',
       size:body().length,sha256:sha()}});
   }
   if (url===base+'/releases/tags/latest') {

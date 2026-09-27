@@ -5,7 +5,7 @@
 ## 生产接口
 
 - 最终发布门槛：`https://magireco-personal-release.pages.dev/legacy/config.json` 的 `client.version / apk_url / size / sha256`。
-- APK：`HiiragiNemu/magireco-cn-patch` 的 `latest` Release 中 `magireco-latest-legacy-client.apk`。
+- APK：`HiiragiNemu/ProgettoMagius-1` 的 `latest` Release 中 `magireco-latest-legacy-client.apk`。
 - 生产端 `.github/workflows/publish-verified-client.yml` 在成功构建后发布 APK 与 sidecar，再更新上述客户端门槛。站点不修改构建、签名、资源包或生产工作流。
 
 `GET /api/magireco` 每次获取最终门槛和 GitHub Release 资产，要求 SHA-256 与字节数一致才公布版本。使用内置语义版本，不使用 Android manifest 的历史 versionName。

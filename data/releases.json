@@ -1,6 +1,6 @@
 {
   "schema": "madeinmagius-release-snapshot/v1",
-  "generated_at": "2026-09-23",
+  "generated_at": "2026-09-29",
   "source": "verified-maintainer-release-snapshot",
   "projects": {
     "bilibili": {
@@ -34,14 +34,14 @@
       }
     },
     "netease": {
-      "tag": "v2.5.2",
-      "name": "网易云完整曲名导出器 v2.5.2 · 应用更新与文件访问",
+      "tag": "v2.5.3",
+      "name": "网易云完整曲名导出器 v2.5.3 · 启动更新提醒",
       "release_url": "https://madeinmagius-site.pages.dev/#netease",
       "assets": {
         "androidFull": {
-          "name": "NeteasePlaylistExporter-v2.5.2-android-full.apk",
-          "size": 908807,
-          "digest": "sha256:b1fc5296a065866a4e1b047dd975459e2a7c35148aee8755ef887443c7b32324",
+          "name": "NeteasePlaylistExporter-v2.5.3-android-full.apk",
+          "size": 909774,
+          "digest": "sha256:456ffa8b89c4870e096a1439135f03d58563fc1f32968fd4e7a54507d9d0f42d",
           "content_type": "application/vnd.android.package-archive",
           "download": "./downloads/netease/android-full"
         },
@@ -68,15 +68,15 @@
         },
         "manifest": {
           "name": "RELEASE_MANIFEST.json",
-          "size": 1692,
-          "digest": "sha256:364e95e94eb2b3613efab5ce38da5302e9cdbe4f9fe75ad6432f35aea0859ad3",
+          "size": 1783,
+          "digest": "sha256:32799d1c3dfb85f58389722cda0c9ae622e2271e5e960b3b02664209f86dc50d",
           "content_type": "application/json",
           "download": "./downloads/netease/manifest"
         },
         "sums": {
           "name": "SHA256SUMS.txt",
           "size": 844,
-          "digest": "sha256:ae6c33d853cd18f3376838f6341fbc50f836cd3675aca9ce0d8791e567e94327",
+          "digest": "sha256:a8490a768b22c505cd6ddd648cb8c651956deaa8447d1fcb5cd6bfba54d7d7bc",
           "content_type": "text/plain; charset=utf-8",
           "download": "./downloads/netease/sums"
         },
@@ -89,8 +89,8 @@
         },
         "signature": {
           "name": "SIGNATURE-VERIFICATION.txt",
-          "size": 989,
-          "digest": "sha256:d983fc3307c201da3e6ad22dd83726e818b274a5a1a124235948af0fada20148",
+          "size": 1928,
+          "digest": "sha256:771676eee188db0850ed267e87029092ca04367b54eae23ccb1f7c0b1a7c6c7d",
           "content_type": "text/plain; charset=utf-8",
           "download": "./downloads/netease/signature"
         }

@@ -228,6 +228,33 @@ function magirecoClientHtml(current) {
     '<p>正常资源下载使用应用目录，无需开启所有文件访问。只有需要读写共享存储时，再使用 Logo 右侧的“文件权限”，手动进入系统设置授权。</p>';
 }
 
+// Feature copy follows the released APK, including fallback and loading states.
+function releaseAtLeast(tag, major, minor, patch) {
+  const match = String(tag || '').match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) return false;
+  const actual = match.slice(1).map(Number);
+  const required = [major, minor, patch];
+  for (let i = 0; i < required.length; i += 1) {
+    if (actual[i] !== required[i]) return actual[i] > required[i];
+  }
+  return true;
+}
+
+function androidUpdateGuide(tag, project) {
+  const hasStartupCheck = project === 'bilibili'
+    ? releaseAtLeast(tag, 0, 1, 12) : releaseAtLeast(tag, 2, 5, 3);
+  const hasManualCheck = project === 'bilibili'
+    ? releaseAtLeast(tag, 0, 1, 10) : releaseAtLeast(tag, 2, 5, 2);
+  if (hasStartupCheck) {
+    return '<p>新用户直接安装本页正式 APK。同意隐私说明后，应用启动时会静默检查新版；发现兼容新版后可选“暂不更新”或“下载并校验”，失败不阻塞使用。下载后核对大小、SHA-256、包名、递增版本和原签名，再由 Android 确认安装，不会静默覆盖。</p>' +
+      '<p>“应用更新与文件访问”仍保留手动检查。旧用户首次升级请安装同签名新版覆盖原应用，不要先卸载或清除数据；旧 APK 不会自动获得新版的启动检查能力。</p>';
+  }
+  if (hasManualCheck) {
+    return '<p>此版本使用“应用更新与文件访问”手动检查新版，尚无启动更新提醒。首次升级到支持启动检查的正式版，请在应用内手动检查或从本页下载同签名新版覆盖安装，不要先卸载或清除数据。</p>';
+  }
+  return '<p>首次安装或从旧版升级，请从本页下载正式 APK；升级时使用同签名覆盖安装，不要先卸载或清除数据。更新能力以实际安装的版本为准。</p>';
+}
+
 export function renderContent(programId, subId, data) {
   if (programId === 'home') {
     if (subId === 'magireco-private-server') return magirecoClientHtml(data.magireco);
@@ -251,13 +278,19 @@ export function renderContent(programId, subId, data) {
     if (subId === 'android') {
       const project = data.releases?.projects?.bilibili;
       const releaseTag = project?.tag || 'LATEST';
+      const knownVersion = /^v?\d+\.\d+\.\d+$/.test(releaseTag);
+      const androidBehavior = releaseAtLeast(releaseTag, 0, 1, 11)
+        ? '<p>默认 Download 始终优先使用 Android MediaStore；Android 11+ 的所有文件访问仅在 MediaStore 失败时作为兼容回退，系统选择位置保存 JSON 不依赖该权限。</p>' +
+          '<p>完整扫描会把本轮快照推进为下一轮比较基线；历史待处理变化单独保留，不再覆盖最新一轮 N-1 → N 比较。退出或换号不会删除历史快照和导出文件。</p>'
+        : knownVersion
+          ? '<p>当前公开正式 APK 为 ' + escapeHtml(releaseTag) + '。该版本仍保持原有 Download 存储分流和比较状态行为；0.1.11 的 MediaStore-first、原生保存超时恢复与 N-1 → N 滚动比较修复，需要安装同签名的 0.1.11 或更高正式 APK 后才生效。</p>'
+          : '<p>正在读取当前正式 APK 版本。版本信息就绪前，不提前宣称特定版本的修复已经生效。</p>';
       return '<p class="content-kicker">BILIBILI / ANDROID / ' + escapeHtml(releaseTag) + '</p><h2>粉丝快照伴侣</h2>' +
         '<p>Android 10+ 独立伴侣。无需 root、ADB、Frida 或 Tampermonkey；在伴侣内登录后读取粉丝页并使用同一套快照逻辑。</p>' +
         '<div class="download-stack">' +
         downloadCard(data, 'bilibili', 'android', 'ANDROID APK', '签名 Android 伴侣', './downloads/bilibili/android') +
         '</div>' +
-        '<p>打开“应用更新与文件访问”可检查新版并交给系统确认安装。默认 Download 始终优先使用 Android MediaStore；Android 11+ 的所有文件访问仅在 MediaStore 失败时作为兼容回退，系统选择位置保存 JSON 不依赖该权限。</p>' +
-        '<p>完整扫描会把本轮快照推进为下一轮比较基线；历史待处理变化单独保留，不再覆盖最新一轮 N-1 → N 比较。退出或换号不会删除历史快照和导出文件。</p>';
+        androidBehavior + androidUpdateGuide(releaseTag, 'bilibili');
     }
     if (subId === 'userscript') {
       return '<p class="content-kicker">BILIBILI / USERSCRIPT</p><h2>USERSCRIPT</h2>' +
@@ -301,12 +334,14 @@ export function renderContent(programId, subId, data) {
 
   if (programId === 'netease') {
     if (subId === 'android-full') {
-      return '<p class="content-kicker">NETEASE / ANDROID / v2.5.2</p><h2>ANDROID</h2>' +
+      const releaseTag = data.releases?.projects?.netease?.tag || 'LATEST';
+      return '<p class="content-kicker">NETEASE / ANDROID / ' + escapeHtml(releaseTag) + '</p><h2>ANDROID</h2>' +
         '<p>Android 8.0+ 完整版。日常登录、选择、比较和导出不需要电脑、Root 或 ADB。</p>' +
         '<div class="download-stack">' +
         downloadCard(data, 'netease', 'androidFull', '完整版 APK', 'Android 8.0+ · 推荐', './downloads/netease/android-full') +
         '</div>' +
-        '<p>打开“应用更新与文件访问”可检查新版并交给系统确认安装；Android 11+ 可手动开启所有文件访问，也可继续用系统选择位置保存 JSON。首次从本页覆盖安装旧版，后续在应用内检查更新。</p>' +
+        androidUpdateGuide(releaseTag, 'netease') +
+        '<p>Android 11+ 可手动开启所有文件访问，也可继续用系统选择位置保存文件。</p>' +
         '<p>完整版可由用户主动启用刷新助手处理长久未打开的歌单。</p>';
     }
     if (subId === 'windows') {
@@ -334,7 +369,7 @@ export function renderContent(programId, subId, data) {
         if (!href) return '';
         return '<a href="' + escapeHtml(href) + '" target="_blank" rel="noreferrer">' + escapeHtml(label) + ' ↗</a>';
       }
-      return '<p class="content-kicker">NETEASE / VERIFY / ANDROID v2.5.2</p><h2>清单与签名</h2>' +
+      return '<p class="content-kicker">NETEASE / VERIFY / ANDROID ' + escapeHtml(data.releases?.projects?.netease?.tag || 'LATEST') + '</p><h2>清单与签名</h2>' +
         '<p>公开资料只包含发布清单、SHA-256 与公钥/验证记录，不包含签名私钥或密码。</p>' +
         '<div class="quick-links">' +
         verificationLink('manifest','RELEASE_MANIFEST.json') +

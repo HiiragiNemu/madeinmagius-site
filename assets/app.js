@@ -1,4 +1,4 @@
-import { PROGRAMS, escapeHtml, renderContent, serviceUrl } from './content.js?v=20260922-bili-release1';
+import { PROGRAMS, escapeHtml, renderContent, serviceUrl } from './content.js?v=20261004-release-copy1';
 import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260921-iosnative1';
 
 const body = document.body;

@@ -1,17 +1,17 @@
 {
   "schema": "madeinmagius-release-snapshot/v1",
-  "generated_at": "2026-09-29",
-  "source": "verified-maintainer-release-snapshot",
+  "generated_at": "2026-10-04",
+  "source": "verified-cloudflare-built-release-snapshot",
   "projects": {
     "bilibili": {
-      "tag": "v0.1.12",
-      "name": "B站粉丝快照伴侣 v0.1.12 · 启动更新提醒",
+      "tag": "v0.1.13",
+      "name": "B站粉丝快照伴侣 v0.1.13 · 云端构建",
       "release_url": "https://madeinmagius-site.pages.dev/#bilibili",
       "assets": {
         "android": {
-          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.12.apk",
-          "size": 2497957,
-          "digest": "sha256:c601881fbb6d2a01955ed71f317abd26383ce1fe9e167f7265f60c66e61b78c4",
+          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.13.apk",
+          "size": 2497801,
+          "digest": "sha256:52366a2b8d3c169bded33b2991b28116c46f4de28c7edfa1bb854f74a94ffa6f",
           "content_type": "application/vnd.android.package-archive",
           "download": "./downloads/bilibili/android"
         },
@@ -31,17 +31,18 @@
           "name": "bilibili-follower-snapshot-console.txt",
           "download": "./downloads/bilibili-follower-snapshot-console.txt"
         }
-      }
+      },
+      "published_at": "2026-10-04T14:17:22Z"
     },
     "netease": {
-      "tag": "v2.5.3",
-      "name": "网易云完整曲名导出器 v2.5.3 · 启动更新提醒",
+      "tag": "v2.5.4",
+      "name": "网易云完整曲名导出器 v2.5.4 · 云端构建",
       "release_url": "https://madeinmagius-site.pages.dev/#netease",
       "assets": {
         "androidFull": {
-          "name": "NeteasePlaylistExporter-v2.5.3-android-full.apk",
-          "size": 909774,
-          "digest": "sha256:456ffa8b89c4870e096a1439135f03d58563fc1f32968fd4e7a54507d9d0f42d",
+          "name": "NeteasePlaylistExporter-v2.5.4-android-full.apk",
+          "size": 909737,
+          "digest": "sha256:b512b9e3f068b021e31ba6feb754a6bdba25b7e5c17ac335e0348024edb7ac46",
           "content_type": "application/vnd.android.package-archive",
           "download": "./downloads/netease/android-full"
         },
@@ -68,15 +69,15 @@
         },
         "manifest": {
           "name": "RELEASE_MANIFEST.json",
-          "size": 1783,
-          "digest": "sha256:32799d1c3dfb85f58389722cda0c9ae622e2271e5e960b3b02664209f86dc50d",
+          "size": 1741,
+          "digest": "sha256:abbd9f0f505042e2a8d231a3fa424369481082bdd05fea3e6a78a600e5873229",
           "content_type": "application/json",
           "download": "./downloads/netease/manifest"
         },
         "sums": {
           "name": "SHA256SUMS.txt",
-          "size": 844,
-          "digest": "sha256:a8490a768b22c505cd6ddd648cb8c651956deaa8447d1fcb5cd6bfba54d7d7bc",
+          "size": 836,
+          "digest": "sha256:f63c67d31ab075838ad49fdcc8829966c776e64badd0fdf6fd8e6b81cbb20196",
           "content_type": "text/plain; charset=utf-8",
           "download": "./downloads/netease/sums"
         },
@@ -89,12 +90,13 @@
         },
         "signature": {
           "name": "SIGNATURE-VERIFICATION.txt",
-          "size": 1928,
-          "digest": "sha256:771676eee188db0850ed267e87029092ca04367b54eae23ccb1f7c0b1a7c6c7d",
+          "size": 1293,
+          "digest": "sha256:4f025f445bcd277ab30a9c61ec560bd030317a1e9595467ada8efe7f25b63325",
           "content_type": "text/plain; charset=utf-8",
           "download": "./downloads/netease/signature"
         }
-      }
+      },
+      "published_at": "2026-10-04T14:19:51Z"
     },
     "exedra": {
       "tag": "mixed",

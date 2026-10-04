@@ -2,14 +2,6 @@ name: Mobile browser compatibility
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "index.html"
-      - "assets/**"
-      - "data/**"
-      - "tests/browser-compat.spec.mjs"
-      - "playwright.config.mjs"
-      - ".github/workflows/browser-compat.yml"
 
 concurrency:
   group: mobile-browser-compat

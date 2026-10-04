@@ -89,3 +89,10 @@ npm run build
 `GITHUB_RELEASES_TOKEN` 仅放在 Cloudflare 加密 secret 中，并限于所需源仓库的只读权限。本地联调若使用 `.dev.vars`，只存于已忽略的本机文件；示例中只放占位值。Token、Cookie、签名私钥、密码、用户导出和私有备份均不进入浏览器、提交或公开下载。
 
 旧独立下载站的迁移记录保留在 [MIGRATION.md](docs/MIGRATION.md)；新增维护从本仓库继续，不恢复废弃站点为第二套发布来源。
+
+## 不依赖私有仓库 Actions 额度的发布方式
+
+- 两个应用源码仓库保持 PRIVATE，由各自 Cloudflare Git 构建项目执行 Android 测试、编译、原证书签名，再通过 GitHub API 发布完整 Release。无需启动 GitHub Actions，也无需维护者电脑在线。
+- 本下载站通过 Cloudflare Git 集成直接验证、构建和部署；应用下载与更新接口动态读取已验证的正式 Release。Cloudflare 自身构建次数和时长限制仍适用。
+- 重复的浏览器/更新路由/字体维护 Actions 改为仅手动。原 GitHub Pages 镜像保留其公开仓库的标准 Ubuntu 发布任务；它不消耗私有仓库的 Actions 分钟额度，且不是 APK 或 Cloudflare 主站发布的前置依赖。
+- 不为额度改变任何应用仓库可见性。密钥和发布凭据只在 Cloudflare production 加密环境中，preview 不配置密钥。

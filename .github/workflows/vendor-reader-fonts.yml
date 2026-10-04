@@ -1,9 +1,7 @@
 name: Vendor reader pixel fonts
 
 on:
-  push:
-    paths:
-      - ".github/workflows/vendor-reader-fonts.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write

@@ -4,14 +4,16 @@
   "source": "verified-cloudflare-built-release-snapshot",
   "projects": {
     "bilibili": {
-      "tag": "v0.1.13",
-      "name": "B站粉丝快照伴侣 v0.1.13 · 云端构建",
-      "release_url": "https://madeinmagius-site.pages.dev/#bilibili",
+      "tag": "v0.1.14",
+      "name": "B站粉丝快照伴侣 v0.1.14 · 更新界面修复",
+      "published_at": "2026-10-04T15:13:27Z",
+      "release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/tag/v0.1.14",
       "assets": {
         "android": {
-          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.13.apk",
-          "size": 2497801,
-          "digest": "sha256:52366a2b8d3c169bded33b2991b28116c46f4de28c7edfa1bb854f74a94ffa6f",
+          "id": 610061616,
+          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.14.apk",
+          "size": 2505941,
+          "digest": "sha256:4dce3ba1528020a8776ecf912dc331acaad26585d21b982df812eb1fb5ac61aa",
           "content_type": "application/vnd.android.package-archive",
           "download": "./downloads/bilibili/android"
         },
@@ -25,42 +27,52 @@
         },
         "consoleScript": {
           "name": "bilibili-follower-snapshot-console.js",
+          "size": null,
+          "digest": null,
+          "content_type": "text/javascript; charset=utf-8",
           "download": "./downloads/bilibili-follower-snapshot-console.js"
         },
         "consoleText": {
           "name": "bilibili-follower-snapshot-console.txt",
+          "size": null,
+          "digest": null,
+          "content_type": "text/plain; charset=utf-8",
           "download": "./downloads/bilibili-follower-snapshot-console.txt"
         }
-      },
-      "published_at": "2026-10-04T14:17:22Z"
+      }
     },
     "netease": {
-      "tag": "v2.5.4",
-      "name": "网易云完整曲名导出器 v2.5.4 · 云端构建",
-      "release_url": "https://madeinmagius-site.pages.dev/#netease",
+      "tag": "v2.5.5",
+      "name": "网易云完整曲名导出器 v2.5.5 · 更新界面修复",
+      "published_at": "2026-10-04T15:16:34Z",
+      "release_url": "https://github.com/HiiragiNemu/netease-cloudmusic-delisted-exporter/releases/tag/v2.5.5",
       "assets": {
         "androidFull": {
-          "name": "NeteasePlaylistExporter-v2.5.4-android-full.apk",
-          "size": 909737,
-          "digest": "sha256:b512b9e3f068b021e31ba6feb754a6bdba25b7e5c17ac335e0348024edb7ac46",
+          "id": 610066528,
+          "name": "NeteasePlaylistExporter-v2.5.5-android-full.apk",
+          "size": 913828,
+          "digest": "sha256:8683e46f0d94f2dfbb8c3131bcf0a7704c61f24614da36d580043f9950a9a67f",
           "content_type": "application/vnd.android.package-archive",
           "download": "./downloads/netease/android-full"
         },
         "windows": {
+          "id": 610066490,
           "name": "NeteasePlaylistExporter-v2.5.1-windows-x64.zip",
           "size": 18331073,
           "digest": "sha256:2cca372d639cb0a1d3fb0d53ef7188246d44e3ce2eeaa2e06e86fc7e366daa73",
-          "content_type": "application/zip",
+          "content_type": "application/octet-stream",
           "download": "./downloads/netease/windows"
         },
         "python": {
+          "id": 610066476,
           "name": "NeteasePlaylistExporter-v2.5.1-python.zip",
           "size": 1218343,
           "digest": "sha256:9a4670a02e2fbbd200e6f5764f302dcd83518616d11a92c9c33186bde5e01d38",
-          "content_type": "application/zip",
+          "content_type": "application/octet-stream",
           "download": "./downloads/netease/python"
         },
         "wheel": {
+          "id": 610066601,
           "name": "netease_cloudmusic_delisted_exporter-2.5.1-py3-none-any.whl",
           "size": 54861,
           "digest": "sha256:4223c69aa8cfee4d5aff50489f4260de4834de2861ab8be0b489e71a1dac2e1e",
@@ -68,20 +80,23 @@
           "download": "./downloads/netease/wheel"
         },
         "manifest": {
+          "id": 610066538,
           "name": "RELEASE_MANIFEST.json",
           "size": 1741,
-          "digest": "sha256:abbd9f0f505042e2a8d231a3fa424369481082bdd05fea3e6a78a600e5873229",
-          "content_type": "application/json",
+          "digest": "sha256:4486957e8659bae777ecaf922bb6b5d48995f6a45bf1d170c93497ea5581786f",
+          "content_type": "application/octet-stream",
           "download": "./downloads/netease/manifest"
         },
         "sums": {
+          "id": 610066551,
           "name": "SHA256SUMS.txt",
           "size": 836,
-          "digest": "sha256:f63c67d31ab075838ad49fdcc8829966c776e64badd0fdf6fd8e6b81cbb20196",
-          "content_type": "text/plain; charset=utf-8",
+          "digest": "sha256:e4b2d5258dee07da11f7067ec2aadc83cdce3eb42754faa59fc71517f691bbce",
+          "content_type": "application/octet-stream",
           "download": "./downloads/netease/sums"
         },
         "cert": {
+          "id": 610066591,
           "name": "ncm-exporter-upload-cert.pem",
           "size": 1896,
           "digest": "sha256:b014ef0614bf874c90583c9fd81aca4c08941ca8ab187e6469e93a73df239e56",
@@ -89,14 +104,14 @@
           "download": "./downloads/netease/cert"
         },
         "signature": {
+          "id": 610066560,
           "name": "SIGNATURE-VERIFICATION.txt",
           "size": 1293,
-          "digest": "sha256:4f025f445bcd277ab30a9c61ec560bd030317a1e9595467ada8efe7f25b63325",
-          "content_type": "text/plain; charset=utf-8",
+          "digest": "sha256:396bfb81874a0401ca420c990531370af2d01400c2f9077d2f4577bb8a8972c4",
+          "content_type": "application/octet-stream",
           "download": "./downloads/netease/signature"
         }
-      },
-      "published_at": "2026-10-04T14:19:51Z"
+      }
     },
     "exedra": {
       "tag": "mixed",

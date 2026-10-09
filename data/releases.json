@@ -1,29 +1,29 @@
 {
   "schema": "madeinmagius-release-snapshot/v1",
-  "generated_at": "2026-10-04",
+  "generated_at": "2026-10-09T19:44:34Z",
   "source": "verified-cloudflare-built-release-snapshot",
   "projects": {
     "bilibili": {
-      "tag": "v0.1.14",
-      "name": "B站粉丝快照伴侣 v0.1.14 · 更新界面修复",
-      "published_at": "2026-10-04T15:13:27Z",
-      "release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/tag/v0.1.14",
+      "tag": "v0.1.15",
+      "name": "B站粉丝快照伴侣 v0.1.15 · 后台读取与快照修复",
+      "published_at": "2026-10-09T19:44:34Z",
+      "release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/tag/v0.1.15",
       "assets": {
         "android": {
-          "id": 610061616,
-          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.14.apk",
-          "size": 2505941,
-          "digest": "sha256:4dce3ba1528020a8776ecf912dc331acaad26585d21b982df812eb1fb5ac61aa",
+          "id": 625989381,
+          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.15.apk",
+          "size": 2562734,
+          "digest": "sha256:0bb96074b4128031050440d90e270f6318c39b931462dd2e9b4f47ac5337a61c",
           "content_type": "application/vnd.android.package-archive",
           "download": "./downloads/bilibili/android"
         },
         "userscript": {
-          "name": "bilibili-follower-snapshot-v0.2.11.user.js",
-          "size": 139359,
-          "digest": "sha256:831c82dcfc86b3eac0127dad2485bb48825159201bbf189882e476bf89345eb2",
+          "name": "bilibili-follower-snapshot-v0.2.12.user.js",
+          "size": 160012,
+          "digest": "sha256:3d196d8a60d5b131d65c6898506ef1fa7dac50cdbb9890a290b9825c7ce8ec21",
           "content_type": "application/javascript; charset=utf-8",
           "download": "./downloads/bilibili/userscript",
-          "source_commit": "c59d10534333bb31f65d689e9fc7ddbb03d4a058"
+          "source_commit": "828283f42001780dcf9621e3ee904a455f4e1b75"
         },
         "consoleScript": {
           "name": "bilibili-follower-snapshot-console.js",

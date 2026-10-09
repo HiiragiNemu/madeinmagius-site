@@ -5,14 +5,14 @@ import { renderContent } from '../assets/content.js';
 
 const PINNED_BLOB =
   'https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/git/blobs/' +
-  '4e3866b7fdef21e8e8814757685d8f065e74462c';
-const PINNED_SIZE = 139359;
+  'c7a47c8b6b87f13757eda5639b5954ef3bc13c4b';
+const PINNED_SIZE = 160012;
 const PINNED_DIGEST =
-  'sha256:831c82dcfc86b3eac0127dad2485bb48825159201bbf189882e476bf89345eb2';
+  'sha256:3d196d8a60d5b131d65c6898506ef1fa7dac50cdbb9890a290b9825c7ce8ec21';
 const header =
   '// ==UserScript==\n' +
   '// @name 测试脚本\n' +
-  '// @version 0.2.11\n' +
+  '// @version 0.2.12\n' +
   '// @match https://space.bilibili.com/*\n' +
   '// ==/UserScript==\n';
 const body = header + ' '.repeat(PINNED_SIZE - Buffer.byteLength(header));
@@ -67,7 +67,7 @@ try {
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
   assert.ok(!JSON.stringify([...response.headers]).includes('fixture-token'));
   assert.equal(await response.text(), body);
-  console.log('GET: pinned 0.2.11 source served directly with JavaScript MIME');
+  console.log('GET: pinned 0.2.12 source served directly with JavaScript MIME');
 
   calls.length = 0;
   const head = await installHead(context({ method: 'HEAD' }));
@@ -127,7 +127,7 @@ try {
           bilibili: {
             assets: {
               userscript: {
-                name: 'bilibili-follower-snapshot-v0.2.11.user.js',
+                name: 'bilibili-follower-snapshot-v0.2.12.user.js',
                 download: './downloads/bilibili/userscript',
                 size: PINNED_SIZE,
                 digest: PINNED_DIGEST,

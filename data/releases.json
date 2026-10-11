@@ -1,19 +1,19 @@
 {
   "schema": "madeinmagius-release-snapshot/v1",
-  "generated_at": "2026-10-09T19:44:34Z",
+  "generated_at": "2026-10-11T09:36:37Z",
   "source": "verified-cloudflare-built-release-snapshot",
   "projects": {
     "bilibili": {
-      "tag": "v0.1.15",
-      "name": "B站粉丝快照伴侣 v0.1.15 · 后台读取与快照修复",
-      "published_at": "2026-10-09T19:44:34Z",
-      "release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/tag/v0.1.15",
+      "tag": "v0.1.16",
+      "name": "B站粉丝快照伴侣 v0.1.16 · 官方 APP 登录恢复",
+      "published_at": "2026-10-11T09:36:37Z",
+      "release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/tag/v0.1.16",
       "assets": {
         "android": {
-          "id": 625989381,
-          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.15.apk",
-          "size": 2562734,
-          "digest": "sha256:0bb96074b4128031050440d90e270f6318c39b931462dd2e9b4f47ac5337a61c",
+          "id": 630346818,
+          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.16.apk",
+          "size": 2565798,
+          "digest": "sha256:243d40ba603d3d51d6c5a9a2e5d803cef6510f6cb8a888aa852aacd8e037c87d",
           "content_type": "application/vnd.android.package-archive",
           "download": "./downloads/bilibili/android"
         },

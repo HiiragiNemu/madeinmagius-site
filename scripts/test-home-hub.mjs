@@ -32,11 +32,13 @@ const report = await readFile(new URL('../assets/reports/resource-comparison-202
 assert.equal(report.length, 30761);
 assert.equal(createHash('sha256').update(report).digest('hex'), '0c30d875c4e1d5876e3ee5cc2455ac7a2141e429d74ee5aabf514aa37b6e78c4');
 assert.ok(!future.includes('工具清单'));
-assert.equal((future.match(/<article /g) || []).length, 2);
+assert.equal((future.match(/<article /g) || []).length, 3);
 assert.ok(future.includes('<img src="./assets/reports/response-final.png"'));
 assert.ok(future.includes('download="response-final.png">保存图片'));
 assert.ok(future.includes('download="response-final.txt">下载文字版'));
 for (const [file, bytes, sha] of [
+  ['resource-comparison-full.png', 2445595, 'dc16d22219867194bb18234354b45270cf113d3d8bb5e91f912ddd4623d1f3e7'],
+  ['resource-comparison-thumbnail.webp', 47500, 'da66b63f5aa6aba228f7ad6affc54091567c87ea90e30655b7561329950971c6'],
   ['response-final.png', 1388103, '16369ff0838c4f13089c7046e6b835ba481477516369c42969fc42c9c9d16acb'],
   ['response-final.txt', 5011, '6180bb47399ebfc86abebecf33aca5cc5cd455c6a0b83383c95218150bc8eb19'],
 ]) {
@@ -107,3 +109,26 @@ assert.equal(createHash('sha256').update(css).digest('hex'), '89b05c8471592e18b6
   'Keep the exact pre-softness CSS during this content-only change');
 console.log('HOME_HUB=PASS: 4 external sites, separate private-server menu, report slot, profile, old hashes preserved');
 console.log('IOS_ROLLBACK=PASS: stylesheet byte-identical to pre-softness version; no new optical changes');
+
+const viewerPath = './assets/reports/resource-comparison-image.html';
+assert.ok(future.indexOf('资源与客户端比对报告</h3>') < future.indexOf('原报告长图（匿名版）</h3>'));
+assert.ok(future.indexOf('原报告长图（匿名版）</h3>') < future.indexOf('项目回应长图</h3>'));
+assert.ok(future.includes('class="evidence-report-grid"'));
+assert.ok(future.includes('class="evidence-response-card"') || future.includes('download-card evidence-response-card'));
+assert.ok(future.includes('href="' + viewerPath + '"'));
+assert.ok(future.includes('<img src="./assets/reports/resource-comparison-thumbnail.webp" width="600" height="600"'));
+assert.ok(future.includes('download="resource-comparison-full.png"'));
+const viewer = await readFile(new URL('../assets/reports/resource-comparison-image.html', import.meta.url), 'utf8');
+assert.ok(viewer.includes('<h1>原报告长图（匿名版）</h1>'));
+assert.ok(viewer.includes('src="./resource-comparison-full.png" width="1800" height="11132"'));
+assert.ok(viewer.includes('download="resource-comparison-full.png">下载原图'));
+assert.ok(!viewer.includes('.pdf'));
+for (const base of ['https://madeinmagius-site.pages.dev/', 'https://hiiraginemu.github.io/madeinmagius-site/']) {
+  const url = new URL(viewerPath, base);
+  assert.equal(new URL('./resource-comparison-full.png', url).href, base + 'assets/reports/resource-comparison-full.png');
+  assert.equal(new URL('../../#home/programs', url).href, base + '#home/programs');
+}
+const evidenceCss = await readFile(new URL('../assets/evidence.css', import.meta.url), 'utf8');
+assert.ok(evidenceCss.includes('grid-template-columns: repeat(2, minmax(0, 1fr))'));
+assert.match(evidenceCss, /@media \(max-width: 900px\)\s*\{\s*\.evidence-report-grid \{ grid-template-columns: minmax\(0, 1fr\)/);
+console.log('REPORT_IMAGE=PASS: separate original report and response, desktop/mobile CSS, static viewer and same-origin download links');

@@ -1,0 +1,30 @@
+/* Only the evidence entry uses this layout; keep the existing CRT policy intact. */
+.evidence-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 17px;
+}
+.evidence-report-grid > .download-card { min-width: 0; }
+.evidence-thumbnail {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  margin-top: 12px;
+  background: #f5f2eb;
+}
+.evidence-thumbnail img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+.evidence-thumbnail:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+.evidence-response-card { margin-top: 16px; }
+@media (max-width: 900px) {
+  .evidence-report-grid { grid-template-columns: minmax(0, 1fr); }
+}

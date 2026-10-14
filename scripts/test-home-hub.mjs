@@ -32,6 +32,21 @@ const report = await readFile(new URL('../assets/reports/resource-comparison-202
 assert.equal(report.length, 30761);
 assert.equal(createHash('sha256').update(report).digest('hex'), '0c30d875c4e1d5876e3ee5cc2455ac7a2141e429d74ee5aabf514aa37b6e78c4');
 assert.ok(!future.includes('工具清单'));
+assert.equal((future.match(/<article /g) || []).length, 2);
+assert.ok(future.includes('<img src="./assets/reports/response-final.png"'));
+assert.ok(future.includes('download="response-final.png">保存图片'));
+assert.ok(future.includes('download="response-final.txt">下载文字版'));
+for (const [file, bytes, sha] of [
+  ['response-final.png', 1388103, '16369ff0838c4f13089c7046e6b835ba481477516369c42969fc42c9c9d16acb'],
+  ['response-final.txt', 5011, '6180bb47399ebfc86abebecf33aca5cc5cd455c6a0b83383c95218150bc8eb19'],
+]) {
+  const data = await readFile(new URL('../assets/reports/' + file, import.meta.url));
+  assert.equal(data.length, bytes);
+  assert.equal(createHash('sha256').update(data).digest('hex'), sha);
+  for (const base of ['https://madeinmagius-site.pages.dev/', 'https://hiiraginemu.github.io/madeinmagius-site/']) {
+    assert.equal(new URL('./assets/reports/' + file, base).href, base + 'assets/reports/' + file);
+  }
+}
 assert.ok(!future.includes('BILIBILI SNAPSHOT'));
 assert.ok(renderContent('home', 'contact', {}).includes('CONTACT'));
 // Do not claim newer APK behavior for old releases or unknown metadata.

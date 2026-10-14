@@ -265,6 +265,13 @@ export function renderContent(programId, subId, data) {
         '<p class="meta-line">2026-10-14 · 公开整理版</p><h3>资源与客户端比对报告</h3>' +
         '<p>本报告记录：17 个分发包中有 10 个与参考包的全部分块匹配；93 个反编译补丁类文件一致；72 条资源命中对应 70 个受检文件。</p>' +
         '<a class="download-button" href="./assets/reports/resource-comparison-20261014.html" target="_blank" rel="noopener noreferrer">阅读完整报告 ↗</a>' +
+        '</article><article class="download-card">' +
+        '<p class="meta-line">2026-10-14 · 回应长图</p><h3>项目回应长图</h3>' +
+        '<a href="./assets/reports/response-final.png" target="_blank" rel="noopener noreferrer" aria-label="打开回应长图原图">' +
+        '<img src="./assets/reports/response-final.png" width="1800" height="6626" loading="lazy" decoding="async" alt="项目回应长图，完整文字见原图或文字版" style="display:block;max-width:100%;max-height:560px;width:auto;height:auto;margin:1rem auto"></a>' +
+        '<div class="quick-links"><a href="./assets/reports/response-final.png" target="_blank" rel="noopener noreferrer">打开原图 ↗</a>' +
+        '<a href="./assets/reports/response-final.png" download="response-final.png">保存图片</a>' +
+        '<a href="./assets/reports/response-final.txt" download="response-final.txt">下载文字版</a></div>' +
         '</article></div>';
     }
     if (subId === 'contact') return contactHtml();

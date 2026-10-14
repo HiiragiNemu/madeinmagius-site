@@ -5,7 +5,7 @@ import { PROGRAMS, HOME_WEBSITES, renderContent } from '../assets/content.js';
 
 assert.deepEqual(PROGRAMS.home.subs.map(s => s.id), ['welcome', 'magireco-private-server', 'programs', 'contact']);
 assert.equal(PROGRAMS.home.subs[0].label, '魔法纪录相关网站');
-assert.equal(PROGRAMS.home.subs[2].label, '未来将添加更多网站');
+assert.equal(PROGRAMS.home.subs[2].label, '资源比对与证据记录');
 assert.equal(HOME_WEBSITES.length, 4);
 assert.deepEqual(HOME_WEBSITES.map(s => new URL(s.url).hostname), [
   'magireader.pages.dev', 'magireco-call-search-cn.pages.dev', 'magius3dviewer.pages.dev',
@@ -19,7 +19,18 @@ assert.ok(!home.includes('MAGIUS LINK</h3>'));
 assert.ok(!home.includes('madeinmagius-site.pages.dev'));
 assert.ok(!home.includes('WELCOME'));
 const future = renderContent('home', 'programs', {});
-assert.ok(future.includes('未来将添加更多网站'));
+assert.ok(future.includes('资源比对与证据记录'));
+assert.ok(future.includes('17 个分发包中有 10 个'));
+assert.ok(future.includes('93 个反编译补丁类文件'));
+assert.ok(future.includes('72 条资源命中对应 70 个受检文件'));
+const reportPath = './assets/reports/resource-comparison-20261014.html';
+assert.ok(future.includes('href="' + reportPath + '" target="_blank" rel="noopener noreferrer"'));
+for (const base of ['https://madeinmagius-site.pages.dev/', 'https://hiiraginemu.github.io/madeinmagius-site/']) {
+  assert.equal(new URL(reportPath, base).href, base + reportPath.slice(2));
+}
+const report = await readFile(new URL('../assets/reports/resource-comparison-20261014.html', import.meta.url));
+assert.equal(report.length, 30761);
+assert.equal(createHash('sha256').update(report).digest('hex'), '0c30d875c4e1d5876e3ee5cc2455ac7a2141e429d74ee5aabf514aa37b6e78c4');
 assert.ok(!future.includes('工具清单'));
 assert.ok(!future.includes('BILIBILI SNAPSHOT'));
 assert.ok(renderContent('home', 'contact', {}).includes('CONTACT'));
@@ -79,5 +90,5 @@ assert.ok(!profile.includes('旧的独立工具站会逐步并入'));
 const css = await readFile(new URL('../assets/styles.css', import.meta.url));
 assert.equal(createHash('sha256').update(css).digest('hex'), '89b05c8471592e18b63549a6f2a6d80fdd25a294f63451cbbd062ae50b09dca2',
   'Keep the exact pre-softness CSS during this content-only change');
-console.log('HOME_HUB=PASS: 4 external sites, separate private-server menu, future slot, profile, old hashes preserved');
+console.log('HOME_HUB=PASS: 4 external sites, separate private-server menu, report slot, profile, old hashes preserved');
 console.log('IOS_ROLLBACK=PASS: stylesheet byte-identical to pre-softness version; no new optical changes');

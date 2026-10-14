@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><title>资源与客户端比对报告 · 2026-10-14</title><link rel="icon" href="data:,"><style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-faint: #64748b;
+      --accent-match: #059669;
+      --accent-match-bg: #ecfdf5;
+      --accent-match-border: #a7f3d0;
+      --accent-diff: #dc2626;
+      --accent-diff-bg: #fef2f2;
+      --accent-diff-border: #fecaca;
+      --accent-warn: #d97706;
+      --accent-warn-bg: #fffbeb;
+      --accent-warn-border: #fde68a;
+      --accent-info: #2563eb;
+      --accent-info-bg: #eff6ff;
+      --accent-info-border: #bfdbfe;
+      --code-bg: #1e293b;
+      --code-text: #f8fafc;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f19;
+        --surface: #131b2e;
+        --surface-subtle: #1e293b;
+        --border: #26334d;
+        --border-strong: #334155;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --text-faint: #64748b;
+        --accent-match: #10b981;
+        --accent-match-bg: #064e3b33;
+        --accent-match-border: #065f46;
+        --accent-diff: #f87171;
+        --accent-diff-bg: #7f1d1d33;
+        --accent-diff-border: #991b1b;
+        --accent-warn: #fbbf24;
+        --accent-warn-bg: #78350f33;
+        --accent-warn-border: #92400e;
+        --accent-info: #60a5fa;
+        --accent-info-bg: #1e3a8a33;
+        --accent-info-border: #1e40af;
+        --code-bg: #080c14;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.7;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      padding: 0 0 4rem 0;
+    }
+
+    .report-wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 0 1.5rem;
+    }
+
+    /* Header / Hero */
+    .report-header {
+      padding: 2rem 0 3rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .badge-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-strong);
+      color: var(--text-muted);
+    }
+    .status-pill.verified {
+      background: var(--accent-match-bg);
+      border-color: var(--accent-match-border);
+      color: var(--accent-match);
+    }
+    .doc-title {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+    .doc-subtitle {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+    }
+    .meta-item .meta-label {
+      color: var(--text-faint);
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.125rem;
+    }
+    .meta-item .meta-val {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Big 3 Hero Stats */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin: 2.5rem 0;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent-info);
+    }
+    .stat-card.match::before { background: var(--accent-match); }
+    .stat-card.diff::before { background: var(--accent-diff); }
+    .stat-card.warn::before { background: var(--accent-warn); }
+    .stat-num {
+      font-size: 2.75rem;
+      font-weight: 800;
+      line-height: 1;
+      font-feature-settings: "tnum";
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+    .stat-card.match .stat-num { color: var(--accent-match); }
+    .stat-card.diff .stat-num { color: var(--accent-diff); }
+    .stat-card.warn .stat-num { color: var(--accent-warn); }
+    .stat-label {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      margin-bottom: 0.375rem;
+      color: var(--text-main);
+    }
+    .stat-desc {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Typography & Sections */
+    section {
+      margin-top: 3.5rem;
+    }
+    .sec-heading {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sec-num {
+      font-size: 0.875rem;
+      font-weight: 800;
+      color: var(--accent-info);
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+    }
+    .sec-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+    .lead-text {
+      font-size: 1.0625rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.8;
+    }
+    .lead-text strong {
+      color: var(--text-main);
+    }
+
+    /* Tables */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      margin: 1.5rem 0;
+      box-shadow: var(--shadow-sm);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+    th {
+      background: var(--surface-subtle);
+      color: var(--text-faint);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background-color: var(--surface-subtle); }
+    .mono { font-family: var(--font-mono); font-size: 0.8125rem; }
+
+    /* Tag pills */
+    .tag {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .tag-match { background: var(--accent-match-bg); color: var(--accent-match); border: 1px solid var(--accent-match-border); }
+    .tag-diff { background: var(--accent-diff-bg); color: var(--accent-diff); border: 1px solid var(--accent-diff-border); }
+    .tag-warn { background: var(--accent-warn-bg); color: var(--accent-warn); border: 1px solid var(--accent-warn-border); }
+    .tag-neutral { background: var(--surface-subtle); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* Callout & Cards */
+    .callout {
+      padding: 1.25rem 1.5rem;
+      border-radius: var(--radius-md);
+      margin: 1.5rem 0;
+      border-left: 4px solid var(--accent-info);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .callout.alert {
+      border-left-color: var(--accent-diff);
+      background: var(--accent-diff-bg);
+    }
+    .callout.notice {
+      border-left-color: var(--accent-match);
+      background: var(--accent-match-bg);
+    }
+
+    /* Segment bar */
+    .segment-bar {
+      display: flex;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin: 1rem 0 0.5rem 0;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+    }
+    .segment {
+      height: 100%;
+      position: relative;
+      transition: opacity 0.2s;
+    }
+    .segment:hover { opacity: 0.85; }
+    .seg-match { background: var(--accent-match); }
+    .seg-mod { background: var(--accent-warn); }
+    .seg-added { background: var(--accent-info); }
+    .seg-our { background: #8b5cf6; }
+
+    .bar-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      font-size: 0.8125rem;
+      margin-top: 0.75rem;
+      color: var(--text-muted);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Code diff view */
+    .diff-block {
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin: 1.25rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      box-shadow: var(--shadow-md);
+    }
+    .diff-header {
+      background: rgba(0,0,0,0.25);
+      padding: 0.625rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+    }
+    .diff-header span.file-badge {
+      background: rgba(255,255,255,0.1);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      color: #e2e8f0;
+    }
+    .diff-content {
+      padding: 0.75rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    .diff-line {
+      display: flex;
+      padding: 0.15rem 1rem;
+    }
+    .diff-line.del {
+      background: rgba(220, 38, 38, 0.22);
+      color: #fca5a5;
+    }
+    .diff-line.add {
+      background: rgba(5, 150, 105, 0.22);
+      color: #86efac;
+    }
+    .diff-line.same {
+      color: #94a3b8;
+    }
+    .diff-prefix {
+      width: 1.5rem;
+      user-select: none;
+      font-weight: 700;
+    }
+    .diff-code {
+      flex: 1;
+      white-space: pre;
+    }
+
+    /* Grid cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .info-card h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Footer */
+    footer.report-footer {
+      margin-top: 5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 768px) {
+      .hero-stats { grid-template-columns: 1fr; }
+      .doc-title { font-size: 1.5rem; }
+      .report-wrap { padding: 1.5rem 1rem 0 1rem; }
+      .meta-grid { grid-template-columns: 1fr; }
+    }
+  
+html { scroll-behavior: smooth; }
+.report-nav { display:flex; flex-wrap:wrap; gap:.5rem 1.2rem; padding:1rem 0; }
+.report-nav a { color:var(--text-main); text-underline-offset:4px; }
+.fingerprint { overflow-wrap:anywhere; word-break:break-all; }
+.evidence-note { font-size:.875rem; color:var(--text-muted); line-height:1.8; }
+.stat-num small { font-size:1.1rem; }
+section { scroll-margin-top:1rem; }
+td, th { vertical-align:top; }
+@media(max-width:600px) { .doc-title { font-size:1.9rem; } .meta-grid { grid-template-columns:1fr; } }
+@media print { .report-nav { display:none; } .table-responsive { overflow:visible; } code { overflow-wrap:anywhere; } }
+</style></head><body>
+<div class="report-wrap">
+<header class="report-header">
+  <div class="badge-bar"><span class="status-pill verified">资源比对与证据记录</span><span class="status-pill">2026-10-14 · 公开整理版 1.2</span></div>
+  <h1 class="doc-title">资源与客户端比对报告</h1>
+  <p class="doc-subtitle">外部分发样本与本项目已发布资源、客户端修改的比对记录</p>
+  <div class="meta-grid">
+    <div class="meta-item"><span class="meta-label">受检对象</span><span class="meta-val">分发样本 A：17 个 ZIP 与 1 个 APK</span></div>
+    <div class="meta-item"><span class="meta-label">原始核验日期</span><span class="meta-val">2026-10-14</span></div>
+    <div class="meta-item"><span class="meta-label">资源参考版本</span><span class="meta-val">2026-10-12 证据索引 · 累计修订 46</span></div>
+    <div class="meta-item"><span class="meta-label">比对方式</span><span class="meta-val">分块哈希、文件 SHA-256、反编译文本、符号表</span></div>
+  </div>
+  <div class="hero-stats">
+    <div class="stat-card match"><div class="stat-num">10 <small>/ 17 包</small></div><div class="stat-label">与本项目分发包的全量分块匹配</div><div class="stat-desc">文件大小及全部 16 MiB 分块 MD5 一致，其中一个包仅文件名不同。</div></div>
+    <div class="stat-card diff"><div class="stat-num">93</div><div class="stat-label">反编译补丁类文件 SHA-256 一致</div><div class="stat-desc">统计限定于补丁命名空间，不把游戏原版或第三方通用库算作项目专有代码。</div></div>
+    <div class="stat-card warn"><div class="stat-num">72 <small>条命中</small></div><div class="stat-label">对应 70 个受检文件、51 条参考路径</div><div class="stat-desc">匹配本项目已发布累计修订 46 的登记产出；含日文网页包中的 16 条命中。</div></div>
+  </div>
+  <nav class="report-nav" aria-label="报告章节"><a href="#summary">摘要</a><a href="#packages">分发包</a><a href="#code">补丁代码</a><a href="#fonts">字体沿用</a><a href="#assets">资源明细</a><a href="#method">方法与口径</a></nav>
+</header>
+<main>
+<section id="summary">
+  <div class="sec-heading"><span class="sec-num">01 / SUMMARY</span><h2 class="sec-title">本记录要回答的问题</h2></div>
+  <div class="lead-text"><p>外部分发包是否包含本项目已经发布的资源和客户端修改？2026-10-14 的比对报告记录了<strong>整包分块一致、补丁代码文件一致、已发布成品命中</strong>三组结果，从不同层面显示受检样本与本项目产出的重合。</p><p>本页整理这些技术记录，不公开相关人员身份、聊天账号或合作人员信息。字体部分另列项目方补充与可核对的参考指纹。</p></div>
+  <div class="callout notice"><strong>应当区分“同一内容”和“同一作者”。</strong><p class="evidence-note">相同哈希用于识别一致内容；获取途径、使用许可与作者归属是不同问题。官方原始素材、第三方组件和本项目整理、修改后的产物分开列示，不把整包所有内容都算作本项目原创。</p></div>
+</section>
+
+<section id="packages">
+  <div class="sec-heading"><span class="sec-num">02 / PACKAGES</span><h2 class="sec-title">10 个国服分发包：全量分块匹配</h2></div>
+  <div class="lead-text"><p>原报告对 17 个 ZIP 逐个计算全部 16 MiB 分块的 MD5，并与本项目线上分发清单比对。下列 10 个包的<strong>大小和全部分块哈希均一致</strong>，支持其与本项目分发成品为同一文件内容。</p></div>
+  <div class="table-responsive"><table><thead><tr><th>受检包</th><th>大小（字节）</th><th>记录结果</th></tr></thead><tbody>
+    <tr><td class="mono">cn_base_00_db.zip</td><td class="mono">7,437,513</td><td>大小及全部分块 MD5 一致</td></tr>
+    <tr><td class="mono">cn_base_01_json.zip</td><td class="mono">5,749,047</td><td>大小及全部分块 MD5 一致</td></tr>
+    <tr><td class="mono">cn_base_02.zip</td><td class="mono">957,669,887</td><td>大小及全部分块 MD5 一致</td></tr>
+    <tr><td class="mono">cn_base_03.zip</td><td class="mono">1,422,289,288</td><td>大小及全部分块 MD5 一致</td></tr>
+    <tr><td class="mono">cn_base_04.zip</td><td class="mono">790,972,163</td><td>大小及全部分块 MD5 一致</td></tr>
+    <tr><td class="mono">cn_base_05.zip</td><td class="mono">915,609,476</td><td>大小及全部分块 MD5 一致</td></tr>
+    <tr><td class="mono">cn_base_06.zip</td><td class="mono">1,135,265,479</td><td>大小及全部分块 MD5 一致</td></tr>
+    <tr><td class="mono">cn_magica_resource.zip</td><td class="mono">398,763,022</td><td>大小及全部分块 MD5 一致</td></tr>
+    <tr><td class="mono">cn_voice_01.zip</td><td class="mono">1,985,163,011</td><td>大小及全部分块 MD5 一致</td></tr>
+    <tr><td class="mono">cn_voice_02.zip</td><td class="mono">1,801,181,697</td><td>与 <code>cn_voice_02_done.zip</code> 的 108/108 块一致；文件名不同</td></tr>
+  </tbody></table></div>
+  <p class="evidence-note">这里证明的是分发包内容一致。语音包的整包一致可用于说明分发关系，音视频本身仍不计作本项目汉化原创成果。</p>
+  <h3>另外 7 个日文补充包</h3>
+  <p><code>jp_images</code>、<code>jp_memoria</code>、<code>jp_story</code>、<code>jp_tips</code>、<code>jp_title</code>、<code>jp_web</code>、<code>jp_web_preeos</code> 的打包特征与本项目分发包不同。仅凭重新打包特征，不推定包内所有内容均由受检方原创。</p>
+  <div class="card-grid">
+    <div class="info-card"><h4>剧情清理清单</h4><p><code>jp_story.zip</code> 内的 <code>_jp_story_prune.txt</code> 说明：安装国服包后可能残留的、日文源无对应项的剧情 JSON，会由 <code>OfflineInstaller</code> 在日文包展开后删除；说明直接引用 <code>cn_scenario_update.zip</code>。这记录了针对该包的兼容与清理设计，本身不代表授权状态。</p></div>
+    <div class="info-card"><h4>日文网页包中的已发布产出</h4><p><code>jp_web.zip</code> 中有 <strong>16 条</strong>与累计修订 46 已发布产出的精确文件匹配记录。这 16 条包含在总计 72 条中，不另行累加。</p></div>
+  </div>
+  <p class="evidence-note">原报告另记载 <code>jp_web</code> 的 76.9% 和 <code>jp_images</code> 的 61.1% 条目具有相同路径、CRC32 和大小。这是条目元数据重合口径，不等同对这些条目重新完成了 SHA-256 比对，也不直接计作项目独有成果。</p>
+</section>
+
+<section id="code">
+  <div class="sec-heading"><span class="sec-num">03 / CODE</span><h2 class="sec-title">客户端补丁代码：一致文件与具体差异</h2></div>
+  <p>受检 APK A 与本项目客户端 2.0.9999 及两个历史构建（2.0.1004、2.0.1005）对照。原报告使用同版本 apktool 反编译，再对补丁命名空间中的 Smali 文件计算 SHA-256。</p>
+  <div class="table-responsive"><table><thead><tr><th>类文件关系</th><th>数量</th><th>含义</th></tr></thead><tbody>
+    <tr><td>反编译文件完全一致</td><td>93</td><td>对应 Smali 文件的 SHA-256 一致</td></tr>
+    <tr><td>同名文件有修改</td><td>201</td><td>其中 97 项文本相似度至少 90%；不是“201 项都只改域名”</td></tr>
+    <tr><td>仅受检版本存在</td><td>64</td><td>包含 APK 更新及离线安装相关扩展</td></tr>
+    <tr><td>仅本项目参考版本存在</td><td>96</td><td>受检 APK 中未发现相应类</td></tr>
+  </tbody></table></div>
+  <p class="evidence-note">454 为双方相关类的并集，不是受检 APK 内类的总数；反编译文本一致也不等于整份 DEX 或整份 APK 字节一致。</p>
+  <div class="card-grid">
+    <div class="info-card"><h4><code>CNWebProxy</code></h4><p>双方反编译文件均为 <strong>3,899 行</strong>，报告列出两处差异：参考版本的服务域名常量分别变为空字符串和单个点号，其余文本一致。</p><pre>参考服务域名       → ""
+参考域名匹配前缀   → "."</pre></div>
+    <div class="info-card"><h4><code>CNPaths</code></h4><p>双方反编译文件均为 <strong>563 行</strong>，报告列出一处差异：安装包名常量改变。为避免公开身份信息，此页以含义代替实际包名和服务域名。</p><pre>参考应用包名       → 受检应用包名</pre></div>
+  </div>
+  <h3>Native 库与独立组件</h3>
+  <div class="table-responsive"><table><thead><tr><th>文件</th><th>报告记录</th><th>解释范围</th></tr></thead><tbody>
+    <tr><td class="mono">libMagiaLegacy.so</td><td>受检文件的 91 个动态导出符号与参考历史构建一致；参考当前构建有 98 个</td><td>符号表匹配是同源分析线索，不等同两份库的全部实现或字节一致</td></tr>
+    <tr><td class="mono">libmadomagi_native.so</td><td>报告列出 20 字节差异，涉及官方地址改为本地服务地址</td><td>游戏官方库，不将其整体记为本项目原创</td></tr>
+    <tr><td class="mono">libarchive.so</td><td>两份分发文件逐字节一致</td><td>第三方通用组件</td></tr>
+    <tr><td class="mono">libshadowhook.so</td><td>同尺寸、478 个动态符号相同，文件字节有差异</td><td>第三方组件；不据符号相同断言文件完全一致</td></tr>
+    <tr><td class="mono">libaria2c_gnutls / ossl</td><td>仅参考 APK 存在</td><td>差异项，不声称被受检 APK 采用</td></tr>
+    <tr><td class="mono">libbacktrace / crashpad</td><td>仅受检 APK 存在</td><td>差异项，不算作本项目成果</td></tr>
+  </tbody></table></div>
+  <p>报告还记录：共同的 387 个 assets 文件中有 327 个字节一致，大部分属于游戏原始内容；本项目 <code>web-overlay</code> 下的 4 个网页浮层文件没有在受检 APK 中找到。受检 APK 另有约 1,967 个新增文件。以上差异一并保留。</p>
+</section>
+
+<section id="fonts">
+  <div class="sec-heading"><span class="sec-num">04 / FONTS</span><h2 class="sec-title">字体沿用：替换版本不是原版字体</h2></div>
+  <div class="callout notice"><strong>项目方补充确认</strong><p>受检版本沿用了本项目替换后的字体，连日文显示也保留了这一字形特征。字体外观让使用者注意到两者关系；进一步核对时，应区分“看起来相似”和“字体文件内容一致”。</p></div>
+  <p>本项目已有字体指纹记录显示：公开客户端 1.1.9 与冻结离线版本在下面两个路径使用同一份 <strong>Magius Round Symbols</strong> 字体，文件大小 <strong>6,983,356 字节</strong>；它与原 Totentanz 对应文件的哈希不同。</p>
+  <div class="table-responsive"><table><thead><tr><th>字体路径</th><th>原 Totentanz 参考字体</th><th>本项目替换字体</th></tr></thead><tbody>
+    <tr><td class="mono">assets/fonts/MTF4a5kp.ttf</td><td>MotoyaF4Aporo<br>2,618,612 字节</td><td>Magius Round Symbols<br>6,983,356 字节</td></tr>
+    <tr><td class="mono">assets/fonts/mbm_20160902.ttf</td><td>TT-Gothic MB101<br>2,450,636 字节</td><td>Magius Round Symbols<br>6,983,356 字节</td></tr>
+  </tbody></table></div>
+  <div class="info-card"><h4>本项目替换字体参考 SHA-256</h4><p class="mono fingerprint">a6adbd53d4d061c54a210194d800fafd989f656a6bd5334843fc069c08ed8f48</p><p class="evidence-note">两个文件路径，同一份字体内容，不重复计为两款独立字体。</p></div>
+  <details><summary>展开原版与字形表参考指纹</summary>
+    <p>原版 <code>MTF4a5kp.ttf</code>：<code class="fingerprint">36dbe7b91d30d9d95713ba4b46bfa9b70f5d16bf759e45d3a043eae97da948a1</code></p>
+    <p>原版 <code>mbm_20160902.ttf</code>：<code class="fingerprint">37f266883643ca3e3168049a130396a4993b981747f73c4f5068afec2412f5c5</code></p>
+    <p>替换字体的归一化表指纹：<code class="fingerprint">6fcf2b193c17541a8f90f1e2bb88178862131b6ec74bdb441711ec6dc817a799</code>。该指纹不计名称、签名及部分时间字段，可辅助核查改名后的同字形字体。</p>
+  </details>
+  <p class="evidence-note">本节“沿用”来自项目方补充；以上哈希是已登记的本项目与原版参考指纹。原报告未逐项列出受检字体哈希，所以本节不虚增上方独立比对计数。字形、底层字体来源与字体修改、整合劳动分别保留。</p>
+</section>
+
+<section id="assets">
+  <div class="sec-heading"><span class="sec-num">05 / ASSETS</span><h2 class="sec-title">资源命中与排除项</h2></div>
+  <h3>已发布产出：72 条记录，而非 72 个独立文件</h3>
+  <p>生产登记层得到 <strong>72 条精确文件匹配</strong>，关联 <strong>70 个受检文件、51 条参考路径</strong>。同一内容跨路径、跨版本复用会形成多条匹配记录。</p>
+  <div class="table-responsive"><table><thead><tr><th>受检包</th><th>匹配记录数</th><th>示例</th></tr></thead><tbody>
+    <tr><td class="mono">cn_base_02.zip</td><td>27</td><td>扭蛋场景特效、贴图与返回、跳过按钮等</td></tr>
+    <tr><td class="mono">cn_magica_resource.zip</td><td>29</td><td>连接提示、战斗结果、任务完成、剧情完成等 UI 图</td></tr>
+    <tr><td class="mono">jp_web.zip</td><td>16</td><td>与已发布产出相同的网页 UI 文件</td></tr>
+  </tbody></table></div>
+  <p class="evidence-note">这些条目对应累计修订 46 的 <code>PUBLISHED_VERIFIED</code> 登记。该字段表示发布校验状态，不是确权证明；登记来源包括官方素材和项目处理成果。</p>
+  <h3>资源层覆盖与人工复核项</h3>
+  <div class="table-responsive"><table><thead><tr><th>口径</th><th>原报告记录</th></tr></thead><tbody>
+    <tr><td>扫描资源文件／条目</td><td>94,607</td></tr>
+    <tr><td>归入内容匹配的文件</td><td>4,926</td></tr>
+    <tr><td>精确哈希匹配记录／像素匹配记录</td><td>5,049／150；记录可一对多，不与文件数直接相加</td></tr>
+    <tr><td>已有基线解释的内容</td><td>74,958</td></tr>
+    <tr><td>报告归入受检侧独有的项</td><td>13,703；“索引未命中”不等同证明独立原创</td></tr>
+    <tr><td>文本匹配</td><td>584 处，333 条唯一参考文本；大部分为复核级</td></tr>
+    <tr><td>图片相似复核</td><td>1,365 条记录；不并入精确相同结论</td></tr>
+    <tr><td>音视频排除</td><td>110,384 条；不纳入汉化原创比较</td></tr>
+  </tbody></table></div>
+  <p class="evidence-note">本表保留原报告不同层次的计数，部分层级重叠，不将它们相加为新的总数。资源内容相同仍需结合原版、国服与第三方来源判断。</p>
+  <h3>APK 成员层与异常核查</h3>
+  <p>APK 成员层扫描 2,809 个条目；原报告列出的 27 条精确匹配全部也见于本项目公开客户端 1.1.9。因此，这组记录本身不区分“沿用公开版”与“沿用冻结离线版”。<strong>本项目公开版不等于游戏官方原版</strong>，也不因公开分发就抹去其中的修改劳动；具体来源仍逐项区分。</p>
+  <p>报告中的 17 个解析异常已分别说明：3 个为 <code>._</code> 前缀的 macOS 元数据，14 个为以异常扩展名保存的 HTML 外壳，后者在 Totentanz 基线中已有对应记录。这说明这 17 项已归类，不扩大成对所有未知内容的零遗漏保证。</p>
+</section>
+
+<section id="method">
+  <div class="sec-heading"><span class="sec-num">06 / METHOD</span><h2 class="sec-title">核验依据与范围</h2></div>
+  <div class="card-grid">
+    <div class="info-card"><h4>原报告记录的流程</h4><ul><li>全程只读，不改写受检文件。</li><li>资源来源依次对照 Totentanz、美服／日服及国服留存；共同内容与项目修改分开。</li><li>整包以大小和全部分块 MD5 比对；单文件以 SHA-256 比对；图片像素和文本相似另列。</li><li>客户端补丁使用反编译文件比对，Native 库动态符号单独记录。</li><li>资源索引复用既有指纹，旧资源包读取数为 0。</li></ul></div>
+    <div class="info-card"><h4>阅读这些数字时</h4><ul><li>已发布、已公开和原创归属是不同概念。</li><li>反编译文件一致、符号表相同和二进制整包一致是不同证据。</li><li>短文本与近似图片只列复核线索。</li><li>既有授权范围、共同上游来源不因匹配而消失。</li><li>本页保留原报告核心记录并修正计数表述；不把本页整理过程描述为重新执行了全量取证。</li></ul></div>
+  </div>
+  <details><summary>受检对象与参考索引指纹</summary>
+    <p>受检 APK A：71,067,750 字节；SHA-256：<code class="fingerprint">feeeac4902499e835871a4558c1ce3eda0ec530f111728322cc0ec376e69bc8e</code>。</p>
+    <p>2026-10-12 资源参考索引 SHA-256：<code class="fingerprint">36ff5abdf3ce74f6185709be8dbff2b8704a55e50fdf84dfea11e362aa4d96ff</code>。</p>
+    <p>此处是原报告使用的冻结基准，不以项目后续更新版本倒推或替换当时的比对结果。</p>
+  </details>
+</section>
+<footer class="report-footer"><p><strong>资源比对与证据记录 · 2026-10-14</strong></p><p>本页不公布人员身份及合作人员信息。请围绕材料本身讨论，不搜索身份或骚扰相关人员。</p></footer>
+</main></div>
+</body></html>

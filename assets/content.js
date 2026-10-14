@@ -19,7 +19,7 @@ export const PROGRAMS = {
   home: { subs: [
     { id: 'welcome', label: '魔法纪录相关网站', note: '作品导航' },
     { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: 'APK / 教程' },
-    { id: 'programs', label: '未来将添加更多网站', note: '预留' },
+    { id: 'programs', label: '资源比对与证据记录', note: '报告' },
     { id: 'contact', label: 'CONTACT', note: '联系' }
   ]},
   bilibili: { subs: [
@@ -259,8 +259,13 @@ export function renderContent(programId, subId, data) {
   if (programId === 'home') {
     if (subId === 'magireco-private-server') return magirecoClientHtml(data.magireco);
     if (subId === 'programs') {
-      return '<p class="content-kicker">MAGIUS LINK / UPCOMING</p><h2>未来将添加更多网站</h2>' +
-        '<p>这里预留给未来的更多项目。新的网站与作品会陆续加入 HOME。</p>';
+      return '<p class="content-kicker">MAGIUS LINK / EVIDENCE</p><h2>资源比对与证据记录</h2>' +
+        '<p>资源、客户端修改与已发布产出的比对报告。</p>' +
+        '<div class="download-stack"><article class="download-card">' +
+        '<p class="meta-line">2026-10-14 · 公开整理版</p><h3>资源与客户端比对报告</h3>' +
+        '<p>本报告记录：17 个分发包中有 10 个与参考包的全部分块匹配；93 个反编译补丁类文件一致；72 条资源命中对应 70 个受检文件。</p>' +
+        '<a class="download-button" href="./assets/reports/resource-comparison-20261014.html" target="_blank" rel="noopener noreferrer">阅读完整报告 ↗</a>' +
+        '</article></div>';
     }
     if (subId === 'contact') return contactHtml();
     return '<p class="content-kicker">MAGIUS LINK / WEBSITES</p><h2>魔法纪录相关网站</h2>' +

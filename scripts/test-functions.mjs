@@ -32,7 +32,7 @@ const exedraReleases = [
     ],
   },
   {
-    tag_name:'jp-v3.18.0', published_at:'2026-09-18T00:00:00Z',
+    tag_name:'jp-v3.21.0', published_at:'2026-09-18T00:00:00Z',
     assets:[],
   },
   {
@@ -134,7 +134,7 @@ try {
 
   assert.equal(data.projects.exedra.assets.twXapk.name,'tw.sonet.magiaexedra-9.0.0-99999999.xapk');
   assert.equal(data.projects.exedra.assets.twXapk.download,'./downloads/exedra/tw-xapk');
-  assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-3.18.0.xapk');
+  assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-3.21.0.xapk');
   assert.equal(data.projects.exedra.assets.jpXapk.download,'./downloads/exedra/jp-xapk');
   assert.equal(data.projects.exedra.assets.tools.name,'MagiaExedraTWJPTools-v9.0.0.zip');
   assert.ok(!JSON.stringify(data).includes('fake-token'));
@@ -200,7 +200,7 @@ try {
     request:new Request('https://site.test/downloads/exedra/jp-xapk'),
   });
   assert.equal(jp.status,302);
-  assert.equal(jp.headers.get('location'),'https://d.apkpure.net/b/XAPK/com.aniplex.magia.exedra.jp?version=latest');
+  assert.equal(jp.headers.get('location'),'https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/jp-v3.21.0/com.aniplex.magia.exedra.jp-3.21.0.xapk');
   assert.equal(jp.headers.get('x-release-digest'),null);
   assert.equal(jp.headers.get('content-length'),null);
   assert.ok(!JSON.stringify([...jp.headers]).includes('fake-token'));
@@ -215,7 +215,7 @@ try {
 
   // Once the source repository has a JP asset, keep the canonical route and stream it.
   exedraReleases[1].assets.push({
-    id:44,name:'com.aniplex.magia.exedra.jp-3.18.0.xapk',size:3,
+    id:44,name:'com.aniplex.magia.exedra.jp-3.21.0.xapk',size:3,
     digest:'sha256:jp-test',content_type:'application/octet-stream',
     url:'https://api.github.test/assets/44',
   });

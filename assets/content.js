@@ -458,8 +458,8 @@ export function renderContent(programId, subId, data) {
         '<p>旧的独立 Exedra 下载站并入 MAGIUS LINK。原有客户端下载、安装工具和教程全部保留。</p>' +
         '<div class="download-stack">' +
         downloadCard(data, 'exedra', 'twXapk', 'TW 1.1.3 XAPK', '台服原版完整 XAPK', './downloads/exedra/tw-xapk') +
-        downloadCard(data, 'exedra', 'jpXapk', 'JP 3.18.0 XAPK', '日服原版完整 XAPK', './downloads/exedra/jp-xapk') +
-        downloadCard(data, 'exedra', 'tools', 'TW / JP TOOLS v1.4.0', '安装与升级工具', './downloads/exedra/tools') +
+        downloadCard(data, 'exedra', 'jpXapk', 'JP 3.21.0 XAPK', '日服原版完整 XAPK', './downloads/exedra/jp-xapk') +
+        downloadCard(data, 'exedra', 'tools', 'TW / JP TOOLS v1.4.1', '安装与升级工具', './downloads/exedra/tools') +
         '</div><div class="quick-links">' +
         '' +
         '<a href="https://mme.so-net.tw/" target="_blank" rel="noreferrer">TW OFFICIAL ↗</a>' +

@@ -98,11 +98,11 @@ const PROJECTS = {
     mode: 'scan',
     legacy: {
       'jp-xapk': {
-        name: 'com.aniplex.magia.exedra.jp-3.18.0.xapk',
-        size: 923195400,
-        digest: 'sha256:43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514',
+        name: 'com.aniplex.magia.exedra.jp-3.21.0.xapk',
+        size: 959302997,
+        digest: 'sha256:9add4ea7d585c532b082e41b8bcaad1a7f567cb7e0a4692087dd8632d1a32df2',
         content_type: 'application/xapk-package-archive',
-        legacy_url: 'https://d.apkpure.net/b/XAPK/com.aniplex.magia.exedra.jp?version=latest',
+        legacy_url: 'https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/jp-v3.21.0/com.aniplex.magia.exedra.jp-3.21.0.xapk',
         redirect_to_origin: true,
       },
     },

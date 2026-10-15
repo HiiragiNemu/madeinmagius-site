@@ -116,9 +116,9 @@ const PROJECTS = {
     routes: { twXapk: 'tw-xapk', jpXapk: 'jp-xapk' },
     fallbackAssets: {
       jpXapk: {
-        name: 'com.aniplex.magia.exedra.jp-3.18.0.xapk',
-        size: 923195400,
-        digest: 'sha256:43cd6eca5a8af7e8bf017fd922e4b0a9260e63933051f5eff3ae21c89a89a514',
+        name: 'com.aniplex.magia.exedra.jp-3.21.0.xapk',
+        size: 959302997,
+        digest: 'sha256:9add4ea7d585c532b082e41b8bcaad1a7f567cb7e0a4692087dd8632d1a32df2',
         content_type: 'application/xapk-package-archive',
         download: './downloads/exedra/jp-xapk',
       },

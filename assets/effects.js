@@ -1,3 +1,24 @@
+const geometryCache = new WeakMap();
+
+// The optical coordinate system is the viewport, never the painted bounds of
+// a hovered descendant. Keep every primitive fixed, including blur and echo.
+export function updateCrtFilterGeometry(filter, curve, width, height, scale) {
+  if (!filter || !curve || ![width, height, scale].every(value => Number.isFinite(value) && value > 0)) return false;
+  const primitives = Array.from(filter.children);
+  const key = [width, height, scale, primitives.length].join(':');
+  if (geometryCache.get(filter) === key) return false;
+  const set = (node, name, value) => { const text = String(value); if (node.getAttribute(name) !== text) node.setAttribute(name, text); };
+  set(filter, 'filterUnits', 'userSpaceOnUse');
+  set(filter, 'primitiveUnits', 'userSpaceOnUse');
+  for (const node of [filter, ...primitives]) {
+    set(node, 'x', 0); set(node, 'y', 0);
+    set(node, 'width', width); set(node, 'height', height);
+  }
+  set(curve, 'scale', scale);
+  geometryCache.set(filter, key);
+  return true;
+}
+
 export function setupCrtEffects(options) {
   const root = document.documentElement;
   const warpImage = options.warpImage;
@@ -16,18 +37,11 @@ export function setupCrtEffects(options) {
 
   function updateCurveScale() {
     if (!curveDisplacement) return;
-    // Explicit pixel bounds avoid percentage filter-region rounding in WebKit.
-    const filter = curveDisplacement.parentElement;
     const width = options.signal.clientWidth;
     const height = options.signal.clientHeight;
-    filter.setAttribute('filterUnits', 'userSpaceOnUse');
-    filter.setAttribute('primitiveUnits', 'userSpaceOnUse');
-    for (const node of [filter, warpImage]) {
-      node.setAttribute('width', String(width));
-      node.setAttribute('height', String(height));
-    }
     const size = Math.min(options.screen.clientWidth, window.innerHeight);
-    curveDisplacement.setAttribute('scale', String(Math.round(Math.max(32, Math.min(64, size * .095)))));
+    updateCrtFilterGeometry(curveDisplacement.parentElement, curveDisplacement,
+      width, height, Math.round(Math.max(32, Math.min(64, size * .095))));
   }
 
   function createWarpMap() {
@@ -63,6 +77,7 @@ export function setupCrtEffects(options) {
   updateCurveScale();
   const resizeObserver = new ResizeObserver(updateCurveScale);
   resizeObserver.observe(options.screen);
+  if (options.signal !== options.screen) resizeObserver.observe(options.signal);
   window.addEventListener('resize', updateCurveScale);
 
   return {

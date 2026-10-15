@@ -240,7 +240,6 @@ function buildSubMenu() {
     });
     button.addEventListener('pointerenter', () => {
       hoverSubId = item.id;
-      crt.addEnergy(.4);
       drawConnectors();
     });
     button.addEventListener('pointerleave', () => {
@@ -343,7 +342,6 @@ function setupProgramInteractions() {
       setInteractiveGlow(button, event);
     });
     button.addEventListener('pointerenter', () => {
-      crt.addEnergy(.3);
       statusLine.textContent = 'TARGET // ' + button.dataset.program.toUpperCase();
     });
     button.addEventListener('click', () => {

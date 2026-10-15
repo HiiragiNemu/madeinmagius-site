@@ -1,3 +1,5 @@
+import { versionStaticAssets } from './version-static-assets.mjs';
+import { spawnSync } from 'node:child_process';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
@@ -70,6 +72,9 @@ await cp('index.html','dist/index.html');
 await cp('assets','dist/assets',{ recursive:true });
 await cp('data','dist/data',{ recursive:true });
 await cp('updates','dist/updates',{ recursive:true });
+const assetVersions = await versionStaticAssets('dist');
+const sourceCommit = process.env.CF_PAGES_COMMIT_SHA || spawnSync('git', ['rev-parse','HEAD'], {encoding:'utf8'}).stdout?.trim() || 'unknown';
+await writeFile('dist/site-release.json', JSON.stringify({schema:'madeinmagius-site-release/v1',sourceCommit,builtAt:new Date().toISOString(),assetVersions},null,2)+'\n');
 await writeFile('dist/.nojekyll','');
 await writeFile('dist/404.html',`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><script>
 const base = location.pathname.includes('/madeinmagius-site/') ? '/madeinmagius-site/' : '/';
@@ -86,6 +91,12 @@ await writeFile('dist/_headers',`/*
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Cross-Origin-Opener-Policy: same-origin-allow-popups
+/
+  Cache-Control: public, max-age=0, must-revalidate
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/site-release.json
+  Cache-Control: no-cache
 /updates/*
   Cache-Control: no-store
 /assets/*

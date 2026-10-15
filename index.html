@@ -30,12 +30,12 @@
         <!-- RGB registration is applied by the emitted UI text/shadows.
              Keep this full-screen filter short on high-DPR phones. -->
         <!-- Static tube curvature. -->
-        <feDisplacementMap id="curve-displacement" in="SourceGraphic" in2="lens" scale="46" xChannelSelector="R" yChannelSelector="G" result="curved"/>
+        <feDisplacementMap x="0" y="0" width="100%" height="100%" id="curve-displacement" in="SourceGraphic" in2="lens" scale="46" xChannelSelector="R" yChannelSelector="G" result="curved"/>
         <!-- Reduced horizontal bandwidth and a faint delayed tape echo, not
              just sharp RGB outlines. CSS-pixel units also soften high-DPR UI. -->
-        <feGaussianBlur in="curved" stdDeviation=".72 .38" result="soft-signal"/>
-        <feOffset in="soft-signal" dx="1.6" dy="0" result="tape-echo"/>
-        <feComposite in="soft-signal" in2="tape-echo" operator="arithmetic" k2=".86" k3=".14"/>
+        <feGaussianBlur x="0" y="0" width="100%" height="100%" in="curved" stdDeviation=".72 .38" result="soft-signal"/>
+        <feOffset x="0" y="0" width="100%" height="100%" in="soft-signal" dx="1.6" dy="0" result="tape-echo"/>
+        <feComposite x="0" y="0" width="100%" height="100%" in="soft-signal" in2="tape-echo" operator="arithmetic" k2=".86" k3=".14"/>
       </filter>
     </defs>
   </svg>

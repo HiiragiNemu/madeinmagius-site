@@ -3,9 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { PROGRAMS, HOME_WEBSITES, renderContent } from '../assets/content.js';
 
-assert.deepEqual(PROGRAMS.home.subs.map(s => s.id), ['welcome', 'magireco-private-server', 'programs', 'contact']);
+assert.deepEqual(PROGRAMS.home.subs.map(s => s.id), ['welcome', 'magireco-private-server', 'universal-adv-reader', 'programs', 'contact']);
 assert.equal(PROGRAMS.home.subs[0].label, '魔法纪录相关网站');
-assert.equal(PROGRAMS.home.subs[2].label, '资源比对与证据记录');
+assert.equal(PROGRAMS.home.subs.find(s => s.id === 'programs').label, '资源比对与证据记录');
 assert.equal(HOME_WEBSITES.length, 4);
 assert.deepEqual(HOME_WEBSITES.map(s => new URL(s.url).hostname), [
   'magireader.pages.dev', 'magireco-call-search-cn.pages.dev', 'magius3dviewer.pages.dev',
@@ -132,3 +132,7 @@ const evidenceCss = await readFile(new URL('../assets/evidence.css', import.meta
 assert.ok(evidenceCss.includes('grid-template-columns: repeat(2, minmax(0, 1fr))'));
 assert.match(evidenceCss, /@media \(max-width: 900px\)\s*\{\s*\.evidence-report-grid \{ grid-template-columns: minmax\(0, 1fr\)/);
 console.log('REPORT_IMAGE=PASS: separate original report and response, desktop/mobile CSS, static viewer and same-origin download links');
+
+const adv=renderContent('home','universal-adv-reader',{});
+assert.ok(adv.includes('https://universal-adv-reader.pages.dev/apps/web'));
+for(const [program,sub] of [['home','contact'],['about','contact-about']]){const contact=renderContent(program,sub,{});assert.ok(contact.includes('加入群858083286'));assert.ok(contact.includes('inviteCode=2oaXZG3lL1g'));}

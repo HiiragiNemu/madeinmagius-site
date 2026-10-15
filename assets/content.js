@@ -19,6 +19,7 @@ export const PROGRAMS = {
   home: { subs: [
     { id: 'welcome', label: '魔法纪录相关网站', note: '作品导航' },
     { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: 'APK / 教程' },
+    { id: 'universal-adv-reader', label: '通用 ADV 阅读网站', note: 'Narcissu / KANA' },
     { id: 'programs', label: '资源比对与证据记录', note: '报告' },
     { id: 'contact', label: 'CONTACT', note: '联系' }
   ]},
@@ -193,6 +194,7 @@ function contactHtml() {
     '<div class="contact-grid">' +
     '<a href="https://space.bilibili.com/625821" target="_blank" rel="noreferrer">BILIBILI</a>' +
     '<a href="https://github.com/HiiragiNemu" target="_blank" rel="noreferrer">GITHUB</a>' +
+    '<a href="https://pd.qq.com/qqweb/qunpro/share?_wv=3&amp;_wwv=128&amp;appChannel=share&amp;inviteCode=2oaXZG3lL1g&amp;attaContentID=e5616861ea2047e3820bf63bb854aa8e&amp;businessType=9&amp;from=181074&amp;biz=ka&amp;mainSourceId=share&amp;subSourceId=others&amp;b=9" target="_blank" rel="noopener noreferrer">加入群858083286</a>' +
     '<a href="https://www.ifdian.net/a/madeinmagius" target="_blank" rel="noreferrer">爱发电</a>' +
     '</div>';
 }
@@ -258,6 +260,10 @@ function androidUpdateGuide(tag, project) {
 export function renderContent(programId, subId, data) {
   if (programId === 'home') {
     if (subId === 'magireco-private-server') return magirecoClientHtml(data.magireco);
+    if (subId === 'universal-adv-reader') return '<p class="content-kicker">UNIVERSAL ADV READER</p><h2>通用 ADV 阅读网站</h2>' +
+      '<p>Narcissu 系列与 KANA 的中文／日文剧情阅读、原生章节导航、语音、全文检索与汉化修订。</p>' +
+      '<article class="download-card"><h3>UNIVERSAL ADV READER</h3><p class="meta-line">universal-adv-reader.pages.dev</p>' +
+      '<a class="download-button" href="https://universal-adv-reader.pages.dev/apps/web" target="_blank" rel="noopener noreferrer">打开通用阅读网站 ↗</a></article>';
     if (subId === 'programs') {
       return '<p class="content-kicker">MAGIUS LINK / EVIDENCE</p><h2>资源比对与证据记录</h2>' +
         '<p>资源、客户端修改与已发布产出的比对报告。</p>' +

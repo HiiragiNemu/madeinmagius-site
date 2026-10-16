@@ -290,11 +290,13 @@ export function renderContent(programId, subId, data) {
         '<a href="./assets/reports/forensic-report-20261017.txt" download="forensic-report-20261017.txt">下载文字版</a></div>' +
         '</article></div><article class="download-card evidence-response-card">' +
         '<p class="meta-line">2026-10-14 · 回应长图</p><h3>项目回应长图</h3>' +
-        '<a href="./assets/reports/response-final.png" target="_blank" rel="noopener noreferrer" aria-label="打开回应长图原图">' +
-        '<img src="./assets/reports/response-final.png" width="1800" height="6626" loading="lazy" decoding="async" alt="项目回应长图，完整文字见原图或文字版" style="display:block;max-width:100%;max-height:560px;width:auto;height:auto;margin:1rem auto"></a>' +
-        '<div class="quick-links"><a href="./assets/reports/response-final.png" target="_blank" rel="noopener noreferrer">打开原图 ↗</a>' +
-        '<a href="./assets/reports/response-final.png" download="response-final.png">保存图片</a>' +
-        '<a href="./assets/reports/response-final.txt" download="response-final.txt">下载文字版</a></div>' +
+        '<a class="evidence-thumbnail" href="./assets/reports/project-response-20261017-image.html" target="_blank" rel="noopener noreferrer" aria-label="打开项目回应完整长图" style="max-width:360px;margin:1rem auto">' +
+        '<img src="./assets/reports/project-response-20261017-thumbnail.webp" loading="lazy" decoding="async" alt="项目回应长图缩略图，点击展开全文"></a>' +
+        '<div class="quick-links"><a href="./assets/reports/project-response-20261017-image.html" target="_blank" rel="noopener noreferrer">展开长图 ↗</a>' +
+        '<a href="./assets/reports/project-response-20261017.html" target="_blank" rel="noopener noreferrer">阅读文字版 ↗</a>' +
+        '<a href="./assets/reports/project-response-20261017.png" download="project-response-20261017.png">保存图片</a>' +
+        '<a href="./assets/reports/project-response-20261017.pdf" download="project-response-20261017.pdf">下载 PDF</a>' +
+        '<a href="./assets/reports/project-response-20261017.txt" download="project-response-20261017.txt">下载文字版</a></div>' +
         '</article>';
     }
     if (subId === 'contact') return contactHtml();

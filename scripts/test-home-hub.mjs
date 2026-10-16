@@ -33,14 +33,14 @@ assert.equal(report.length, 33528);
 assert.equal(createHash('sha256').update(report).digest('hex'), '623410256c0b0acd6b227c0ffca908e03683804bb01489c729863090d334403f');
 assert.ok(!future.includes('工具清单'));
 assert.equal((future.match(/<article /g) || []).length, 3);
-assert.ok(future.includes('<img src="./assets/reports/response-final.png"'));
-assert.ok(future.includes('download="response-final.png">保存图片'));
-assert.ok(future.includes('download="response-final.txt">下载文字版'));
+assert.ok(future.includes('<img src="./assets/reports/project-response-20261017-thumbnail.webp"'));
+assert.ok(future.includes('download="project-response-20261017.png">保存图片'));
+assert.ok(future.includes('download="project-response-20261017.txt">下载文字版'));
 for (const [file, bytes, sha] of [
   ['resource-comparison-full.png', 2892144, '13fe9bd00b4965933f3e992efc98ab8161c853ff014cc3490689dc2e2003f482'],
   ['resource-comparison-thumbnail.webp', 42736, '0ddd4fe058e13d525450b36f6aa5384e16a33ec90d3670559e43249376d5540f'],
-  ['response-final.png', 1388103, '16369ff0838c4f13089c7046e6b835ba481477516369c42969fc42c9c9d16acb'],
-  ['response-final.txt', 5011, '6180bb47399ebfc86abebecf33aca5cc5cd455c6a0b83383c95218150bc8eb19'],
+  ['response-final.png', 1752944, '3bbec8ce0415e0da8513e07252d38a5168743e120051618cb81b6d9f3c5f8080'],
+  ['response-final.txt', 6390, 'd668fdb7c0a9c2278fdcb376f5ff55532cc672f99b684f496992643c770ff8ab'],
 ]) {
   const data = await readFile(new URL('../assets/reports/' + file, import.meta.url));
   assert.equal(data.length, bytes);
@@ -199,3 +199,20 @@ for (const [legacy, current] of [
 }
 for (const extension of ['html', 'png', 'pdf', 'txt']) assert.ok(future.includes('./assets/reports/forensic-report-20261017.' + extension));
 console.log('SECOND_REPORT=PASS: 6 frozen files, 3 legacy aliases, independent HTML/image/PDF/TXT entries');
+
+const thirdResponseFiles = [["project-response-20261017.html", 12006, "f9fe961504c18c8df483644ced144f0c2887f9e26e05df4993a5c19721d2397a"], ["project-response-20261017.png", 1752944, "3bbec8ce0415e0da8513e07252d38a5168743e120051618cb81b6d9f3c5f8080"], ["project-response-20261017.pdf", 351221, "f69ae2af743328e7382144400e9d108f9641f7aab1866f031e7c934c0b702a3c"], ["project-response-20261017.txt", 6390, "d668fdb7c0a9c2278fdcb376f5ff55532cc672f99b684f496992643c770ff8ab"], ["project-response-20261017-thumbnail.webp", 68148, "d3161de05c8d66645c69828bd6ca547c7c5af4e545dcb6b34e16a23040d5acce"], ["project-response-20261017-image.html", 914, "feba48f06ba8afc719eefe08cdcf89047f8432ca5c5c0f8c12b88b71fa0dc190"]];
+for (const [file, size, sha] of thirdResponseFiles) {
+  const bytes = await readFile(new URL('../assets/reports/' + file, import.meta.url));
+  assert.equal(bytes.length, size, file);
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), sha, file);
+}
+for (const extension of ['png', 'txt']) {
+  assert.deepEqual(await readFile(new URL('../assets/reports/response-final.' + extension, import.meta.url)), await readFile(new URL('../assets/reports/project-response-20261017.' + extension, import.meta.url)));
+}
+for (const extension of ['html', 'png', 'pdf', 'txt']) assert.ok(future.includes('./assets/reports/project-response-20261017.' + extension));
+assert.ok(future.includes('href="./assets/reports/project-response-20261017-image.html"'));
+assert.ok(future.includes('2026-10-14 · 回应长图</p><h3>项目回应长图</h3>'));
+const responseViewer = await readFile(new URL('../assets/reports/project-response-20261017-image.html', import.meta.url), 'utf8');
+assert.ok(responseViewer.includes('src="project-response-20261017.png" width="1800" height="6774"'));
+assert.ok(responseViewer.includes('href="project-response-20261017.png" download>下载完整长图'));
+console.log('THIRD_RESPONSE=PASS: 6 frozen files, 2 legacy aliases, scrolling viewer, original date, all formats linked');

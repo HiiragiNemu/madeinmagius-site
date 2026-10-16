@@ -1,0 +1,684 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>公开取证核查报告</title><style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-faint: #64748b;
+      --accent-match: #059669;
+      --accent-match-bg: #ecfdf5;
+      --accent-match-border: #a7f3d0;
+      --accent-diff: #dc2626;
+      --accent-diff-bg: #fef2f2;
+      --accent-diff-border: #fecaca;
+      --accent-warn: #d97706;
+      --accent-warn-bg: #fffbeb;
+      --accent-warn-border: #fde68a;
+      --accent-info: #2563eb;
+      --accent-info-bg: #eff6ff;
+      --accent-info-border: #bfdbfe;
+      --code-bg: #1e293b;
+      --code-text: #f8fafc;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f19;
+        --surface: #131b2e;
+        --surface-subtle: #1e293b;
+        --border: #26334d;
+        --border-strong: #334155;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --text-faint: #64748b;
+        --accent-match: #10b981;
+        --accent-match-bg: #064e3b33;
+        --accent-match-border: #065f46;
+        --accent-diff: #f87171;
+        --accent-diff-bg: #7f1d1d33;
+        --accent-diff-border: #991b1b;
+        --accent-warn: #fbbf24;
+        --accent-warn-bg: #78350f33;
+        --accent-warn-border: #92400e;
+        --accent-info: #60a5fa;
+        --accent-info-bg: #1e3a8a33;
+        --accent-info-border: #1e40af;
+        --code-bg: #080c14;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.7;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      padding: 0 0 4rem 0;
+    }
+
+    .report-wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 0 1.5rem;
+    }
+
+    /* Header / Hero */
+    .report-header {
+      padding: 2rem 0 3rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .badge-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-strong);
+      color: var(--text-muted);
+    }
+    .status-pill.verified {
+      background: var(--accent-match-bg);
+      border-color: var(--accent-match-border);
+      color: var(--accent-match);
+    }
+    .doc-title {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+    .doc-subtitle {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+    }
+    .meta-item .meta-label {
+      color: var(--text-faint);
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.125rem;
+    }
+    .meta-item .meta-val {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Big 3 Hero Stats */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin: 2.5rem 0;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent-info);
+    }
+    .stat-card.match::before { background: var(--accent-match); }
+    .stat-card.diff::before { background: var(--accent-diff); }
+    .stat-card.warn::before { background: var(--accent-warn); }
+    .stat-num {
+      font-size: 2.75rem;
+      font-weight: 800;
+      line-height: 1;
+      font-feature-settings: "tnum";
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+    .stat-card.match .stat-num { color: var(--accent-match); }
+    .stat-card.diff .stat-num { color: var(--accent-diff); }
+    .stat-card.warn .stat-num { color: var(--accent-warn); }
+    .stat-label {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      margin-bottom: 0.375rem;
+      color: var(--text-main);
+    }
+    .stat-desc {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Typography & Sections */
+    section {
+      margin-top: 3.5rem;
+    }
+    .sec-heading {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sec-num {
+      font-size: 0.875rem;
+      font-weight: 800;
+      color: var(--accent-info);
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+    }
+    .sec-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+    .lead-text {
+      font-size: 1.0625rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.8;
+    }
+    .lead-text strong {
+      color: var(--text-main);
+    }
+
+    /* Tables */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      margin: 1.5rem 0;
+      box-shadow: var(--shadow-sm);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+    th {
+      background: var(--surface-subtle);
+      color: var(--text-faint);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background-color: var(--surface-subtle); }
+    .mono { font-family: var(--font-mono); font-size: 0.8125rem; }
+
+    /* Tag pills */
+    .tag {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .tag-match { background: var(--accent-match-bg); color: var(--accent-match); border: 1px solid var(--accent-match-border); }
+    .tag-diff { background: var(--accent-diff-bg); color: var(--accent-diff); border: 1px solid var(--accent-diff-border); }
+    .tag-warn { background: var(--accent-warn-bg); color: var(--accent-warn); border: 1px solid var(--accent-warn-border); }
+    .tag-neutral { background: var(--surface-subtle); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* Callout & Cards */
+    .callout {
+      padding: 1.25rem 1.5rem;
+      border-radius: var(--radius-md);
+      margin: 1.5rem 0;
+      border-left: 4px solid var(--accent-info);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .callout.alert {
+      border-left-color: var(--accent-diff);
+      background: var(--accent-diff-bg);
+    }
+    .callout.notice {
+      border-left-color: var(--accent-match);
+      background: var(--accent-match-bg);
+    }
+
+    /* Segment bar */
+    .segment-bar {
+      display: flex;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin: 1rem 0 0.5rem 0;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+    }
+    .segment {
+      height: 100%;
+      position: relative;
+      transition: opacity 0.2s;
+    }
+    .segment:hover { opacity: 0.85; }
+    .seg-match { background: var(--accent-match); }
+    .seg-mod { background: var(--accent-warn); }
+    .seg-added { background: var(--accent-info); }
+    .seg-our { background: #8b5cf6; }
+
+    .bar-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      font-size: 0.8125rem;
+      margin-top: 0.75rem;
+      color: var(--text-muted);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Code diff view */
+    .diff-block {
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin: 1.25rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      box-shadow: var(--shadow-md);
+    }
+    .diff-header {
+      background: rgba(0,0,0,0.25);
+      padding: 0.625rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+    }
+    .diff-header span.file-badge {
+      background: rgba(255,255,255,0.1);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      color: #e2e8f0;
+    }
+    .diff-content {
+      padding: 0.75rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    .diff-line {
+      display: flex;
+      padding: 0.15rem 1rem;
+    }
+    .diff-line.del {
+      background: rgba(220, 38, 38, 0.22);
+      color: #fca5a5;
+    }
+    .diff-line.add {
+      background: rgba(5, 150, 105, 0.22);
+      color: #86efac;
+    }
+    .diff-line.same {
+      color: #94a3b8;
+    }
+    .diff-prefix {
+      width: 1.5rem;
+      user-select: none;
+      font-weight: 700;
+    }
+    .diff-code {
+      flex: 1;
+      white-space: pre;
+    }
+
+    /* Grid cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .info-card h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Footer */
+    footer.report-footer {
+      margin-top: 5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 768px) {
+      .hero-stats { grid-template-columns: 1fr; }
+      .doc-title { font-size: 1.5rem; }
+      .report-wrap { padding: 1.5rem 1rem 0 1rem; }
+      .meta-grid { grid-template-columns: 1fr; }
+    }
+  
+html { scroll-behavior: smooth; }
+.report-nav { display:flex; flex-wrap:wrap; gap:.5rem 1.2rem; padding:1rem 0; }
+.report-nav a { color:var(--text-main); text-underline-offset:4px; }
+.fingerprint { overflow-wrap:anywhere; word-break:break-all; }
+.evidence-note { font-size:.875rem; color:var(--text-muted); line-height:1.8; }
+.stat-num small { font-size:1.1rem; }
+section { scroll-margin-top:1rem; }
+td, th { vertical-align:top; }
+@media(max-width:600px) { .doc-title { font-size:1.9rem; } .meta-grid { grid-template-columns:1fr; } }
+@media print { .report-nav { display:none; } .table-responsive { overflow:visible; } code { overflow-wrap:anywhere; } }
+
+p{margin:.8rem 0}h3{margin:1.8rem 0 .7rem;font-size:1.16rem}strong{font-weight:750}
+.sec-heading{align-items:flex-start;flex-direction:column;gap:.25rem}
+td,th{overflow-wrap:anywhere}table{table-layout:fixed}table th:first-child{width:31%}
+.native-table th:first-child{width:24%}.native-table th:nth-child(2){width:42%}
+.table-responsive{overflow:visible}.mono{overflow-wrap:anywhere}
+.source-line{overflow-wrap:anywhere}.report-footer p{margin:.4rem 0}
+.supplement{border-top:3px solid var(--accent-warn);padding-top:1.1rem}
+.supplement h2{font-size:1.45rem;margin:0 0 1rem;color:var(--accent-warn)}
+.supplement p{font-size:.96rem}.report-nav{border-top:1px solid var(--border)}
+.match-em{color:var(--accent-match);font-weight:750}.diff-em{color:var(--accent-diff);font-weight:750}
+.warn-em{color:var(--accent-warn);font-weight:750}.info-em{color:var(--accent-info);font-weight:750}
+.code-sample{background:var(--code-bg);color:var(--code-text);padding:1rem 1.3rem;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.download-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;font-size:14px}
+.download-toolbar a{color:var(--accent-info);padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface)}
+.export .download-toolbar{display:none}.export{background:#f8fafc}
+@media(max-width:600px){table{font-size:.78rem}td,th{padding:.65rem .5rem}table th:first-child{width:30%}.native-table th:first-child{width:26%}.meta-grid{grid-template-columns:1fr}.stat-num{font-size:2.6rem}}
+@media print {
+ @page{size:A4;margin:14mm 13mm 16mm}
+ html{font-size:12px!important;color-scheme:light!important}body{width:auto!important;background:#fff!important;color:#0f172a!important;font-size:12px!important;padding:0!important}
+ :root{--bg:#fff;--surface:#fff;--surface-subtle:#f1f5f9;--text-main:#0f172a;--text-muted:#475569;--text-faint:#64748b;--border:#e2e8f0;--accent-match:#059669;--accent-match-bg:#ecfdf5;--accent-diff:#dc2626;--accent-diff-bg:#fef2f2;--accent-warn:#d97706;--accent-warn-bg:#fffbeb;--accent-info:#2563eb;--accent-info-bg:#eff6ff}
+ .report-wrap{width:auto!important;max-width:none!important;padding:0!important}.report-header{padding:0 0 1rem}
+ .hero-stats{margin:1.2rem 0;gap:.7rem;grid-template-columns:repeat(3,1fr)!important}.stat-card{padding:1rem;box-shadow:none}
+ .meta-grid{grid-template-columns:repeat(3,1fr)!important;padding:.8rem}.report-nav{display:flex!important;padding:.5rem 0}
+ .download-toolbar{display:none!important}section{margin-top:2rem}h2,h3,.sec-heading{break-after:avoid}p{orphans:3;widows:3}
+ .table-responsive{border-radius:0;box-shadow:none;overflow:visible}table{font-size:.85rem}th{font-size:.8rem}td,th{padding:.5rem .6rem}
+ tr{break-inside:avoid}thead{display:table-header-group}.callout,.stat-card,.code-sample{break-inside:avoid}.report-footer{margin-top:2rem!important;padding-top:1rem!important}
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+.pill-row{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem}.pill-row span{font-size:.8rem;border:1px solid var(--border);padding:.25rem .5rem;border-radius:5px;background:var(--surface)}
+.section-summary{border-left:4px solid var(--accent-match);padding:1rem 1.4rem;background:var(--accent-match-bg);margin:1.5rem 0;border-radius:8px}
+.code-sample{font-family:var(--font-mono);font-size:.85rem}.code-sample span{display:block;white-space:pre-wrap}.code-sample .removed{color:#fca5a5;background:rgba(220,38,38,.16)}.code-sample .added{color:#86efac;background:rgba(5,150,105,.16)}
+.layer{padding:.8rem 1rem;margin:1.7rem 0 .8rem;border:1px solid var(--border);background:var(--surface);border-left:4px solid var(--accent-info);border-radius:6px}
+.report-footer{overflow-wrap:anywhere}.layer>strong{display:block;font-size:1.1rem}.layer strong strong{display:inline}.layer span{color:var(--accent-info);font-weight:700;font-size:.85rem}
+.diff-table th:first-child{width:24%}.diff-table th:nth-child(2){width:18%}.diff-table th:nth-child(3){width:15%}
+.native-table th:first-child{width:23%}.native-table th:nth-child(2){width:18%}
+.scope-stat{display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem;margin:1rem 0}.scope-stat div{padding:.8rem;background:var(--surface);border:1px solid var(--border);border-radius:6px}.scope-stat small{display:block;color:var(--text-muted)}
+.gpl-title{color:var(--accent-warn)}
+@media print{body{line-height:1.55}h3{margin:1.2rem 0 .5rem}section{margin-top:1.5rem}p{margin:.6rem 0}.layer{margin:1.1rem 0 .6rem}.pill-row{margin-bottom:.5rem}.layer{break-inside:avoid;break-after:avoid}.scope-stat{break-inside:avoid}.diff-table{font-size:.8rem}.code-sample{break-inside:avoid;font-size:.78rem}.native-table th:first-child{width:23%}.native-table th:nth-child(2){width:18%}}
+</style></head><body><div class="report-wrap">
+<div class="download-toolbar" data-extra><a href="forensic-report-20261017.png" download>下载完整长图</a><a href="forensic-report-20261017.pdf" download>下载 PDF</a><a href="forensic-report-20261017.txt" download>下载文字版</a><a href="client-111-reproduce.html">历史 APK 与复现方法</a></div>
+<article id="report-content"><header class="report-header"><div class="pill-row"><span>公开取证核查报告</span><span>版本 v1 (2026-10-14)</span><span>客户端数据复核：2026-10-17 · 个人版 1.1.1</span><span>全程只读比对 · 零修改</span></div><h1 class="doc-title">受检样本分发包独立取证比对报告</h1><p class="doc-subtitle">一份关于外部完整分发包（约 11.2 GB）与 本项目交付成果的逐字节事实核查</p><div class="meta-grid">
+<div class="meta-item"><span class="meta-label">发布日期</span><span class="meta-val">2026-10-14</span></div>
+<div class="meta-item"><span class="meta-label">受检目标</span><span class="meta-val">受检样本完整包 (11.2 GB)</span></div>
+<div class="meta-item"><span class="meta-label">证据强度口径</span><span class="meta-val">分块哈希 · 字节比对 · 符号表比对</span></div>
+</div><div class="hero-stats">
+<div class="stat-card match"><div class="stat-num">10 / 10</div><div class="stat-label">国服资源包逐字节完全相同</div><div class="stat-desc">对方发布的全部 10 个国服分发包，所有 16 MiB 分块与我方线上版本分毫不差，连一个字节都没改动。</div></div>
+<div class="stat-card diff"><div class="stat-num">196</div><div class="stat-label">代码文件完全一字不差</div><div class="stat-desc">对方客户端 APK 中直接包含 196 个与我方完全相同的逻辑类，自研补丁命名空间被原样照搬。</div></div>
+<div class="stat-card warn"><div class="stat-num">72</div><div class="stat-label">我方已发布产出匹配记录</div><div class="stat-desc">跨越 3 个核心包逐字节命中我方登记的已发布成果。</div></div>
+</div></header><main>
+<section id="summary"><div class="sec-heading"><span class="sec-num">01 / SUMMARY</span><h2 class="sec-title">核心结论摘要</h2></div>
+<p class="source-line">事件背景：对方此前以「合作和发善心」为名义获取了我方积累的核心数据与资源资产，其后以各种主观理由（如挑剔沟通措辞等）单方面拒绝继续合作，并反向倒打一耙散布不实陈述。受检样本为对方近期制作分发的约 11.2 GB 完整包（含 17 个 ZIP 压缩卷及 1 个 APK 客户端）。本报告基于严谨的只读交叉取证，以客观二进制数据核验事实。</p>
+<h3>什么是「逐字节完全相同」？</h3>
+<p class="source-line">在计算机取证中，「逐字节相同（Byte-for-byte identical）」意味着两份文件在底层二进制每一个 bit 都分毫不差，MD5 与 SHA-256 哈希全部重合。即使重新压缩一次相同内容，由于打包器环境、时间戳等微小差异，哈希值都会彻底改变。逐字节相同证明了直接复制我方线上成品文件的客观事实。</p>
+<h3 class="gpl-title">GPLv3 对应源码交付问题</h3>
+<p class="source-line">采用 GPLv3 代码并分发受其约束的修改版，应履行对应源码交付义务，包括生成、安装、运行及修改程序所需的源码和控制脚本。网络分发可以通过明确指向的等效源码下载履行，并非必须公开维护仓。</p>
+<p class="source-line">目前取得的 APK、说明文档及已提供的分发材料中，尚未见到该修改版本的完整对应源码、必要构建脚本或明确的源码获取说明。结合已核对的补丁沿用记录，这构成具体的 GPLv3 源码交付不合规疑点。如果没有另行履行适用的源码交付义务，这样的二进制分发不符合 GPLv3 第 6 条。请分发方提供与实际分发版本对应的源码、构建材料及获取入口。</p>
+<p class="source-line">许可依据：GPLv3 第 1、6 条：https://opensource.org/license/gpl-3.0</p>
+</section>
+<section id="code"><div class="sec-heading"><span class="sec-num">02 / CODE</span><h2 class="sec-title">客户端反编译与同源铁证</h2></div>
+<p class="source-line">本次重新比对双方客户端（我方MadeInMagius版 1.1.1 vs 对方 magireco-local-0.2.1.apk），双方统一使用 apktool 3.0.3，保留调试信息。1.1.1 于 2026-10-04 23:09 构建、10-05 00:10 发布，两个维护仓于 00:19 转为私有（UTC+8）；本次不再采用组织 2.0 系列作为参考。对方虽然把安装包名改为了 io.magialocal.magireco，但我方为游戏量身定制的特定补丁命名空间在对方代码中被原样保留。从逻辑类文件到核心 native 底层库，呈现了不可辩驳的代码同源性。</p>
+<p class="source-line">我方补丁命名空间代码文件构成 (双方并集共 363 个相关类；我方 357 个、对方 358 个)<br>逐字节相同：<strong class="diff-em">196 个</strong><br>（一字未动直接沿用）<br>同名被改动：156 个<br>（其中 <strong class="warn-em">110 个</strong>按行文本相似度≥90%）<br>对方同命名空间独有：6 个<br>（仅统计此命名空间，不等于整个 APK 新增类数量）<br>我方 1.1.1 独有：5 个</p>
+<h3>代码修改实录：从 3899 行一字不差看「如何抹除痕迹」</h3>
+<p class="source-line">本次 156 个同名修改文件中，有 <strong class="warn-em">110 个</strong>按行文本相似度达到 90%。以下两个文件只改了域名或包名常量，其余文本一致：</p>
+<h3>反编译实例 1：CNWebProxy.smali</h3>
+<p class="source-line">双方全长均为 3899 行 · 仅 2 处改动</p>
+<pre class="code-sample"><span class="">.method public static initProxyConfig()V</span><span class="removed">-</span><span class="removed">    const-string v0, &quot;[我方域名]&quot;       # [我方线上服务域名]</span><span class="added">+</span><span class="added">    const-string v0, &quot;&quot;                       # [对方直接置为空字符串]</span><span class=""> </span><span class="">    sput-object v0, L.../CNWebProxy;-&gt;HOST:Ljava/lang/String;</span><span class="removed">-</span><span class="removed">    const-string v0, &quot;.[我方域名]&quot;      # [我方域名匹配通配符]</span><span class="added">+</span><span class="added">    const-string v0, &quot;.&quot;                      # [对方仅保留点号]</span><span class=""> </span><span class="">    return-void</span></pre>
+<h3>反编译实例 2：CNPaths.smali</h3>
+<p class="source-line">双方全长均为 563 行 · 仅 1 处改动</p>
+<pre class="code-sample"><span class=""># Package Name Constant Definition</span><span class="removed">-</span><span class="removed">    const-string v0, &quot;io.kamihama.totentanz&quot;   # [我方客户端正式包名]</span><span class="added">+</span><span class="added">    const-string v0, &quot;io.magialocal.magireco&quot;  # [对方重命名的外壳包名]</span><span class=""> </span><span class="">    sput-object v0, L.../CNPaths;-&gt;PACKAGE_NAME:Ljava/lang/String;</span></pre>
+<h3>反编译实例 3：CNBuildConfig.smali</h3>
+<p class="source-line">双方全长均为 20 行，仅 1 行改动：ALL_FILES_ACCESS 由我方 true 改为对方 false，其余文本一致。</p>
+<h3>Native 核心底层库 (.so) 比对</h3>
+<div class="table-responsive native-table"><table><thead><tr><th>动态链接库文件</th><th>性质归属</th><th>取证比对结论</th></tr></thead><tbody>
+<tr>
+<td>libMagiaLegacy.so</td>
+<td>我方自研引擎库</td>
+<td>arm64 动态符号表非空名称：对方 91、我方 92；arm32：对方 84、我方 85。对方集合均为我方子集；实际已定义全局／弱导出每个架构双方均为相同的 4 个。动态符号表含导入，不统称导出。两方均无 .symtab，库字节不同，符号匹配不等于全部实现一致。</td>
+</tr>
+<tr>
+<td>libmadomagi_native.so</td>
+<td>游戏官方原生库</td>
+<td>arm64 与 arm32 各 20 字节差异：对方二进制中将原版域名 dorothy.magi-reco.com 直接替换为本地重定向地址 127.0.0.1:18443</td>
+</tr>
+<tr>
+<td>libarchive.so</td>
+<td>第三方通用库</td>
+<td>arm64、arm32 对应文件均逐字节相同，与我方 1.1.1 的 SHA-256 一致</td>
+</tr>
+<tr>
+<td>libshadowhook.so</td>
+<td>第三方开源 Hook</td>
+<td>文件尺寸及字节不同；已定义全局／弱导出名称集合一致，arm64 为 47 个、arm32 为 49 个，不据此断言文件完全一致</td>
+</tr>
+<tr>
+<td>libaria2c_gnutls/ossl.so</td>
+<td>我方多线程下载库</td>
+<td>我方独有 对方客户端未包含此模块</td>
+</tr>
+<tr>
+<td>libbacktrace / crashpad</td>
+<td>崩溃上报模块</td>
+<td>对方独有 对方自行集成的崩溃捕捉组件</td>
+</tr>
+</tbody></table></div>
+<p class="source-line">* 客观事实补充：双方共同的 392 个 assets 文件中有 332 个字节一致，其中 309 个也与同路径 Totentanz 原版指纹一致。报告如实记录两方异同，不作夸大。</p>
+</section>
+<section id="assets"><div class="sec-heading"><span class="sec-num">03 / ASSETS</span><h2 class="sec-title">全量 94,607 个文件的四层比对</h2></div>
+<p class="source-line">除了整包分块哈希与客户端代码反编译外，取证系统还针对包内解压出的海量具体素材文件（总计 94,607 个文件）实施了多层交叉验证。报告不搞「一锅端」，而是把资源拆解为清晰的四个审查层级，做到查明每一处命中、解释每一条存疑：</p>
+<div class="layer"><span>层级 ① 交付成品层</span><strong><strong class="warn-em">72 条</strong>已发布产出匹配记录，对应 <strong class="warn-em">70 个</strong>文件</strong></div>
+<p class="source-line">这层在查什么：比对我方数据库中登记并正式发布的汉化及制作成品库。<br>查到了什么：对方包内检出 <strong class="warn-em">72 条</strong>精确匹配记录，对应 <strong class="warn-em">70 个</strong>受检文件。相关条目处于我方 PUBLISHED_VERIFIED <strong class="info-em">发布校验状态</strong>，是成熟成果被直接取用的硬证据。</p>
+<div class="layer"><span>层级 ② 资源内容层</span><strong><strong class="info-em">4,926 个</strong>文件内容哈希匹配</strong></div>
+<p class="source-line">这层在查什么：全量扫描 94,607 个文件，逐个计算内容哈希并做像素级比对。<br>查到了什么：累计匹配到 <strong class="info-em">4,926 个</strong>文件（包含 5,049 条哈希级重合条目及 150 条像素级比对）。这部分客观包含了大量由官方原始游戏分发的共有素材，本报告严格遵循口径，不将其单方面断言为独有成果。</p>
+<div class="layer"><span>层级 ③ APK 成员层</span><strong>27 条命中全由公开基线解释</strong></div>
+<p class="source-line">这层在查什么：比对客户端安装包自带的内嵌资源（Assets / Res）。<br>查到了什么：检出 27 条逐字节吻合条目，但经核查全部同时存在于早前公开的 1.1.9 公共版本中。依照严谨口径，此类可由公共基准解释的素材直接做归零剔除，绝不滥计为独家归属证据。</p>
+<div class="layer"><span>层级 ④ 异常排查桶</span><strong>17 个解析异常已全部核清零遗漏</strong></div>
+<p class="source-line">这层在查什么：排查在自动化批量校验中报告解析异常或格式特殊的文件。<br>查到了什么：全部 17 个异常项目均已逐一复核（其中 3 个为苹果 macOS 系统打包残留的 .__ 隐藏元数据，14 个为官方客户端历史遗留的特殊编码数据），全数查明成因，报告无任何未决盲区。</p>
+<h3>10 个国服分发包原样照搬100% 相同</h3>
+<p class="source-line">在受检的全部 17 个分发压缩包中，凡属于国服资源的 10 个包（累计约 10.5 GB），其全部 16 MiB 分块校验与我方服务器线上分发版本无任何一个字节之差，直接照搬线上现成成品。</p>
+<h3>代码同源</h3>
+<p class="source-line"><strong class="diff-em">196 个</strong>代码文件一字未改</p>
+<p class="source-line">对方独立打包的客户端 APK 里，我方自创的特定补丁命名空间被原封不动保留，其中 <strong class="diff-em">196 个</strong>反编译类文件与我方完全一致；部分同名修改文件仅变更域名或包名，具体差异见上文。</p>
+<h3>成品外流</h3>
+<p class="source-line"><strong class="warn-em">72 条</strong>匹配记录，涉及 <strong class="warn-em">70 个</strong>受检文件</p>
+<p class="source-line">经比对，我方正式发布登记的产出在对方包内形成 <strong class="warn-em">72 条</strong>逐字节匹配记录，对应 <strong class="warn-em">70 个</strong>受检文件。</p>
+</section>
+<section id="packages"><div class="sec-heading"><span class="sec-num">04 / PACKAGES</span><h2 class="sec-title">17 个资源包与 1 个 APK</h2></div>
+<p class="source-line">受检样本完整分发由 17 个 ZIP 压缩包与 1 个客户端 APK 组成（总计约 11.2 GB）。通过对所有包按 16 MiB 尺度分块计算 MD5 哈希，并与我方线上分发系统的发布基准逐块比对，数据呈现出泾渭分明的两类事实：所有国服资源包均为我方线上文件完全照搬；而对方自制的日文包，更处处暴露出针对我方的依赖与处理痕迹。</p>
+<div class="table-responsive diff-table"><table><thead><tr><th>文件名称</th><th>大小（字节）</th><th>比对判定</th><th>技术取证特征</th></tr></thead><tbody>
+<tr>
+<td>cn_base_00_db.zip</td>
+<td>7,437,513</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>与我方线上分发版所有 16 MiB 分块 MD5 全数一致</td>
+</tr>
+<tr>
+<td>cn_base_01_json.zip</td>
+<td>5,749,047</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>分块哈希 100% 吻合，零字节修改</td>
+</tr>
+<tr>
+<td>cn_base_02.zip</td>
+<td>957,669,887</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>基础模型与纹理包，分块哈希完全吻合</td>
+</tr>
+<tr>
+<td>cn_base_03.zip</td>
+<td>1,422,289,288</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>大体积音频包，所有分块哈希完全一致</td>
+</tr>
+<tr>
+<td>cn_base_04.zip</td>
+<td>790,972,163</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>分块哈希 100% 吻合</td>
+</tr>
+<tr>
+<td>cn_base_05.zip</td>
+<td>915,609,476</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>分块哈希 100% 吻合</td>
+</tr>
+<tr>
+<td>cn_base_06.zip</td>
+<td>1,135,265,479</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>分块哈希 100% 吻合</td>
+</tr>
+<tr>
+<td>cn_magica_resource.zip</td>
+<td>398,763,022</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>特效与界面资源，分块哈希完全一致</td>
+</tr>
+<tr>
+<td>cn_voice_01.zip</td>
+<td>1,985,163,011</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>全语音包卷一，所有分块哈希完全一致</td>
+</tr>
+<tr>
+<td>cn_voice_02.zip</td>
+<td>1,801,181,697</td>
+<td><span class="tag tag-match">逐字节相同</span></td>
+<td>我方原名 cn_voice_02_done.zip，仅更改文件名，内容零差异</td>
+</tr>
+<tr>
+<td>jp_images.zip</td>
+<td>1,546,980,901</td>
+<td><span class="tag tag-warn">对方自制</span></td>
+<td>重新打包（无扩展字段/打包时戳）；61% 与我方包文件相同（多属官方共有源）</td>
+</tr>
+<tr>
+<td>jp_memoria.zip</td>
+<td>358,342,126</td>
+<td><span class="tag tag-warn">对方自制</span></td>
+<td>重新打包产物</td>
+</tr>
+<tr>
+<td>jp_story.zip</td>
+<td>195,564,713</td>
+<td><span class="tag tag-warn">内含针对清单</span></td>
+<td>含专用于删减我方国服汉化剧情的修剪清单文件</td>
+</tr>
+<tr>
+<td>jp_tips.zip</td>
+<td>2,965,651</td>
+<td><span class="tag tag-warn">对方自制</span></td>
+<td>重新打包产物</td>
+</tr>
+<tr>
+<td>jp_title.zip</td>
+<td>843,479</td>
+<td><span class="tag tag-warn">对方自制</span></td>
+<td>重新打包产物</td>
+</tr>
+<tr>
+<td>magireco-local-0.2.1.apk</td>
+<td>71,067,750</td>
+<td><span class="tag tag-diff">代码同源分支</span></td>
+<td>对方客户端 APK，全盘继承我方代码命名空间并改动部分标识（见第二章）</td>
+</tr>
+</tbody></table></div>
+<h3>针对我方定制的「清理清单」</h3>
+<p class="source-line">① 无法抵赖的针对清单：在对方自制的 jp_story.zip 内，存在一个名为 _jp_story_prune.txt 的清单文件。其日文说明明确写道：「存在于国服 cn_scenario_update.zip、但日文源里没有对应文件的剧情 JSON；装了国服包的设备上会残留中文，因此 jp_story.zip 展开后由 OfflineInstaller 删除。」这表明对方产品在设计上直接以我方国服包作为前置底座，并直接引用了我方内部定义的特定压缩包名称。</p>
+</section>
+<section id="methodology"><div class="sec-heading"><span class="sec-num">05 / METHODOLOGY</span><h2 class="sec-title">方法与口径：公信力与检验准则</h2></div>
+<p class="source-line">一份负责任的取证报告，其可信度不仅来源于得出了什么数字，更取决于核验遵循了怎样的程序与审慎边界。本报告在全部取证过程中坚守以下技术路径与口径声明：</p>
+<h3>取证方法</h3>
+<p class="source-line">多尺度分级交叉验证<br>整包分块比对：以 16 MiB 块为单位计算 MD5，直接对比线上分发清单，定位逐字节照搬；<br>反编译文本与符号表：使用同版 apktool 3.0.3，保留调试信息，对 io/kamihama/magianative 下 Smali 文件计算 SHA-256；文本按行 SequenceMatcher、autojunk=False 比较；Native .so 分别核对动态符号表与实际导出；<br>全量单文件哈希：对解压后的 9.4 万余个资源文件分别建立内容索引与像素级指纹。</p>
+<h3>审慎口径</h3>
+<p class="source-line">exact_content_not_authorship：内容一致不等于法律上的最终归属判定；本报告只客观陈述内容同一性事实与项目内部登记记录，不越俎代庖替读者下结论；<br>全程只读准则：比对过程采用严格只读工作流，未向受检目录写入或变更任何一个字节；<br>基线先行排除：凡公开渠道可合理解释的内容（如官方原版、公开版本 1.1.9 资源），一律先行剔除；<br>复核级区分标注：短文本及图片相似度等算法推断项，统一降级为复核项，核心结论仅采纳逐字节相同等最高强度证据。</p>
+<h3 class="gpl-title">补充：Chrome 34 UA 下载疑点</h3>
+<p class="source-line">资源日志记录了 2026 年 10 月 10 日 21:05:18 至 21:40:51（UTC+8）共 <strong class="warn-em">491 次</strong>自报 Chrome/34.0.1847.131 的请求：movie2.zip 243 次，cn_base_03.zip 248 次；487 次返回 206，4 次返回 200。</p>
+<p class="source-line">这批请求呈现批量分片下载特征，与已核对的我方固定 16 MiB 验证分块路径不同。在本次核查的项目代码、脚本和留存执行记录中，也未找到采用该完整 UA 进行这些下载的记录。</p>
+<p class="source-line">这组行为的来源仍有疑点，现有证据尚未确认操作者。因此，这里不将它直接归于某个人或某个分叉，也不把它写成前述分发包获取过程已经查明。已由我方取证工具解释的 aria2、Python 请求不纳入此项怀疑。</p>
+</section>
+</main><footer class="report-footer"><p>核验基准日期：2026-10-14 · 报告版本：v1 · 独立技术取证<br>客户端补充复核：2026-10-17；我方 1.1.1 SHA-256：60031daf95e42448f4ddb2d80a1b0b08f007734a488e0b7318a4decc20a02815；受检 APK SHA-256：feeeac4902499e835871a4558c1ce3eda0ec530f111728322cc0ec376e69bc8e。</p></footer>
+</article></div></body></html>

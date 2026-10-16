@@ -37,8 +37,8 @@ assert.ok(future.includes('<img src="./assets/reports/response-final.png"'));
 assert.ok(future.includes('download="response-final.png">保存图片'));
 assert.ok(future.includes('download="response-final.txt">下载文字版'));
 for (const [file, bytes, sha] of [
-  ['resource-comparison-full.png', 2445595, 'dc16d22219867194bb18234354b45270cf113d3d8bb5e91f912ddd4623d1f3e7'],
-  ['resource-comparison-thumbnail.webp', 47500, 'da66b63f5aa6aba228f7ad6affc54091567c87ea90e30655b7561329950971c6'],
+  ['resource-comparison-full.png', 2892144, '13fe9bd00b4965933f3e992efc98ab8161c853ff014cc3490689dc2e2003f482'],
+  ['resource-comparison-thumbnail.webp', 42736, '0ddd4fe058e13d525450b36f6aa5384e16a33ec90d3670559e43249376d5540f'],
   ['response-final.png', 1388103, '16369ff0838c4f13089c7046e6b835ba481477516369c42969fc42c9c9d16acb'],
   ['response-final.txt', 5011, '6180bb47399ebfc86abebecf33aca5cc5cd455c6a0b83383c95218150bc8eb19'],
 ]) {
@@ -110,22 +110,22 @@ assert.equal(createHash('sha256').update(css).digest('hex'), '89b05c8471592e18b6
 console.log('HOME_HUB=PASS: 4 external sites, separate private-server menu, report slot, profile, old hashes preserved');
 console.log('IOS_ROLLBACK=PASS: stylesheet byte-identical to pre-softness version; no new optical changes');
 
-const viewerPath = './assets/reports/resource-comparison-image.html';
+const viewerPath = './assets/reports/forensic-report-20261017-image.html';
 assert.ok(future.indexOf('资源与客户端比对报告</h3>') < future.indexOf('原报告长图（匿名版）</h3>'));
 assert.ok(future.indexOf('原报告长图（匿名版）</h3>') < future.indexOf('项目回应长图</h3>'));
 assert.ok(future.includes('class="evidence-report-grid"'));
 assert.ok(future.includes('class="evidence-response-card"') || future.includes('download-card evidence-response-card'));
 assert.ok(future.includes('href="' + viewerPath + '"'));
-assert.ok(future.includes('<img src="./assets/reports/resource-comparison-thumbnail.webp" width="600" height="600"'));
-assert.ok(future.includes('download="resource-comparison-full.png"'));
-const viewer = await readFile(new URL('../assets/reports/resource-comparison-image.html', import.meta.url), 'utf8');
-assert.ok(viewer.includes('<h1>原报告长图（匿名版）</h1>'));
-assert.ok(viewer.includes('src="./resource-comparison-full.png" width="1800" height="11132"'));
-assert.ok(viewer.includes('download="resource-comparison-full.png">下载原图'));
-assert.ok(!viewer.includes('.pdf'));
+assert.ok(future.includes('<img src="./assets/reports/forensic-report-20261017-thumbnail.webp" width="600" height="600"'));
+assert.ok(future.includes('download="forensic-report-20261017.png"'));
+const viewer = await readFile(new URL('../assets/reports/forensic-report-20261017-image.html', import.meta.url), 'utf8');
+assert.ok(viewer.includes('<title>公开取证核查报告 · 完整长图</title>'));
+assert.ok(viewer.includes('src="forensic-report-20261017.png" width="1800" height="13661"'));
+assert.ok(viewer.includes('href="forensic-report-20261017.png" download>下载完整长图'));
+assert.ok(viewer.includes('href="forensic-report-20261017.pdf" download>下载 PDF'));
 for (const base of ['https://madeinmagius-site.pages.dev/', 'https://hiiraginemu.github.io/madeinmagius-site/']) {
   const url = new URL(viewerPath, base);
-  assert.equal(new URL('./resource-comparison-full.png', url).href, base + 'assets/reports/resource-comparison-full.png');
+  assert.equal(new URL('./forensic-report-20261017.png', url).href, base + 'assets/reports/forensic-report-20261017.png');
   assert.equal(new URL('../../#home/programs', url).href, base + '#home/programs');
 }
 const evidenceCss = await readFile(new URL('../assets/evidence.css', import.meta.url), 'utf8');
@@ -183,3 +183,19 @@ for (const [version, id, size, sha, name] of [
   } finally { globalThis.fetch = savedFetch; }
 }
 console.log('FIRST_REPORT_111=PASS: frozen 8 files, old URL alias, mirror links, fixed historical APK/source HEAD and Range');
+
+const secondReportFiles = [["forensic-report-20261017.html", 38108, "233fb21f4fcb608d303d03bd5d4c4c12167e1344ccecc5d401526a32e9612897"], ["forensic-report-20261017.png", 2892144, "13fe9bd00b4965933f3e992efc98ab8161c853ff014cc3490689dc2e2003f482"], ["forensic-report-20261017.pdf", 478504, "b0cf03e199108515fd86e6d209b5ec6c8a99adf20c60ea2864f8fd234b23bad0"], ["forensic-report-20261017.txt", 14184, "8d6d166c74009ecdaf85d10b79a6bb1676c195877b1fe4e009b24474884e2cc9"], ["forensic-report-20261017-thumbnail.webp", 42736, "0ddd4fe058e13d525450b36f6aa5384e16a33ec90d3670559e43249376d5540f"], ["forensic-report-20261017-image.html", 860, "f300de290ec1dc2aaaddb36d414586435fa3609706a073d8a397c494d6a7f118"]];
+for (const [file, size, sha] of secondReportFiles) {
+  const bytes = await readFile(new URL('../assets/reports/' + file, import.meta.url));
+  assert.equal(bytes.length, size, file);
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), sha, file);
+}
+for (const [legacy, current] of [
+  ['resource-comparison-full.png', 'forensic-report-20261017.png'],
+  ['resource-comparison-thumbnail.webp', 'forensic-report-20261017-thumbnail.webp'],
+  ['resource-comparison-image.html', 'forensic-report-20261017-image.html'],
+]) {
+  assert.deepEqual(await readFile(new URL('../assets/reports/' + legacy, import.meta.url)), await readFile(new URL('../assets/reports/' + current, import.meta.url)));
+}
+for (const extension of ['html', 'png', 'pdf', 'txt']) assert.ok(future.includes('./assets/reports/forensic-report-20261017.' + extension));
+console.log('SECOND_REPORT=PASS: 6 frozen files, 3 legacy aliases, independent HTML/image/PDF/TXT entries');

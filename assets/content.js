@@ -280,11 +280,14 @@ export function renderContent(programId, subId, data) {
         '<a href="' + escapeHtml(serviceUrl('./downloads/pinned/magireco/1.1.1-evidence-source')) + '">对应源码</a>' +
         '<a href="./assets/reports/client-111-reproduce.html" target="_blank" rel="noopener noreferrer">复现方法与工具 ↗</a></div>' +
         '</article><article class="download-card">' +
-        '<p class="meta-line">2026-10-14 · 技术报告长图</p><h3>原报告长图（匿名版）</h3>' +
-        '<a class="evidence-thumbnail" href="./assets/reports/resource-comparison-image.html" target="_blank" rel="noopener noreferrer" aria-label="打开完整报告长图，可滚动阅读和下载">' +
-        '<img src="./assets/reports/resource-comparison-thumbnail.webp" width="600" height="600" loading="lazy" decoding="async" alt="原报告长图（匿名版）缩略图，点击展开完整正文"></a>' +
-        '<div class="quick-links"><a href="./assets/reports/resource-comparison-image.html" target="_blank" rel="noopener noreferrer">展开长图 ↗</a>' +
-        '<a href="./assets/reports/resource-comparison-full.png" download="resource-comparison-full.png">下载完整报告长图</a></div>' +
+        '<p class="meta-line">2026-10-17 · 个人版 1.1.1 复核</p><h3>原报告长图（匿名版）</h3>' +
+        '<a class="evidence-thumbnail" href="./assets/reports/forensic-report-20261017-image.html" target="_blank" rel="noopener noreferrer" aria-label="打开完整报告长图，可滚动阅读和下载">' +
+        '<img src="./assets/reports/forensic-report-20261017-thumbnail.webp" width="600" height="600" loading="lazy" decoding="async" alt="原报告长图（匿名版）缩略图，点击展开完整正文"></a>' +
+        '<div class="quick-links"><a href="./assets/reports/forensic-report-20261017-image.html" target="_blank" rel="noopener noreferrer">展开长图 ↗</a>' +
+        '<a href="./assets/reports/forensic-report-20261017.html" target="_blank" rel="noopener noreferrer">阅读文字报告 ↗</a>' +
+        '<a href="./assets/reports/forensic-report-20261017.png" download="forensic-report-20261017.png">下载完整报告长图</a>' +
+        '<a href="./assets/reports/forensic-report-20261017.pdf" download="forensic-report-20261017.pdf">下载 PDF</a>' +
+        '<a href="./assets/reports/forensic-report-20261017.txt" download="forensic-report-20261017.txt">下载文字版</a></div>' +
         '</article></div><article class="download-card evidence-response-card">' +
         '<p class="meta-line">2026-10-14 · 回应长图</p><h3>项目回应长图</h3>' +
         '<a href="./assets/reports/response-final.png" target="_blank" rel="noopener noreferrer" aria-label="打开回应长图原图">' +

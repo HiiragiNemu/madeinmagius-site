@@ -7,7 +7,7 @@ const origin = 'https://madeinmagius-site.pages.dev';
 const snapshot = JSON.parse(await readFile(new URL('../data/releases.json', import.meta.url)));
 const cases = [['bilibili','android'],['bilibili','userscript'],['bilibili','console'],
   ['netease','android-full'],['netease','windows'],['netease','python'],['netease','netease-verify'],
-  ['exedra','exedra-downloads'],['home','magireco-private-server']];
+  ['exedra','exedra-downloads'],['home','magireco-private-server'],['home','programs']];
 for (const hostname of ['madeinmagius-site.pages.dev','hiiraginemu.github.io']) {
   globalThis.location = {hostname};
   assert.equal(serviceUrl('./api/magireco'), hostname.endsWith('github.io') ? origin+'/api/magireco' : './api/magireco');

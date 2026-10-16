@@ -1,0 +1,473 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>历史 APK 与客户端比对复现</title><style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-faint: #64748b;
+      --accent-match: #059669;
+      --accent-match-bg: #ecfdf5;
+      --accent-match-border: #a7f3d0;
+      --accent-diff: #dc2626;
+      --accent-diff-bg: #fef2f2;
+      --accent-diff-border: #fecaca;
+      --accent-warn: #d97706;
+      --accent-warn-bg: #fffbeb;
+      --accent-warn-border: #fde68a;
+      --accent-info: #2563eb;
+      --accent-info-bg: #eff6ff;
+      --accent-info-border: #bfdbfe;
+      --code-bg: #1e293b;
+      --code-text: #f8fafc;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f19;
+        --surface: #131b2e;
+        --surface-subtle: #1e293b;
+        --border: #26334d;
+        --border-strong: #334155;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --text-faint: #64748b;
+        --accent-match: #10b981;
+        --accent-match-bg: #064e3b33;
+        --accent-match-border: #065f46;
+        --accent-diff: #f87171;
+        --accent-diff-bg: #7f1d1d33;
+        --accent-diff-border: #991b1b;
+        --accent-warn: #fbbf24;
+        --accent-warn-bg: #78350f33;
+        --accent-warn-border: #92400e;
+        --accent-info: #60a5fa;
+        --accent-info-bg: #1e3a8a33;
+        --accent-info-border: #1e40af;
+        --code-bg: #080c14;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.7;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      padding: 0 0 4rem 0;
+    }
+
+    .report-wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 0 1.5rem;
+    }
+
+    /* Header / Hero */
+    .report-header {
+      padding: 2rem 0 3rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .badge-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-strong);
+      color: var(--text-muted);
+    }
+    .status-pill.verified {
+      background: var(--accent-match-bg);
+      border-color: var(--accent-match-border);
+      color: var(--accent-match);
+    }
+    .doc-title {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+    .doc-subtitle {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+    }
+    .meta-item .meta-label {
+      color: var(--text-faint);
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.125rem;
+    }
+    .meta-item .meta-val {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Big 3 Hero Stats */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin: 2.5rem 0;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent-info);
+    }
+    .stat-card.match::before { background: var(--accent-match); }
+    .stat-card.diff::before { background: var(--accent-diff); }
+    .stat-card.warn::before { background: var(--accent-warn); }
+    .stat-num {
+      font-size: 2.75rem;
+      font-weight: 800;
+      line-height: 1;
+      font-feature-settings: "tnum";
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+    .stat-card.match .stat-num { color: var(--accent-match); }
+    .stat-card.diff .stat-num { color: var(--accent-diff); }
+    .stat-card.warn .stat-num { color: var(--accent-warn); }
+    .stat-label {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      margin-bottom: 0.375rem;
+      color: var(--text-main);
+    }
+    .stat-desc {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Typography & Sections */
+    section {
+      margin-top: 3.5rem;
+    }
+    .sec-heading {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sec-num {
+      font-size: 0.875rem;
+      font-weight: 800;
+      color: var(--accent-info);
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+    }
+    .sec-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+    .lead-text {
+      font-size: 1.0625rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.8;
+    }
+    .lead-text strong {
+      color: var(--text-main);
+    }
+
+    /* Tables */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      margin: 1.5rem 0;
+      box-shadow: var(--shadow-sm);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+    th {
+      background: var(--surface-subtle);
+      color: var(--text-faint);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background-color: var(--surface-subtle); }
+    .mono { font-family: var(--font-mono); font-size: 0.8125rem; }
+
+    /* Tag pills */
+    .tag {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .tag-match { background: var(--accent-match-bg); color: var(--accent-match); border: 1px solid var(--accent-match-border); }
+    .tag-diff { background: var(--accent-diff-bg); color: var(--accent-diff); border: 1px solid var(--accent-diff-border); }
+    .tag-warn { background: var(--accent-warn-bg); color: var(--accent-warn); border: 1px solid var(--accent-warn-border); }
+    .tag-neutral { background: var(--surface-subtle); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* Callout & Cards */
+    .callout {
+      padding: 1.25rem 1.5rem;
+      border-radius: var(--radius-md);
+      margin: 1.5rem 0;
+      border-left: 4px solid var(--accent-info);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .callout.alert {
+      border-left-color: var(--accent-diff);
+      background: var(--accent-diff-bg);
+    }
+    .callout.notice {
+      border-left-color: var(--accent-match);
+      background: var(--accent-match-bg);
+    }
+
+    /* Segment bar */
+    .segment-bar {
+      display: flex;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin: 1rem 0 0.5rem 0;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+    }
+    .segment {
+      height: 100%;
+      position: relative;
+      transition: opacity 0.2s;
+    }
+    .segment:hover { opacity: 0.85; }
+    .seg-match { background: var(--accent-match); }
+    .seg-mod { background: var(--accent-warn); }
+    .seg-added { background: var(--accent-info); }
+    .seg-our { background: #8b5cf6; }
+
+    .bar-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      font-size: 0.8125rem;
+      margin-top: 0.75rem;
+      color: var(--text-muted);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Code diff view */
+    .diff-block {
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin: 1.25rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      box-shadow: var(--shadow-md);
+    }
+    .diff-header {
+      background: rgba(0,0,0,0.25);
+      padding: 0.625rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+    }
+    .diff-header span.file-badge {
+      background: rgba(255,255,255,0.1);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      color: #e2e8f0;
+    }
+    .diff-content {
+      padding: 0.75rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    .diff-line {
+      display: flex;
+      padding: 0.15rem 1rem;
+    }
+    .diff-line.del {
+      background: rgba(220, 38, 38, 0.22);
+      color: #fca5a5;
+    }
+    .diff-line.add {
+      background: rgba(5, 150, 105, 0.22);
+      color: #86efac;
+    }
+    .diff-line.same {
+      color: #94a3b8;
+    }
+    .diff-prefix {
+      width: 1.5rem;
+      user-select: none;
+      font-weight: 700;
+    }
+    .diff-code {
+      flex: 1;
+      white-space: pre;
+    }
+
+    /* Grid cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .info-card h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Footer */
+    footer.report-footer {
+      margin-top: 5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 768px) {
+      .hero-stats { grid-template-columns: 1fr; }
+      .doc-title { font-size: 1.5rem; }
+      .report-wrap { padding: 1.5rem 1rem 0 1rem; }
+      .meta-grid { grid-template-columns: 1fr; }
+    }
+  
+html { scroll-behavior: smooth; }
+.report-nav { display:flex; flex-wrap:wrap; gap:.5rem 1.2rem; padding:1rem 0; }
+.report-nav a { color:var(--text-main); text-underline-offset:4px; }
+.fingerprint { overflow-wrap:anywhere; word-break:break-all; }
+.evidence-note { font-size:.875rem; color:var(--text-muted); line-height:1.8; }
+.stat-num small { font-size:1.1rem; }
+section { scroll-margin-top:1rem; }
+td, th { vertical-align:top; }
+@media(max-width:600px) { .doc-title { font-size:1.9rem; } .meta-grid { grid-template-columns:1fr; } }
+@media print { .report-nav { display:none; } .table-responsive { overflow:visible; } code { overflow-wrap:anywhere; } }
+
+p{margin:.8rem 0}h3{margin:1.8rem 0 .7rem;font-size:1.16rem}strong{font-weight:750}
+.sec-heading{align-items:flex-start;flex-direction:column;gap:.25rem}
+td,th{overflow-wrap:anywhere}table{table-layout:fixed}table th:first-child{width:31%}
+.native-table th:first-child{width:24%}.native-table th:nth-child(2){width:42%}
+.table-responsive{overflow:visible}.mono{overflow-wrap:anywhere}
+.source-line{overflow-wrap:anywhere}.report-footer p{margin:.4rem 0}
+.supplement{border-top:3px solid var(--accent-warn);padding-top:1.1rem}
+.supplement h2{font-size:1.45rem;margin:0 0 1rem;color:var(--accent-warn)}
+.supplement p{font-size:.96rem}.report-nav{border-top:1px solid var(--border)}
+.match-em{color:var(--accent-match);font-weight:750}.diff-em{color:var(--accent-diff);font-weight:750}
+.warn-em{color:var(--accent-warn);font-weight:750}.info-em{color:var(--accent-info);font-weight:750}
+.code-sample{background:var(--code-bg);color:var(--code-text);padding:1rem 1.3rem;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.download-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;font-size:14px}
+.download-toolbar a{color:var(--accent-info);padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface)}
+.export .download-toolbar{display:none}.export{background:#f8fafc}
+@media(max-width:600px){table{font-size:.78rem}td,th{padding:.65rem .5rem}table th:first-child{width:30%}.native-table th:first-child{width:26%}.meta-grid{grid-template-columns:1fr}.stat-num{font-size:2.6rem}}
+@media print {
+ @page{size:A4;margin:14mm 13mm 16mm}
+ html{font-size:12px!important;color-scheme:light!important}body{width:auto!important;background:#fff!important;color:#0f172a!important;font-size:12px!important;padding:0!important}
+ :root{--bg:#fff;--surface:#fff;--surface-subtle:#f1f5f9;--text-main:#0f172a;--text-muted:#475569;--text-faint:#64748b;--border:#e2e8f0;--accent-match:#059669;--accent-match-bg:#ecfdf5;--accent-diff:#dc2626;--accent-diff-bg:#fef2f2;--accent-warn:#d97706;--accent-warn-bg:#fffbeb;--accent-info:#2563eb;--accent-info-bg:#eff6ff}
+ .report-wrap{width:auto!important;max-width:none!important;padding:0!important}.report-header{padding:0 0 1rem}
+ .hero-stats{margin:1.2rem 0;gap:.7rem;grid-template-columns:repeat(3,1fr)!important}.stat-card{padding:1rem;box-shadow:none}
+ .meta-grid{grid-template-columns:repeat(3,1fr)!important;padding:.8rem}.report-nav{display:flex!important;padding:.5rem 0}
+ .download-toolbar{display:none!important}section{margin-top:2rem}h2,h3,.sec-heading{break-after:avoid}p{orphans:3;widows:3}
+ .table-responsive{border-radius:0;box-shadow:none;overflow:visible}table{font-size:.85rem}th{font-size:.8rem}td,th{padding:.5rem .6rem}
+ tr{break-inside:avoid}thead{display:table-header-group}.callout,.stat-card,.code-sample{break-inside:avoid}.report-footer{margin-top:2rem!important;padding-top:1rem!important}
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+h2{margin:2.5rem 0 1rem;font-size:1.4rem}.download-toolbar{margin-top:1.5rem}.code-sample{font-size:.85rem}</style></head><body><main class="report-wrap"><h1 class="doc-title">历史 APK 与客户端比对复现</h1><p>MadeInMagius 1.1.1 / 受检 APK 0.2.1 客户端比对复现<br>2026-10-17</p><div class="download-toolbar"><a data-download="personal111" href="https://madeinmagius-site.pages.dev/downloads/pinned/magireco/1.1.1-evidence">下载历史 APK 1.1.1（99.0 MiB）</a><a data-download="personal111-source" href="https://madeinmagius-site.pages.dev/downloads/pinned/magireco/1.1.1-evidence-source">下载对应源码（58.8 MiB）</a><a href="reproduce-client-1.1.1.zip" download>下载复现工具包</a><a href="resource-comparison-20261014.html">返回比对报告</a></div><h2>一、下载和准备</h2><p class="source-line">从本网站“资源比对与证据记录”下载历史 MadeInMagius 1.1.1 APK 与本工具包。历史 APK 仅作为比对基准，不替换玩家当前使用版本，也无需安装到手机。<br>受检 magireco-local-0.2.1.apk 由复核者自行取得，本工具包不重新分发受检 APK。<br>工具：Python 3.11 或以上（原核验使用 3.14）、Java（原核验使用 JDK 25.0.4）、apktool 3.0.3。<br>Python：https://www.python.org/downloads/<br>Java：https://jdk.java.net/<br>apktool 官方下载：https://github.com/iBotPeaches/Apktool/releases/download/v3.0.3/apktool_3.0.3.jar</p><h2>二、文件身份（必须一致）</h2><p class="source-line">我方 APK：103,821,876 字节<br>SHA-256：60031daf95e42448f4ddb2d80a1b0b08f007734a488e0b7318a4decc20a02815<br>受检 APK：71,067,750 字节<br>SHA-256：feeeac4902499e835871a4558c1ce3eda0ec530f111728322cc0ec376e69bc8e<br>apktool_3.0.3.jar：15,478,013 字节<br>SHA-256：dbf930b076c6b9be08d57c449cacefc3bdd6b71ebd59b3066fc0e1f5b14f9423<br>我方 1.1.1 对应源码包 SHA-256：ad9899a1b2af0ac1c45a4f316cf655dcd3c94293814b12e6aeeb375c2641b513<br>源码提交：8fd64b358694845c4a85debfd67b15a9d3b566ac；历史构建运行：37211824965。</p><h2>三、运行（Windows PowerShell 示例）</h2><p class="source-line">解压工具包，将两份 APK 和 apktool_3.0.3.jar 放到工具目录，按实际文件名调整参数。</p><pre class="code-sample">py -3.14 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe compare_apks.py --ours .\MadeInMagius-1.1.1.apk --candidate .\magireco-local-0.2.1.apk --apktool .\apktool_3.0.3.jar --out .\results</pre><p class="source-line">其他 Python 3.11+ 版本可将 py -3.14 换为对应版本。Java 未加入 PATH 时，添加 --java &quot;Java安装目录\bin\java.exe&quot;。<br>Linux/macOS 可用 python3 创建虚拟环境并使用 .venv/bin/python；其余参数相同。<br>results 必须是新的目录；复跑时使用 --out .\results-2。脚本不覆盖输入，不安装或运行 APK，不连接游戏服务器。<br>不包括下载工具在内，比对过程无需联网。输出通常需数分钟和数百 MiB 至数 GiB 空间，取决于 Java 与设备性能。</p><h2>四、检查结果</h2><p class="source-line">命令退出码 0，末行 EXPECTED_COUNTS_MATCH=True，表示本次复现命中全部已冻结计数。<br>退出码 1 是输入或执行错误；退出码 2 表示完成比较但计数与冻结结果不同，应查看原始输出，不强行改为一致。</p><p class="source-line">预期补丁范围 io/kamihama/magianative/**/*.smali：<br>我方 357；受检方 358；同名 352；并集 363。<br>逐文件 SHA-256 完全一致 196；同名但修改 156，其中按行相似度至少 90% 的 110。<br>仅受检方 6；仅我方 5。<br>共同 assets 392；其中字节一致 332；其中同路径也命中 Totentanz 原版指纹 309。</p><p class="source-line">summary.json：完整计数与输入身份。<br>smali-files.csv：363 行文件级关系、双方哈希与文本相似度。<br>changed-classes.json：修改类的行数与差异区间。<br>CNWebProxy.smali.diff.txt、CNPaths.smali.diff.txt、CNBuildConfig.smali.diff.txt：三个具体例子的逐行差异。<br>native-comparison.json：每个架构的字节差异、动态符号和已定义全局／弱导出分别统计。<br>ours-native.json、candidate-native.json：符号名称清单，保留导入与导出的区分。<br>assets-comparison.json：assets 同名、一致与原版基线命中的路径清单。<br>execution.json、decode-*.log：实际命令、工具输出、退出码。<br>verification.json：输入未改写及冻结计数校验。</p><h2>五、统一方法</h2><p class="source-line">双方都使用同一份 apktool 3.0.3：d -r --no-assets -j 4；默认保留调试信息。<br>仅统计补丁命名空间，禁止把游戏原版或第三方通用库混入补丁类数量。<br>文本相似度为 difflib.SequenceMatcher(None, 我方.splitlines(), 受检方.splitlines(), autojunk=False).ratio()。<br>动态符号表的非空名称包含导入；实际导出另以“非 SHN_UNDEF、STB_GLOBAL/STB_WEAK”计算。<br>APK 文件名可以改，但内容 SHA-256 必须与上述一致。此工具拒绝混入其他版本。<br>附带 totentanz-members.json 是冻结原版 APK 的路径、大小与 SHA-256 索引，不包含游戏文件。原版 APK SHA-256 记录在索引中。</p><h2>六、范围</h2><p class="source-line">本工具复现 2026-10-17 的客户端复核，不把报告中的历史资源层 10/17 包、72 条登记命中或 4,926 项资源匹配伪装成本次脚本结果。<br>资源层继续使用原报告冻结的 2026-10-12 索引及其方法：整包以大小和全部 16 MiB 分块 MD5 对比，资源单文件以 SHA-256 对比，官方、第三方及项目处理来源分开判断。<br>公开网页的匿名说明与本地详细差异分开；本地复核会看到 APK 本身已有的应用包名、域名等字面值。</p></main></body></html>

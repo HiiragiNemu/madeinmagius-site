@@ -21,7 +21,7 @@ assert.ok(!home.includes('WELCOME'));
 const future = renderContent('home', 'programs', {});
 assert.ok(future.includes('资源比对与证据记录'));
 assert.ok(future.includes('17 个分发包中有 10 个'));
-assert.ok(future.includes('93 个反编译补丁类文件'));
+assert.ok(future.includes('196 个反编译补丁类文件'));
 assert.ok(future.includes('72 条资源命中对应 70 个受检文件'));
 const reportPath = './assets/reports/resource-comparison-20261014.html';
 assert.ok(future.includes('href="' + reportPath + '" target="_blank" rel="noopener noreferrer"'));
@@ -29,8 +29,8 @@ for (const base of ['https://madeinmagius-site.pages.dev/', 'https://hiiraginemu
   assert.equal(new URL(reportPath, base).href, base + reportPath.slice(2));
 }
 const report = await readFile(new URL('../assets/reports/resource-comparison-20261014.html', import.meta.url));
-assert.equal(report.length, 30761);
-assert.equal(createHash('sha256').update(report).digest('hex'), '0c30d875c4e1d5876e3ee5cc2455ac7a2141e429d74ee5aabf514aa37b6e78c4');
+assert.equal(report.length, 33528);
+assert.equal(createHash('sha256').update(report).digest('hex'), '623410256c0b0acd6b227c0ffca908e03683804bb01489c729863090d334403f');
 assert.ok(!future.includes('工具清单'));
 assert.equal((future.match(/<article /g) || []).length, 3);
 assert.ok(future.includes('<img src="./assets/reports/response-final.png"'));
@@ -136,3 +136,50 @@ console.log('REPORT_IMAGE=PASS: separate original report and response, desktop/m
 const adv=renderContent('home','universal-adv-reader',{});
 assert.ok(adv.includes('https://universal-adv-reader.pages.dev/apps/web'));
 for(const [program,sub] of [['home','contact'],['about','contact-about']]){const contact=renderContent(program,sub,{});assert.ok(contact.includes('加入群858083286'));assert.ok(contact.includes('inviteCode=2oaXZG3lL1g'));}
+
+// First report refresh is independent of the retained original report and response.
+const firstReportFiles = [["resource-client-comparison-20261017.html", 33528, "623410256c0b0acd6b227c0ffca908e03683804bb01489c729863090d334403f"], ["resource-client-comparison-20261017.png", 2387588, "36f8b89f3079b35cbd2d01cbef03a17fd24fdc24e3072678d4198a35610e53a5"], ["resource-client-comparison-20261017.pdf", 414989, "577508f156d7e0d6661d4b0dbd028b86bb0ff3a19fe247b28a3105e9c4eaed3e"], ["resource-client-comparison-20261017.txt", 11540, "c71b4c57614a95bdad0feb9de0ff0f56a8ef2d5ffd7494911b84c7b70d1b9f7d"], ["resource-client-comparison-20261017-thumbnail.webp", 38812, "36825c1cafd8b9e625d75a27163a5e25937d811ae133b0e1a5da6c69392b09ba"], ["resource-client-comparison-20261017-image.html", 909, "1d30ad4d5003ccd2eec724c211afe71d08e2c5359da2c326cfac243796d9843d"], ["client-111-reproduce.html", 21918, "761277c869744347f98995bb17f23551ad4e1ba5da58db0b7656d0098e276155"], ["reproduce-client-1.1.1.zip", 47555, "4d112af7a6d1a86bca8dc6dfa1fc180ef2ef290828e61a62339c62f49c7e58e6"]];
+for (const [file, size, sha] of firstReportFiles) {
+  const bytes = await readFile(new URL('../assets/reports/' + file, import.meta.url));
+  assert.equal(bytes.length, size, file);
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), sha, file);
+}
+assert.deepEqual(report, await readFile(new URL('../assets/reports/resource-client-comparison-20261017.html', import.meta.url)));
+for (const link of ['resource-client-comparison-20261017-image.html', 'resource-client-comparison-20261017.png', 'resource-client-comparison-20261017.pdf', 'client-111-reproduce.html']) {
+  assert.ok(future.includes('./assets/reports/' + link), link);
+}
+const reproduction = await readFile(new URL('../assets/reports/client-111-reproduce.html', import.meta.url), 'utf8');
+for (const suffix of ['1.1.1-evidence', '1.1.1-evidence-source']) {
+  assert.ok(reproduction.includes('https://madeinmagius-site.pages.dev/downloads/pinned/magireco/' + suffix));
+}
+const pinned = (await import('../data/pinned-assets.js')).default;
+const pinnedRoute = await import('../functions/downloads/pinned/[project]/[version].js');
+for (const [version, id, size, sha, name] of [
+  ['1.1.1-evidence', 648431048, 103821876, '60031daf95e42448f4ddb2d80a1b0b08f007734a488e0b7318a4decc20a02815', 'magireco-personal-1.1.1-evidence.apk'],
+  ['1.1.1-evidence-source', 648432154, 61686724, 'ad9899a1b2af0ac1c45a4f316cf655dcd3c94293814b12e6aeeb375c2641b513', 'magireco-legacy-client-1.1.1-corresponding-source.zip'],
+]) {
+  const asset = pinned['magireco/' + version];
+  assert.equal(asset.url, 'https://api.github.com/repos/HiiragiNemu/ProgettoMagius-1/releases/assets/' + id);
+  assert.equal(asset.size, size);
+  assert.equal(asset.digest, 'sha256:' + sha);
+  assert.equal(asset.name, name);
+  const context = {params:{project:'magireco',version}, env:{GITHUB_RELEASES_TOKEN:'local-test-only'}, request:new Request('https://example.test/downloads/pinned/magireco/' + version)};
+  const head = await pinnedRoute.onRequestHead(context);
+  assert.equal(head.status, 200);
+  assert.equal(head.headers.get('content-length'), String(size));
+  assert.equal(head.headers.get('x-release-digest'), 'sha256:' + sha);
+  assert.ok(head.headers.get('content-disposition').includes(name));
+  const savedFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async (url, init) => {
+      assert.equal(url, asset.url);
+      assert.equal(new Headers(init.headers).get('range'), 'bytes=0-1');
+      return new Response('PK', {status:206, headers:{'content-range':'bytes 0-1/' + size, 'content-length':'2','accept-ranges':'bytes'}});
+    };
+    const response = await pinnedRoute.onRequestGet({...context, request:new Request(context.request.url,{headers:{Range:'bytes=0-1'}})});
+    assert.equal(response.status, 206);
+    assert.equal(response.headers.get('content-range'), 'bytes 0-1/' + size);
+    assert.equal(await response.text(), 'PK');
+  } finally { globalThis.fetch = savedFetch; }
+}
+console.log('FIRST_REPORT_111=PASS: frozen 8 files, old URL alias, mirror links, fixed historical APK/source HEAD and Range');

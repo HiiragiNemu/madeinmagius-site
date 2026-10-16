@@ -268,9 +268,17 @@ export function renderContent(programId, subId, data) {
       return '<p class="content-kicker">MAGIUS LINK / EVIDENCE</p><h2>资源比对与证据记录</h2>' +
         '<p>资源、客户端修改与已发布产出的比对报告。</p>' +
         '<div class="evidence-report-grid"><article class="download-card">' +
-        '<p class="meta-line">2026-10-14 · 公开整理版</p><h3>资源与客户端比对报告</h3>' +
-        '<p>本报告记录：17 个分发包中有 10 个与参考包的全部分块匹配；93 个反编译补丁类文件一致；72 条资源命中对应 70 个受检文件。</p>' +
+        '<p class="meta-line">2026-10-17 · 个人版 1.1.1 复核</p><h3>资源与客户端比对报告</h3>' +
+        '<p>本报告记录：17 个分发包中有 10 个与参考包的全部分块匹配；196 个反编译补丁类文件一致；72 条资源命中对应 70 个受检文件。</p>' +
+        '<p>客户端参考：MadeInMagius 个人版 1.1.1。下列 APK 是历史比对基准，不替换玩家最新版。</p>' +
+        '<a class="evidence-thumbnail" href="./assets/reports/resource-client-comparison-20261017-image.html" target="_blank" rel="noopener noreferrer" aria-label="查看资源与客户端比对报告完整长图">' +
+        '<img src="./assets/reports/resource-client-comparison-20261017-thumbnail.webp" loading="lazy" decoding="async" alt="第一份报告长图缩略图，个人版 1.1.1 复核"></a>' +
         '<a class="download-button" href="./assets/reports/resource-comparison-20261014.html" target="_blank" rel="noopener noreferrer">阅读完整报告 ↗</a>' +
+        '<div class="quick-links"><a href="./assets/reports/resource-client-comparison-20261017.png" download="resource-client-comparison-20261017.png">下载报告长图</a>' +
+        '<a href="./assets/reports/resource-client-comparison-20261017.pdf" download="resource-client-comparison-20261017.pdf">下载 PDF</a>' +
+        '<a href="' + escapeHtml(serviceUrl('./downloads/pinned/magireco/1.1.1-evidence')) + '">历史 1.1.1 APK</a>' +
+        '<a href="' + escapeHtml(serviceUrl('./downloads/pinned/magireco/1.1.1-evidence-source')) + '">对应源码</a>' +
+        '<a href="./assets/reports/client-111-reproduce.html" target="_blank" rel="noopener noreferrer">复现方法与工具 ↗</a></div>' +
         '</article><article class="download-card">' +
         '<p class="meta-line">2026-10-14 · 技术报告长图</p><h3>原报告长图（匿名版）</h3>' +
         '<a class="evidence-thumbnail" href="./assets/reports/resource-comparison-image.html" target="_blank" rel="noopener noreferrer" aria-label="打开完整报告长图，可滚动阅读和下载">' +

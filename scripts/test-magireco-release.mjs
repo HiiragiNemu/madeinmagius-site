@@ -7,7 +7,10 @@ import { renderContent } from '../assets/content.js';
 const originalFetch = globalThis.fetch;
 const env = { GITHUB_RELEASES_TOKEN: 'fixture-private-token' };
 const base = 'https://api.github.com/repos/HiiragiNemu/ProgettoMagius-1';
-let version='1.0.184', fault=null, id=184, calls=[];
+let version='1.0.184', fault=null, id=184, calls=[], route='latest';
+const root='https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/';
+const assetName=()=>route==='latest'?'magireco-latest-legacy-client.apk':'magireco-legacy-client-'+version+'.apk';
+const clientUrl=()=>route==='bridge'?'https://magireco-personal-release.pages.dev/magireco-latest-legacy-client.apk':route==='bad'?'https://untrusted.test/client.apk':root+assetName();
 const body=()=>Buffer.from('APK-fixture-'+version);
 const sha=()=>createHash('sha256').update(body()).digest('hex');
 const context=(suffix='',method='GET',headers={})=>({env,request:new Request('https://site.test/downloads/magireco/android'+suffix,{method,headers}),params:{}});
@@ -18,14 +21,14 @@ globalThis.fetch = async (input, init={}) => {
     assert.equal(headers.get('authorization'),null);
     if (fault==='config') return new Response('unavailable',{status:503});
     return Response.json({updated:'2026-09-22T00:00:00Z',client:{version:fault==='version'?'invalid':version,
-      apk_url:'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-latest-legacy-client.apk',
+      apk_url:clientUrl(),
       size:body().length,sha256:sha()}});
   }
   if (url===base+'/releases/tags/latest') {
     assert.equal(headers.get('authorization'),'Bearer fixture-private-token');
     if (fault==='github') return new Response('unavailable',{status:429});
     return Response.json({draft:fault==='draft',prerelease:false,assets:fault==='missing'?[]:[{
-      id,name:'magireco-latest-legacy-client.apk',state:'uploaded',size:body().length,
+      id,name:fault==='wrong-asset'?'magireco-latest-legacy-client.apk':assetName(),state:'uploaded',size:body().length,
       digest:'sha256:'+(fault==='mismatch'?'0'.repeat(64):sha()),
     }]});
   }
@@ -84,5 +87,21 @@ try {
   assert.ok(html.includes('客户端版本 1.0.185'));assert.ok(html.includes(b.download));
   for(const text of ['初次安装','下载资源与线路','已有客户端如何更新','无需开启所有文件访问','不要先卸载或清除数据']) assert.ok(html.includes(text));
   assert.ok(!html.includes('1.0.184'));assert.ok(!html.includes('3.1.9'));
+  for (const [nextRoute,nextVersion,nextId] of [['bridge','1.1.11',1111],['versioned','1.2.2',122]]) {
+    route=nextRoute;version=nextVersion;id=nextId;calls=[];
+    const response=await metadata({env});assert.equal(response.status,200,nextRoute);
+    const result=await response.json();assert.equal(result.version,version);assert.equal(result.sha256,sha());
+    const resultBinary=await download(context('?sha256='+result.sha256));assert.equal(resultBinary.status,200);
+    assert.equal(await resultBinary.text(),body().toString());
+    assert.ok(calls.some(c=>c.url===base+'/releases/assets/'+nextId));
+    const resultHead=await head(context('', 'HEAD'));assert.equal(resultHead.status,200);assert.equal(await resultHead.text(),'');
+    const resultRange=await download(context('', 'GET', {Range:'bytes=0-1'}));assert.equal(resultRange.status,206);
+    assert.equal(await resultRange.text(),body().subarray(0,2).toString());
+    fault='wrong-asset';calls=[];assert.equal((await metadata({env})).status,503,'never substitute mutable latest for fixed archive');
+    assert.ok(!calls.some(c=>c.url.includes('/releases/assets/')));fault=null;
+  }
+  route='bridge';version='1.2.2';assert.equal((await metadata({env})).status,503,'legacy bridge is not a future release alias');
+  route='bad';assert.equal((await metadata({env})).status,503,'arbitrary download URL rejected');
+  console.log('LEGACY_BRIDGE_DOWNLOAD=PASS: fixed1111 and versioned122 metadata/GET/HEAD/Range, no latest substitution, unknown URLs rejected');
   console.log('MAGIRECO_AUTO_DELIVERY=PASS: dynamic versions, guarded downloads, HEAD/Range, tutorial and failure UI');
 } finally {globalThis.fetch=originalFetch;}

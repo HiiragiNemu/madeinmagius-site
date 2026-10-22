@@ -7,9 +7,9 @@
 - 侧车元数据：`https://magireco-personal-release.pages.dev/magireco-current-legacy-client.version.json`。
 - 精确 APK 资产：`HiiragiNemu/ProgettoMagius-1` 的 `latest` Release 下 `magireco-latest-legacy-client.apk`。
 - 版本只接受 `1.2.x`，补丁号至少 5；Android `version_code` 必须是整数且大于 `1713000864`，避免旧未发布候选混入迁移包。
-- 元数据中的文件名、GitHub URL、SHA-256、字节数及签名 payload 身份必须一致，并与唯一已上传 GitHub 资产相符。网站做身份一致性校验，客户端仍负责密码学验签。
+- 元数据中的文件名、GitHub URL、SHA-256、字节数及签名 payload 身份必须一致，并与唯一已上传 GitHub 资产相符。网站做身份一致性校验，兼容发现序号分支同时按下述固定公钥执行密码学验签。
 
-上游 current/latest 两份侧车完全相同，签名 payload 的 `apk_urls` 只包含 GitHub Release 的 `magireco-latest-legacy-client.apk` 地址，以保留旧 1.2.3 更新器准入。网站读取 current metadata，但按该唯一签名 canonical 地址绑定 latest 资产 ID，不要求 payload 指向同名 current APK，也不添加签名 URL。current APK 仅是同字节别名，不作为网站下载资产。若该来源正在同步或资产不匹配，返回 503 并保留重新检查入口，不转向旧主版、兼容版、手动归档或桥接包。
+上游 current/latest 两份侧车完全相同，签名 payload 的 `apk_urls` 精确接受两种有序列表：仅 `https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-latest-legacy-client.apk`，或该 URL 后追加唯一第二项 `https://magireco-personal-release.pages.dev/magireco-current-legacy-client.apk`。不得换序、重复、增加第三项、改域名/路径或附加查询参数/片段；个人 relay 的同名 latest 固定 1.1.11 桥不在允许列表中。网站读取 current metadata，但仍按固定首项签名 canonical 地址绑定 latest 资产 ID，不要求 payload 指向同名 current APK，也不添加签名 URL。current APK 仅是同字节别名，不作为网站下载资产。若该来源正在同步或资产不匹配，返回 503 并保留重新检查入口，不转向旧主版、兼容版、手动归档或桥接包。
 
 个人发布站 `magireco-latest-legacy-client.apk` 仍是固定 1.1.11 升级桥；它与 GitHub Release 下同名文件不是同一分发语义。网站严格按 GitHub 主机及完整路径选择 canonical latest，不读取个人 relay 同名 latest；不修改、不推荐该固定桥作为正常新版。
 
@@ -41,7 +41,7 @@ GitHub Pages 的 `serviceUrl()` 继续把 API 与下载请求送到现有 Cloudf
 
 仅接受明确签名的 `version=1.3.127` → `display_version=1.2.7` 映射。`release_version` 如存在仍是发现序号 `1.3.127`，不是显示字段。`compatibility_discovery` 的 schema 为 1、安装版本为 1.2.7、构建号必须与签名顶层一致且大于 1713000868、`same_published_apk=true`、`separate_client_release=false`。`single_line_migration` 必须与生产任务 `127-migration-contract.json` 的完整 schema 2 契约一致。首条签名说明须以“实际安装版本：1.2.7”开头，并在前 160 个字符内包含 `1.3.127`。
 
-兼容分支用现有 APK 固定公钥验签：RSA-3072 / PKCS#1 v1.5 / SHA-256，消息为 `MAGIACN-APK-UPDATE-V1\n` 加原始 payload UTF-8 字节；不重序列化、不改签名内容，不允许运行时覆盖公钥。顶层与签名中的映射、身份、SHA、大小、构建号、唯一 canonical APK URL 必须一致；同版本源码资产也要匹配已上传 GitHub 文件的摘要和大小。
+兼容分支用现有 APK 固定公钥验签：RSA-3072 / PKCS#1 v1.5 / SHA-256，消息为 `MAGIACN-APK-UPDATE-V1\n` 加原始 payload UTF-8 字节；不重序列化、不改签名内容，不允许运行时覆盖公钥。顶层与签名中的映射、身份、SHA、大小、构建号、固定 canonical APK URL 及完整有序路由列表必须一致；同版本源码资产也要匹配已上传 GitHub 文件的摘要和大小。
 
 校验成功后，网站公共 `version`、APK 下载文件名、`X-Client-Version`、源码 ZIP 名和公告索引统一使用真实 `1.2.7`。不展示第二个 APK，也不从兼容序号字符串推算真实版本。普通 1.2.x 元数据继续保留既有一致性校验行为，schema 2 和新的构建号下限只作用于该兼容分支。
 

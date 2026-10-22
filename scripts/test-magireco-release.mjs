@@ -202,6 +202,37 @@ async function discoveryContractTests() {
     }
     await accepted(signedPayload(p=>{p.version_code=1713000870;p.compatibility_discovery.installed_version_code=1713000870;p.release_version='1.3.127';
       p.single_line_migration=Object.fromEntries(Object.entries(p.single_line_migration).reverse());}));
+    const exactDual = [root+canonicalName, bridge+aliasName];
+    await accepted(signedPayload(p=>{p.apk_urls=exactDual;}));
+    assert.ok(calls.some(call=>call.url.endsWith('/releases/assets/134')));
+    assert.ok(!calls.some(call=>call.url===bridge+aliasName || call.url===bridge+canonicalName));
+    for (const [label, urls] of Object.entries({
+      'empty':[],
+      'relay alone':[bridge+aliasName],
+      'reversed':[bridge+aliasName,root+canonicalName],
+      'duplicate canonical':[root+canonicalName,root+canonicalName],
+      'third route':[...exactDual,bridge+aliasName],
+      'fixed1111 bridge':[root+canonicalName,bridge+canonicalName],
+      'github current alias':[root+canonicalName,root+aliasName],
+      'other host':[root+canonicalName,'https://other.example/magireco-current-legacy-client.apk'],
+      'http relay':[root+canonicalName,'http://magireco-personal-release.pages.dev/'+aliasName],
+      'query':[root+canonicalName,bridge+aliasName+'?v=127'],
+      'fragment':[root+canonicalName,bridge+aliasName+'#127'],
+      'trailing slash':[root+canonicalName,bridge+aliasName+'/'],
+      'encoded path':[root+canonicalName,bridge+'magireco%2Dcurrent-legacy-client.apk'],
+      'object instead of array':{0:root+canonicalName,1:bridge+aliasName},
+      'null':null,
+      'string':root+canonicalName,
+    })) {alias(signedPayload(p=>{p.apk_urls=urls;}));await unavailable('signed route '+label);}
+    alias(signedPayload(p=>{p.apk_urls=exactDual;}));state.current.apk_urls=[root+canonicalName];
+    await unavailable('signed dual but unsigned top singleton');
+    alias(signedPayload(()=>{}));state.current.apk_urls=exactDual;
+    await unavailable('unsigned dual added to signed singleton');
+    alias(signedPayload(p=>{p.apk_urls=exactDual;}));state.current.apk_url=bridge+aliasName;
+    await unavailable('dual cannot replace canonical apk_url');
+    alias(signedPayload(p=>{p.apk_urls=exactDual;}));state.current.signed_update.signature='0'.repeat(768);
+    await unavailable('dual still requires valid publisher signature');
+    console.log('PASS exact signed single/dual routes; wrong lists, unsigned route changes and bad signature rejected; canonical asset unchanged; fixed1111 excluded');
     for(const [label,mutate] of Object.entries({
       'release_version is not display':p=>p.release_version='1.2.7',
       'release_version null':p=>p.release_version=null,
@@ -289,7 +320,7 @@ try {
   }
   cases++;
   console.log('PASS final127 six exact producer notes, local free simulation copy, single APK, updated134 guide and neutral pending states');
-  console.log('PASS current metadata -> signed GitHub latest canonical only; relay1111, extra signed URL and alias-only asset excluded');
+  console.log('PASS current metadata -> signed GitHub latest canonical only; relay1111, unapproved extra signed URL and alias-only asset excluded');
   console.log('PASS 1.2.6 six producer notes, version-specific source ZIP, single APK and old1.3.4 migration notice');
   await discoveryContractTests();
   console.log('MAGIRECO_SINGLE_LINE_DELIVERY=PASS cases='+cases+'; synthetic API fixtures only; no real APK download; network requests=0');

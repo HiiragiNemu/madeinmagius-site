@@ -199,22 +199,39 @@ function contactHtml() {
     '</div>';
 }
 
+const MAGIRECO_RELEASE_NOTES = {
+  "1.2.6": [
+    "补齐行动盘外观到原生战斗的传递：卡图与SD选择作用于新发起的战斗，角色属性与战斗小人不变。",
+    "LOG新增手动游玩记录、上一次错误与跨重启查看、复制、分享和导出。",
+    "补全离线结算台词的换行匹配与角色名，修正商店兑换券文字布局。",
+    "移除觉醒特效旧资源中重复的“醒”字轨道，保留原版Awaken文字。",
+    "延续1.2.x单一版本线；从旧1.3.4覆盖安装时保留同签名与更高内部构建号，不卸载、不清档。",
+    "恢复未完成战斗提示改用原版紧凑横向弹窗，完整显示说明和按钮，去除底部大块空白。"
+  ]
+};
+
 function magirecoClientHtml(current) {
   let download = '<p role="status">正在读取最新正式版本…</p>';
+  let releaseNotes = '';
   if (current?.state === 'ready') {
+    const sourceUrl = 'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-' + encodeURIComponent(current.version) + '-corresponding-source.zip';
+    const notes = MAGIRECO_RELEASE_NOTES[current.version] || [];
+    releaseNotes = notes.length ? '<h3>' + escapeHtml(current.version) + ' 更新内容</h3><ul>' + notes.map(note => '<li>' + escapeHtml(note) + '</li>').join('') + '</ul>' : '';
     download = '<p><strong>客户端版本 ' + escapeHtml(current.version) + '</strong> · ' + formatBytes(current.size) + '</p>' +
       '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
+      '<p><a href="' + escapeHtml(sourceUrl) + '" target="_blank" rel="noopener noreferrer">对应版本源码 ZIP</a></p>' +
       '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
   } else if (current?.state === 'error') {
     download = '<p role="status">发布信息正在同步或暂时不可用，请稍后重新检查。</p>';
   }
   return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2>' +
     '<p>魔法纪录汉化客户端（Android）。无需 Root；安装包不包含随后下载的全部游戏资源。</p>' +
-    '<p><strong>已安装 1.3.4？旧版“检查更新”会因版本号比较误报已是最新版，请手动下载下方的 1.2.5 或后续 1.2.x 安装包。</strong>同签名、更高构建号可直接覆盖安装一次；不要卸载或清除数据。自 1.2.5 起按签名构建号检查后续更新。</p>' +
+    '<p><strong>已安装 1.3.4？旧版“检查更新”会因版本号比较误报已是最新版，请手动下载下方的 1.2.6 或后续 1.2.x 安装包。</strong>同签名、更高构建号可直接覆盖安装一次；不要卸载或清除数据。自 1.2.5 起按签名构建号检查后续更新。</p>' +
     '<div class="download-stack"><article class="download-card"><h3>ANDROID APK</h3>' + download +
     '<p><button class="terminal-copy-button" type="button" data-magireco-refresh' +
     (current?.state === 'loading' ? ' disabled' : '') + '>重新检查版本</button></p></article></div>' +
     '<p>这里自动读取正式发布版本，版本、文件大小和摘要以当前发布信息为准。</p>' +
+    releaseNotes +
     '<h3>初次安装</h3><ol>' +
     '<li>点击“下载 APK”，下载完成后打开文件。</li>' +
     '<li>如系统询问，允许当前浏览器或文件管理器安装未知来源应用，再按提示完成安装。</li>' +
@@ -224,7 +241,7 @@ function magirecoClientHtml(current) {
     '<p>网络较慢但进度仍在增加时，可以继续等待。低速提示中的“关闭”和“继续下载”都会保留当前任务；Logo 右侧的“线路”可手动选择下载线路。</p>' +
     '<p>资源行中的“重下”表示从头下载，不是继续当前下载。已有兼容下载内容会保留断点。</p>' +
     '<h3>已有客户端如何更新</h3><ol>' +
-    '<li>此前显示为 1.3.4 的用户，请下载本页的 1.2.5 或后续 1.2.x 安装包，完成一次覆盖迁移。之后统一使用 1.2.x 更新，不再区分主版与兼容版。</li>' +
+    '<li>此前显示为 1.3.4 的用户，请下载本页的 1.2.6 或后续 1.2.x 安装包，完成一次覆盖迁移。之后统一使用 1.2.x 更新，不再区分主版与兼容版。</li>' +
     '<li>同来源、同签名的版本可以直接安装新版覆盖更新，不要先卸载或清除数据。</li>' +
     '<li>更新后打开客户端，保留已有资源与本地状态，并按版本检查下载所需更新。</li>' +
     '<li>若系统提示安装冲突，先核对旧包来源、包名和签名并保留原数据，不要用卸载作为通用解决办法。</li></ol>' +

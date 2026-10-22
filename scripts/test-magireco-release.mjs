@@ -155,6 +155,18 @@ try {
     assert.equal(serviceUrl(path,{hostname:'hiiraginemu.github.io'}),'https://madeinmagius-site.pages.dev/'+path.slice(2));
     assert.equal(serviceUrl(path,{hostname:'madeinmagius-site.pages.dev'}),path);
   }
+  assert.ok(html.includes(root+'magireco-legacy-client-1.2.5-corresponding-source.zip'));
+  assert.ok(!html.includes('1.2.6 更新内容'));
+  const release126=renderContent('home','magireco-private-server',{magireco:{...latest,version:'1.2.6',state:'ready'}});
+  assert.ok(release126.includes(root+'magireco-legacy-client-1.2.6-corresponding-source.zip'));
+  assert.equal((release126.match(/>下载 APK<\/a>/g)||[]).length,1);
+  const notes126=release126.split('<h3>1.2.6 更新内容</h3><ul>')[1]?.split('</ul>')[0];
+  assert.equal((notes126?.match(/<li>/g)||[]).length,6);
+  for (const text of ['行动盘外观到原生战斗','LOG新增手动游玩记录','离线结算台词','Awaken','单一版本线','紧凑横向弹窗']) assert.ok(notes126.includes(text),text);
+  for (const text of ['AP石','504','福袋']) assert.ok(!notes126.includes(text),text);
+  assert.ok(release126.includes('误报已是最新版') && release126.includes('不要卸载或清除数据'));
+  cases++;
   console.log('PASS current metadata -> signed GitHub latest canonical only; relay1111, extra signed URL and alias-only asset excluded');
-  console.log('MAGIRECO_SINGLE_LINE_DELIVERY=PASS cases='+cases+'; synthetic APK identities only; final SHA/size not supplied; network requests=0');
+  console.log('PASS 1.2.6 six producer notes, version-specific source ZIP, single APK and old1.3.4 migration notice');
+  console.log('MAGIRECO_SINGLE_LINE_DELIVERY=PASS cases='+cases+'; synthetic API fixtures only; no real APK download; network requests=0');
 } finally {globalThis.fetch=originalFetch;}

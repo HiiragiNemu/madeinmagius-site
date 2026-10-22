@@ -23,10 +23,14 @@
 
 GitHub Pages 的 `serviceUrl()` 继续把 API 与下载请求送到现有 Cloudflare 服务，保留 CORS。图标、按钮、布局、报告和历史 1.1.1 证据下载不变。
 
-## 本次发布门槛
+对应源码链接使用同一正式版本的 `magireco-legacy-client-{version}-corresponding-source.zip`，不使用可变分支源码 ZIP。发布脚本先核对该精确 GitHub 资产的 SHA-256、大小和已上传状态；网站不修改上游 APK 或源码资产。
 
-当前仅本地准备。最终输入由生产任务交付：`C:\MAGIA LOCAL\verification\offline-continuation-m369\single-line-publication\website-inputs.json`。
+## 1.2.6 发布对接
 
-收到明确 `FINAL_RELEASE_READY` 且核对最终真实 version/code/SHA/size/源码/URL 后才部署。禁止使用从未发布的 M368125/135 哈希或把本地合成测试当作最终 APK 身份。
+本版说明只展示生产任务交付的六项：行动盘外观进入原生战斗、游玩 LOG、离线结算匹配与商店文字、移除 Awaken 多余“醒”字、单版本升级、恢复未完成战斗提示的紧凑横向比例。只在正式元数据为 1.2.6 时显示该版说明；不把 AP 石、504、福袋等后续反馈列为已修复。
+
+本版真实 APK 为 1.2.6 / `1713000868`，大小 `462776881` 字节，SHA-256 `2a66516a4c765e1a3749bd38e404d19657b7ce633a537408317f6a4a9eca60e5`。源码 ZIP 为 `126341510` 字节，SHA-256 `764df553546a1ff89b7c98bd95441cdc59b8e4e5417297c94bd7898a8649c3d1`。页面版本和下载摘要仍读取动态元数据，不将此摘要固定为后续版本。
+
+最终输入由生产任务交付：`C:\MAGIA LOCAL\verification\offline-continuation-m370\single-line-publication-c\website-inputs.json`。准备阶段记录在同目录 `root-inputs.json`。收到明确 `FINAL_RELEASE_READY` / GO 且上游 APK 与源码已发布后再部署两站；不提前发布死链。部署回执和线上版本读回后停止，人工体验验收由用户完成，不追加浏览器或设备测试。
 
 回归：`node scripts/test-magireco-release.mjs`、`node scripts/test-mirror-downloads.mjs`。测试使用合成字节，不预填尚未交付的 APK 摘要。

@@ -1,21 +1,29 @@
 # 魔法纪录中文化私服发布对接
 
-页面：`/#home/magireco-private-server`。HOME 四个网站链接保留在 `/#home/welcome`，与 APK 分区独立。
+页面：`/#home/magireco-private-server`。HOME 网站和报告分区独立保留。
 
-## 生产接口
+## 双通道来源
 
-- 最终发布门槛：`https://magireco-personal-release.pages.dev/legacy/config.json` 的 `client.version / apk_url / size / sha256`。
-- APK：`HiiragiNemu/ProgettoMagius-1` 的 `latest` Release 中 `magireco-latest-legacy-client.apk`。
-- 生产端 `.github/workflows/publish-verified-client.yml` 在成功构建后发布 APK 与 sidecar，再更新上述客户端门槛。站点不修改构建、签名、资源包或生产工作流。
+共同元数据主机：`https://magireco-personal-release.pages.dev/`。
+共同 APK 来源：`HiiragiNemu/ProgettoMagius-1` 的 `latest` Release。
 
-`GET /api/magireco` 每次获取最终门槛和 GitHub Release 资产，要求 SHA-256 与字节数一致才公布版本。使用内置语义版本，不使用 Android manifest 的历史 versionName。
+| 优先级 | 元数据路径 | 精确 GitHub APK 资产名 | 最低修复版本 |
+| --- | --- | --- | --- |
+| 正式通道 | `magireco-current-legacy-client.version.json` | `magireco-current-legacy-client.apk` | 1.3.4 |
+| 兼容备用 | `magireco-compat-legacy-client.version.json` | `magireco-latest-legacy-client.apk` | 1.2.4 |
 
-`GET /downloads/magireco/android` 提供当前正式包。页面带 `?sha256=...` 绑定所显示的版本；旧页面碰到新版本返回 409，提示重新检查。下载时按已校验的 GitHub 资产 ID 流式传输，支持 HEAD 和 Range，不重打包。密钥只用于 GitHub API，绝不转发给 Pages 或资产 CDN。
+只有发布方验收并正式投送的侧车元数据、APK 名称、地址、大小和 GitHub SHA-256 全部匹配时，网站才显示下载。两通道独立校验；有效正式通道优先，只有它不可用时才显示明确标注的兼容备用包。低于修复门槛的 1.2.3 不再作备用。更高版本归档不会仅因上传而自动晋升。
 
-生产包和清单处于更替窗口、摘要不一致或接口失败时，返回 503，不拿旧版本标签配新包，也不硬编码回退到某个固定版本。
+`legacy/config.json` 及个人发布站的 `magireco-latest-legacy-client.apk` 是旧用户的固定 1.1.11 升级桥，不属于网站正常下载来源。网站不读取、不修改、不撤销这条桥接链。兼容元数据使用明确的 `compat` 路径，避免把桥接 APK 地址当作新包。
 
-## 自动更新行为
+`GET /api/magireco` 返回所选版本及 `source=current|compatibility`。侧车中的签名 payload 与顶层身份字段须一致；本服务做一致性校验，不代替客户端密码学验签。
 
-打开 APK 分区、刷新页面、或点击“重新检查版本”都会读取最新正式发布信息。生产端每次沿用既有正式发布流程，网站无需新提交或重新部署；没有新增定时任务。
+`GET /downloads/magireco/android` 按已经核对的 GitHub 资产 ID 流式传输，支持 HEAD 和 Range。页面携带 `?sha256=...`；所选包变化时旧链接返回 409，提示重新检查，不静默替换为另一包。两通道均不匹配时返回 503 而不是旧 APK。凭据仅发送到 GitHub API。
 
-验证：`node scripts/test-magireco-release.mjs` 包含连续两个模拟版本、旧页面点击、非原子发布窗口、上游故障、下载字节与教程渲染测试。
+## GitHub Pages 与自动更新
+
+GitHub Pages 没有 Functions；`serviceUrl()` 将元数据及下载请求发送至现有 Cloudflare 服务，保留 CORS。报告、静态文件及其余页面仍从各自主机读取。
+
+打开 APK 分区或点击“重新检查版本”会重新读取。发布方以后沿用上述双通道即可自动投送新版本，不需逐版改网站。首次启用本补丁须等待两个已验收 APK 和元数据正式发布，再按最终交付的版本、大小、摘要、URL 核对。禁止提前部署仍指向 1.2.3 的发布窗口。
+
+回归：`node scripts/test-magireco-release.mjs` 覆盖两个通道、未来更新、旧页面哈希绑定、同步故障、无旧桥回退、GET/HEAD/Range 与两站链接。

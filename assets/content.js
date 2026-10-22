@@ -203,6 +203,7 @@ function magirecoClientHtml(current) {
   let download = '<p role="status">正在读取最新正式版本…</p>';
   if (current?.state === 'ready') {
     download = '<p><strong>客户端版本 ' + escapeHtml(current.version) + '</strong> · ' + formatBytes(current.size) + '</p>' +
+      (current.source === 'compatibility' ? '<p role="status">当前正式通道正在同步，以下为已校验的兼容版；可稍后重新检查正式版。</p>' : '') +
       '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
       '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
   } else if (current?.state === 'error') {

@@ -154,7 +154,10 @@ async function discoveryContractTests() {
     const html=renderContent('home','magireco-private-server',{magireco:{...result,state:'ready'}});
     assert.ok(html.includes('客户端版本 1.2.7'));
     assert.ok(html.includes('magireco-legacy-client-1.2.7-corresponding-source.zip'));
-    assert.ok(!html.includes('1.3.127'));assert.equal((html.match(/>下载 APK<\/a>/g)||[]).length,1);
+    assert.ok(!html.includes('客户端版本 1.3.127'));
+    assert.ok(!html.includes('magireco-cn-1.3.127.apk'));
+    assert.ok(!html.includes('magireco-legacy-client-1.3.127-corresponding-source.zip'));
+    assert.equal((html.match(/>下载 APK<\/a>/g)||[]).length,1);
     assert.equal((await download(context('?sha256='+'0'.repeat(64)))).status,409);
     cases++;
   }
@@ -265,6 +268,27 @@ try {
   for (const text of ['AP石','504','福袋']) assert.ok(!notes126.includes(text),text);
   assert.ok(release126.includes('误报已是最新版') && release126.includes('不要卸载或清除数据'));
   cases++;
+  const release127=renderContent('home','magireco-private-server',{magireco:{...latest,version:'1.2.7',state:'ready'}});
+  const notes127=release127.split('<h3>1.2.7 更新内容</h3><ul>')[1]?.split('</ul>')[0];
+  assert.equal((notes127?.match(/<li>/g)||[]).length,6);
+  const expectedNotes127 = ["实际安装版本：1.2.7；1.3.127仅为兼容旧1.3.4检查更新的发现序号，安装包只有一份，覆盖安装保留存档与资源。", "接通魔法石回复AP按钮，按5颗魔法石、免费优先的规则扣款并保存AP。", "修复排队与实际执行共用超时导致的结算成功响应丢失；保留真正超时提示和重复结算回执。", "修复商店首购、多商品库存及持有数刷新，兼容旧档Android魔法石余额。", "恢复2020新年三档福袋：通过本地免费模拟买钻购买，不涉及真实充值；打通383/384自选券、385券及28种记忆兑换。", "补齐福袋记忆兑换券的原版小图，调整礼包说明为两行，避免与价格重叠。"];
+  for(const note of expectedNotes127) assert.ok(notes127.includes(note),note);
+  assert.ok(release127.includes('旧版“检查更新”接收新版安装包'));
+  assert.ok(!release127.includes('误报已是最新版'));
+  assert.ok(!release127.includes('完成一次覆盖迁移'));
+  assert.ok(!release127.includes('1.2.6 更新内容'));
+  assert.ok(release127.includes('不要卸载或清除数据'));
+  assert.ok(release127.includes(root+'magireco-legacy-client-1.2.7-corresponding-source.zip'));
+  assert.equal((release127.match(/>下载 APK<\/a>/g)||[]).length,1);
+  for(const state of ['loading','error']) {
+    const pending=renderContent('home','magireco-private-server',{magireco:{state}});
+    assert.ok(!pending.includes('误报已是最新版'));
+    assert.ok(!pending.includes('1.2.7 更新内容'));
+    assert.equal((pending.match(/>下载 APK<\/a>/g)||[]).length,0);
+    cases++;
+  }
+  cases++;
+  console.log('PASS final127 six exact producer notes, local free simulation copy, single APK, updated134 guide and neutral pending states');
   console.log('PASS current metadata -> signed GitHub latest canonical only; relay1111, extra signed URL and alias-only asset excluded');
   console.log('PASS 1.2.6 six producer notes, version-specific source ZIP, single APK and old1.3.4 migration notice');
   await discoveryContractTests();

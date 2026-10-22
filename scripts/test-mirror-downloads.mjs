@@ -14,7 +14,7 @@ for (const hostname of ['madeinmagius-site.pages.dev','hiiraginemu.github.io']) 
   assert.equal(serviceUrl('https://example.com/file.apk'),'https://example.com/file.apk');
   for (const releases of [null, snapshot]) {
     for (const [program,sub] of cases) {
-      const html=renderContent(program,sub,{releases,magireco:{state:'ready',version:'1.2.3',size:42,sha256:'a'.repeat(64),download:'./downloads/magireco/android?sha256='+'a'.repeat(64)}});
+      const html=renderContent(program,sub,{releases,magireco:{state:'ready',version:'1.2.5',size:42,sha256:'a'.repeat(64),download:'./downloads/magireco/android?sha256='+'a'.repeat(64)}});
       assert.ok(!html.includes('href="#"'),`${hostname} ${program}/${sub}: no false download`);
       assert.ok(!html.includes('href="undefined"'));
       if (hostname.endsWith('github.io')) {

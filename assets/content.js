@@ -203,7 +203,6 @@ function magirecoClientHtml(current) {
   let download = '<p role="status">正在读取最新正式版本…</p>';
   if (current?.state === 'ready') {
     download = '<p><strong>客户端版本 ' + escapeHtml(current.version) + '</strong> · ' + formatBytes(current.size) + '</p>' +
-      (current.source === 'compatibility' ? '<p role="status">当前正式通道正在同步，以下为已校验的兼容版；可稍后重新检查正式版。</p>' : '') +
       '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
       '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
   } else if (current?.state === 'error') {
@@ -211,10 +210,11 @@ function magirecoClientHtml(current) {
   }
   return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2>' +
     '<p>魔法纪录汉化客户端（Android）。无需 Root；安装包不包含随后下载的全部游戏资源。</p>' +
+    '<p><strong>已安装 1.3.4？旧版“检查更新”会因版本号比较误报已是最新版，请手动下载下方的 1.2.5 或后续 1.2.x 安装包。</strong>同签名、更高构建号可直接覆盖安装一次；不要卸载或清除数据。自 1.2.5 起按签名构建号检查后续更新。</p>' +
     '<div class="download-stack"><article class="download-card"><h3>ANDROID APK</h3>' + download +
     '<p><button class="terminal-copy-button" type="button" data-magireco-refresh' +
     (current?.state === 'loading' ? ' disabled' : '') + '>重新检查版本</button></p></article></div>' +
-    '<p>这里自动读取正式发布版本。本页显示客户端内置版本，可能与系统安装详情中的版本号不同。</p>' +
+    '<p>这里自动读取正式发布版本，版本、文件大小和摘要以当前发布信息为准。</p>' +
     '<h3>初次安装</h3><ol>' +
     '<li>点击“下载 APK”，下载完成后打开文件。</li>' +
     '<li>如系统询问，允许当前浏览器或文件管理器安装未知来源应用，再按提示完成安装。</li>' +
@@ -224,6 +224,7 @@ function magirecoClientHtml(current) {
     '<p>网络较慢但进度仍在增加时，可以继续等待。低速提示中的“关闭”和“继续下载”都会保留当前任务；Logo 右侧的“线路”可手动选择下载线路。</p>' +
     '<p>资源行中的“重下”表示从头下载，不是继续当前下载。已有兼容下载内容会保留断点。</p>' +
     '<h3>已有客户端如何更新</h3><ol>' +
+    '<li>此前显示为 1.3.4 的用户，请下载本页的 1.2.5 或后续 1.2.x 安装包，完成一次覆盖迁移。之后统一使用 1.2.x 更新，不再区分主版与兼容版。</li>' +
     '<li>同来源、同签名的版本可以直接安装新版覆盖更新，不要先卸载或清除数据。</li>' +
     '<li>更新后打开客户端，保留已有资源与本地状态，并按版本检查下载所需更新。</li>' +
     '<li>若系统提示安装冲突，先核对旧包来源、包名和签名并保留原数据，不要用卸载作为通用解决办法。</li></ol>' +

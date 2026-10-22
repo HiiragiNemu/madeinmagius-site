@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { onRequestGet as metadata } from '../functions/api/magireco.js';
 import { onRequestGet as download, onRequestHead as head } from '../functions/downloads/magireco/android.js';
 import { renderContent, serviceUrl } from '../assets/content.js';
@@ -115,6 +116,104 @@ function assertSingleMetadata() {
   assert.ok(calls.some(x=>x.url===bridge+'magireco-current-legacy-client.version.json'));
   assert.ok(!calls.some(x=>x.url.includes('magireco-compat-') || x.url.includes('legacy/config.json')));
 }
+async function discoveryContractTests() {
+  const fixtures = JSON.parse(await readFile(new URL('./fixtures/magireco-discovery127.json', import.meta.url), 'utf8'));
+  const subtle = globalThis.crypto.subtle;
+  const originalImport = subtle.importKey;
+  let testingKey = await originalImport.call(subtle, 'spki', Buffer.from(fixtures.public_key,'hex'),
+    { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' }, false, ['verify']);
+  function alias(envelope=fixtures.valid) {
+    reset('1.2.7');
+    const payload = JSON.parse(envelope.payload);
+    state.current = { ...payload, apk:canonicalName, apk_url:root+canonicalName, signed_update:envelope };
+    state.release.assets[0].size = payload.size;
+    state.release.assets[0].digest = 'sha256:'+payload.sha256;
+    state.release.assets.push({id:1270,name:'magireco-legacy-client-1.2.7-corresponding-source.zip',
+      state:'uploaded',size:payload.corresponding_source.size,digest:'sha256:'+payload.corresponding_source.sha256});
+  }
+  // Production pinned key must reject the independent fixture signer.
+  alias();await unavailable('untrusted fixture signer with actual production public key');
+  subtle.importKey = async function(format, data, algorithm, extractable, usages) {
+    assert.equal(format,'jwk');assert.equal(data.n,fixtures.production_public_jwk);assert.equal(data.e,'AQAB');
+    assert.deepEqual(algorithm,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'});
+    assert.equal(extractable,false);assert.deepEqual(usages,['verify']);
+    return testingKey; // Only in this test process. Real verify() is never mocked.
+  };
+  async function accepted(envelope=fixtures.valid) {
+    alias(envelope);
+    const response=await metadata({env});assert.equal(response.status,200);
+    const result=await response.json();assert.equal(result.version,'1.2.7');
+    assert.equal(result.sha256,state.current.sha256);assert.equal(result.size,state.current.size);
+    for(const [handler,ctx,status] of [[head,context('','HEAD'),200],[download,context('?sha256='+result.sha256),200],
+      [download,context('','GET',{Range:'bytes=0-1'}),206]]) {
+      const served=await handler(ctx);assert.equal(served.status,status);
+      assert.equal(served.headers.get('x-client-version'),'1.2.7');
+      assert.ok(served.headers.get('content-disposition').includes('magireco-cn-1.2.7.apk'));
+      if(status===206)assert.ok(served.headers.get('content-range').startsWith('bytes 0-1/'));
+    }
+    const html=renderContent('home','magireco-private-server',{magireco:{...result,state:'ready'}});
+    assert.ok(html.includes('客户端版本 1.2.7'));
+    assert.ok(html.includes('magireco-legacy-client-1.2.7-corresponding-source.zip'));
+    assert.ok(!html.includes('1.3.127'));assert.equal((html.match(/>下载 APK<\/a>/g)||[]).length,1);
+    assert.equal((await download(context('?sha256='+'0'.repeat(64)))).status,409);
+    cases++;
+  }
+  try {
+    await accepted();
+    for(const [label,envelope] of Object.entries(fixtures.publication_negative)) {
+      alias(envelope);await unavailable('signed mapping '+label);
+    }
+    const topMutations={
+      'unsigned display':x=>x.display_version='1.2.8',
+      'unsigned mapping':x=>x.compatibility_discovery.same_published_apk=false,
+      'unsigned migration':x=>x.single_line_migration.minimum_code++,
+      'unsigned code':x=>x.version_code++,
+      'unsigned hash':x=>x.sha256='0'.repeat(64),
+      'unsigned release_version':x=>x.release_version='1.3.127',
+      'unsigned publisher':x=>x.publisher='Other',
+      'unsigned source':x=>x.corresponding_source.sha256='0'.repeat(64),
+      'unsigned apk_urls':x=>x.apk_urls=[root+aliasName],
+      'legacy compatibility flag':x=>x.legacy_compatibility={},
+      'bridge flag':x=>x.upgrade_bridge={},
+      'missing envelope':x=>delete x.signed_update,
+      'wrong key id':x=>x.signed_update.key_id='other',
+      'extra envelope key':x=>x.signed_update.extra=true,
+      'signature tampered':x=>x.signed_update.signature='0'.repeat(768),
+      'signature out of range':x=>x.signed_update.signature='f'.repeat(768),
+      'payload tampered':x=>x.signed_update.payload+=' ',
+      'payload too large':x=>x.signed_update.payload+=' '.repeat(65537),
+      'missing source asset':x=>state.release.assets.pop(),
+      'source asset mismatch':x=>state.release.assets.at(-1).digest='sha256:'+'0'.repeat(64),
+    };
+    for(const [label,mutate] of Object.entries(topMutations)) {
+      alias(structuredClone(fixtures.valid));mutate(state.current);await unavailable(label);
+    }
+    // Additional boundary cases use a new ephemeral signer, never production credentials.
+    const pair=generateKeyPairSync('rsa',{modulusLength:3072});
+    testingKey=await originalImport.call(subtle,'spki',pair.publicKey.export({format:'der',type:'spki'}),
+      {name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
+    function signedPayload(mutator,domain='MAGIACN-APK-UPDATE-V1\n') {
+      const data=JSON.parse(fixtures.valid.payload);mutator(data);const payload=JSON.stringify(data);
+      return {schema:1,key_id:'release-manifest-v1',payload,
+        signature:sign('sha256',Buffer.from(domain+payload),pair.privateKey).toString('hex')};
+    }
+    await accepted(signedPayload(p=>{p.version_code=1713000870;p.compatibility_discovery.installed_version_code=1713000870;p.release_version='1.3.127';
+      p.single_line_migration=Object.fromEntries(Object.entries(p.single_line_migration).reverse());}));
+    for(const [label,mutate] of Object.entries({
+      'release_version is not display':p=>p.release_version='1.2.7',
+      'release_version null':p=>p.release_version=null,
+      'migration extra key':p=>p.single_line_migration.extra=true,
+      'migration missing key':p=>delete p.single_line_migration.from,
+      'note alias too late':p=>p.release_notes=['实际安装版本：1.2.7'+ 'x'.repeat(160)+'1.3.127'],
+      'code upper bound':p=>{p.version_code=2147483648;p.compatibility_discovery.installed_version_code=p.version_code;},
+      'GPL wrong real version':p=>p.corresponding_source.asset='magireco-legacy-client-1.3.127-corresponding-source.zip',
+    })) {alias(signedPayload(mutate));await unavailable(label);}
+    alias(signedPayload(()=>{},'WRONG-DOMAIN\n'));await unavailable('wrong signed domain');
+    reset();state.current.display_version='1.2.7';await unavailable('unsigned display attached to ordinary126 path');
+  } finally {subtle.importKey=originalImport;}
+  console.log('PASS RSA3072/SHA256 publisher-key pin, signed127 mapping and tamper rejection; real126 preserved; alias never leaks to UI/download/source');
+}
+
 try {
   reset();const latest=await streamCheck('1.2.5','current');assertSingleMetadata();
   reset('1.2.6');await streamCheck('1.2.6','current');assertSingleMetadata();
@@ -168,5 +267,6 @@ try {
   cases++;
   console.log('PASS current metadata -> signed GitHub latest canonical only; relay1111, extra signed URL and alias-only asset excluded');
   console.log('PASS 1.2.6 six producer notes, version-specific source ZIP, single APK and old1.3.4 migration notice');
+  await discoveryContractTests();
   console.log('MAGIRECO_SINGLE_LINE_DELIVERY=PASS cases='+cases+'; synthetic API fixtures only; no real APK download; network requests=0');
 } finally {globalThis.fetch=originalFetch;}

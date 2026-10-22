@@ -34,3 +34,15 @@ GitHub Pages 的 `serviceUrl()` 继续把 API 与下载请求送到现有 Cloudf
 最终输入由生产任务交付：`C:\MAGIA LOCAL\verification\offline-continuation-m370\single-line-publication-c\website-inputs.json`。准备阶段记录在同目录 `root-inputs.json`。收到明确 `FINAL_RELEASE_READY` / GO 且上游 APK 与源码已发布后再部署两站；不提前发布死链。部署回执和线上版本读回后停止，人工体验验收由用户完成，不追加浏览器或设备测试。
 
 回归：`node scripts/test-magireco-release.mjs`、`node scripts/test-mirror-downloads.mjs`。测试使用合成字节，不预填尚未交付的 APK 摘要。
+
+## 旧 1.3.4 发现序号兼容支持
+
+此处是向后兼容的消费者支持，不表示 1.2.7 已发布。当前正式 1.2.6 的公告、元数据、APK 和升级指引保持不变；生产任务验收并切换上游后再同步新版说明。
+
+仅接受明确签名的 `version=1.3.127` → `display_version=1.2.7` 映射。`release_version` 如存在仍是发现序号 `1.3.127`，不是显示字段。`compatibility_discovery` 的 schema 为 1、安装版本为 1.2.7、构建号必须与签名顶层一致且大于 1713000868、`same_published_apk=true`、`separate_client_release=false`。`single_line_migration` 必须与生产任务 `127-migration-contract.json` 的完整 schema 2 契约一致。首条签名说明须以“实际安装版本：1.2.7”开头，并在前 160 个字符内包含 `1.3.127`。
+
+兼容分支用现有 APK 固定公钥验签：RSA-3072 / PKCS#1 v1.5 / SHA-256，消息为 `MAGIACN-APK-UPDATE-V1\n` 加原始 payload UTF-8 字节；不重序列化、不改签名内容，不允许运行时覆盖公钥。顶层与签名中的映射、身份、SHA、大小、构建号、唯一 canonical APK URL 必须一致；同版本源码资产也要匹配已上传 GitHub 文件的摘要和大小。
+
+校验成功后，网站公共 `version`、APK 下载文件名、`X-Client-Version`、源码 ZIP 名和公告索引统一使用真实 `1.2.7`。不展示第二个 APK，也不从兼容序号字符串推算真实版本。普通 1.2.x 元数据继续保留既有一致性校验行为，schema 2 和新的构建号下限只作用于该兼容分支。
+
+测试使用独立临时 RSA 签名、公钥及合成资产；只在测试进程替换 WebCrypto 的 importKey 返回值，实际 verify 运算不替换，也不访问生产签名私钥。涵盖旧 1.2.6、127 正向映射、签名/域/字段篡改、冲突映射、GET/HEAD/Range、旧 SHA 的 409、真实版本显示和源码链接；不等同于旧 1.3.4 真机升级验收。

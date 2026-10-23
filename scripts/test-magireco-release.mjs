@@ -128,7 +128,7 @@ async function discoveryContractTests() {
     state.current = { ...payload, apk:canonicalName, apk_url:root+canonicalName, signed_update:envelope };
     state.release.assets[0].size = payload.size;
     state.release.assets[0].digest = 'sha256:'+payload.sha256;
-    state.release.assets.push({id:1270,name:'magireco-legacy-client-1.2.7-corresponding-source.zip',
+    state.release.assets.push({id:1270,name:payload.corresponding_source.asset,
       state:'uploaded',size:payload.corresponding_source.size,digest:'sha256:'+payload.corresponding_source.sha256});
   }
   // Production pinned key must reject the independent fixture signer.
@@ -242,6 +242,93 @@ async function discoveryContractTests() {
       'code upper bound':p=>{p.version_code=2147483648;p.compatibility_discovery.installed_version_code=p.version_code;},
       'GPL wrong real version':p=>p.corresponding_source.asset='magireco-legacy-client-1.3.127-corresponding-source.zip',
     })) {alias(signedPayload(mutate));await unavailable(label);}
+
+    // Synthetic identities are isolated from the frozen official production contract.
+    const synthetic128 = JSON.parse(fixtures.valid.payload);
+    Object.assign(synthetic128, {version:'1.3.128',display_version:'1.2.8',version_code:1713000880,
+      sha256:sha(bytes('1.2.8')),size:bytes('1.2.8').length,source_commit:'8'.repeat(40),
+      corresponding_source:{asset:'magireco-legacy-client-1.2.8-corresponding-source.zip',sha256:'8'.repeat(64),size:128},
+      release_notes:['实际安装版本：1.2.8；1.3.128仅为旧版发现序号。合成测试，非发布。']});
+    synthetic128.compatibility_discovery={...synthetic128.compatibility_discovery,discovery_version:'1.3.128',
+      installed_public_version:'1.2.8',installed_version_code:1713000880};
+    synthetic128.single_line_migration={...synthetic128.single_line_migration,minimum_version:'1.2.8',minimum_code:1713000880,
+      legacy_discovery:{version:'1.3.128',display_version:'1.2.8'}};
+    if(Object.hasOwn(synthetic128,'release_version'))synthetic128.release_version='1.3.128';
+    const contractFields=['version','display_version','version_code','sha256','size','source_commit','corresponding_source','single_line_migration','release_notes'];
+    const syntheticContract=Object.fromEntries(contractFields.map(field=>[field,structuredClone(synthetic128[field])]));
+    function use128(mutate=()=>{}) {
+      alias(signedPayload(p=>{Object.assign(p,structuredClone(synthetic128));mutate(p);}));
+      state.binaries[134]=bytes('1.2.8');
+    }
+    use128();await unavailable('synthetic128 cannot match the official production identity');
+    const readerSource=await readFile(new URL('../lib/magireco-release.js',import.meta.url),'utf8');
+    const contractDeclaration=/^const RELEASE_128_CONTRACT = .*;$/m;
+    assert.equal(readerSource.match(new RegExp(contractDeclaration.source,'gm'))?.length,1);
+    async function boundReader(contract) {
+      const source=readerSource.replace(contractDeclaration,
+        'const RELEASE_128_CONTRACT = '+JSON.stringify(contract)+';');
+      return (await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).readMagirecoRelease;
+    }
+    const readUnbound=await boundReader(null);
+    await assert.rejects(()=>readUnbound(env));cases++;
+    const readBound=await boundReader(syntheticContract);
+    for(const urls of [[root+canonicalName],[root+canonicalName,bridge+aliasName]]) {
+      use128(p=>{p.apk_urls=urls;});const result=await readBound(env);
+      assert.equal(result.version,'1.2.8');assert.equal(result.sha256,synthetic128.sha256);
+      assert.equal(result.size,synthetic128.size);assert.equal(result.asset.name,'magireco-cn-1.2.8.apk');
+      assert.equal(result.asset.id,134);assert.equal(result.asset.url,base+'/releases/assets/134');
+      const html=renderContent('home','magireco-private-server',{magireco:{...result,state:'ready'}});
+      assert.ok(html.includes('magireco-legacy-client-1.2.8-corresponding-source.zip'));
+      assert.ok(!html.includes('1.2.8 更新内容'));assert.ok(!html.includes('客户端版本 1.3.128'));
+      cases++;
+    }
+    for(const urls of [[root+canonicalName],[root+canonicalName,bridge+aliasName]]) {
+      alias(signedPayload(p=>{p.apk_urls=urls;}));const result=await readBound(env);
+      assert.equal(result.version,'1.2.7');cases++;
+    }
+    use128(p=>{p.corresponding_source.url=root+p.corresponding_source.asset;});
+    assert.equal((await readBound(env)).version,'1.2.8');cases++;
+    use128();state.current.release_notes=['not signed'];await assert.rejects(()=>readBound(env));cases++;
+    const invalid128={
+      'APK hash':p=>p.sha256='9'.repeat(64),
+      'APK size':p=>p.size++,
+      'GPL hash':p=>p.corresponding_source.sha256='9'.repeat(64),
+      'GPL size':p=>p.corresponding_source.size++,
+      'GPL old name':p=>p.corresponding_source.asset='magireco-legacy-client-1.2.7-corresponding-source.zip',
+      'source commit':p=>p.source_commit='9'.repeat(40),
+      'lower code':p=>{p.version_code=1713000879;p.compatibility_discovery.installed_version_code=p.version_code;},
+      'higher code':p=>{p.version_code=1713000881;p.compatibility_discovery.installed_version_code=p.version_code;},
+      'migration':p=>p.single_line_migration.minimum_code++,
+      'notes':p=>p.release_notes.push('unsigned by frozen contract'),
+      'old display':p=>p.display_version='1.2.7',
+      'mixed mapping':p=>p.compatibility_discovery.discovery_version='1.3.127',
+      'old first note':p=>p.release_notes[0]='实际安装版本：1.2.7；1.3.127',
+      'unknown alias':p=>p.version='1.3.129',
+      'bad route':p=>p.apk_urls=[root+canonicalName,bridge+canonicalName],
+    };
+    for(const [label,mutate] of Object.entries(invalid128)) {
+      use128(mutate);await assert.rejects(()=>readBound(env),undefined,label);cases++;
+    }
+    for(const contract of [null,{}, {...syntheticContract,sha256:null},
+      {...syntheticContract,extra:true}, {...syntheticContract,release_notes:[123]},
+      {...syntheticContract,corresponding_source:{...syntheticContract.corresponding_source,url:'extra'}},
+      {...syntheticContract,corresponding_source:{asset:syntheticContract.corresponding_source.asset}},
+      {...syntheticContract,single_line_migration:{}}]) {
+      use128();await assert.rejects(()=>(boundReader(contract)).then(reader=>reader(env)));cases++;
+    }
+    use128();state.current.sha256='9'.repeat(64);await assert.rejects(()=>readBound(env));cases++;
+    use128();state.current.signed_update.signature='0'.repeat(768);await assert.rejects(()=>readBound(env));cases++;
+    use128();state.release.assets[0].digest='sha256:'+'9'.repeat(64);await assert.rejects(()=>readBound(env));cases++;
+    for(const version of ['1.2.8','1.2.08','1.2.9','1.2.999']) {
+      reset(version);await unavailable('raw future patch bypass '+version);
+      delete state.current.signed_update;await unavailable('raw future without envelope '+version);
+    }
+    reset('1.2.7');state.current.version_code=1713000880;
+    state.current.signed_update.payload=JSON.stringify({...state.current,apk_urls:[root+canonicalName]});
+    await unavailable('future code disguised as historical raw127');
+    alias(signedPayload(p=>{p.version_code=1713000880;p.compatibility_discovery.installed_version_code=p.version_code;}));
+    await unavailable('future code disguised as signed127');
+    console.log('PASS128 support: unbound and synthetic production identities rejected; isolated frozen fixture accepts128 while preserving127; identity/migration/routes/raw bypasses rejected');
     alias(signedPayload(()=>{},'WRONG-DOMAIN\n'));await unavailable('wrong signed domain');
     reset();state.current.display_version='1.2.7';await unavailable('unsigned display attached to ordinary126 path');
   } finally {subtle.importKey=originalImport;}

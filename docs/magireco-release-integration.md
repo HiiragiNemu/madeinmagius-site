@@ -55,7 +55,7 @@ GitHub Pages 的 `serviceUrl()` 继续把 API 与下载请求送到现有 Cloudf
 
 ## 1.2.8 兼容支持（先保留公开 1.2.7）
 
-保留已发布 1.2.7 的原签名映射、六条公告、源码及精确单/双路由。`RELEASE_128_CONTRACT` 已绑定生产方正式 D4 产物：APK SHA-256 `ab6b86cce6a0682eac7deb8b031cbd1d4c8aadc1d08aa5245ffb82e40450b480`、462921036 字节；source commit `7c90eaf516bd172aa92fd35e4273bb11303f02fe`；GPL SHA-256 `fab049c7735fd7a26dc6813917a0897f5f22cd8f1042e49cd33a13d547edccd3`、126407078 字节。此处只增加兼容支持，不切换上游 APK、元数据或公告，也不将失败的 128 元数据改标成 127。
+保留已发布 1.2.7 的原签名映射、六条公告、源码及精确单/双路由。`RELEASE_128_CONTRACT` 已绑定生产方正式 D12 产物：APK SHA-256 `6c9a3041cd1e51a40c1d154bd41680378608f5163e13e337bbd1a406e70b313a`、463101260 字节；source commit `7df8930fe6bcb1d0f9aee0ecd22a761e98f675b6`；GPL SHA-256 `4ea61ccfd67edb50551f31b956b31cd55a6e51b93e34b5ebea29b54106c7269e`、126460466 字节。此处只增加兼容支持，不切换上游 APK、元数据或公告，也不将失败的 128 元数据改标成 127。
 
 正式映射为 `version=1.3.128 / display_version=1.2.8 / version_code=1713000880`。APK SHA/大小、源码 ZIP 文件名/SHA/大小、source commit、完整迁移合同和更新说明均按生产方 `pipeline-manifest.json.contract` 固定。字段必须与官方签名原始 payload 及已上传资产一致；未知合同和运行时覆盖入口均不接受。原 127 的已用构建号 0869/0870 保留；未来构建号或 raw 1.2.8、1.2.08 等不绕过新合同。
 

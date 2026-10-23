@@ -279,7 +279,13 @@ async function discoveryContractTests() {
       assert.equal(result.asset.id,134);assert.equal(result.asset.url,base+'/releases/assets/134');
       const html=renderContent('home','magireco-private-server',{magireco:{...result,state:'ready'}});
       assert.ok(html.includes('magireco-legacy-client-1.2.8-corresponding-source.zip'));
-      assert.ok(!html.includes('1.2.8 更新内容'));assert.ok(!html.includes('客户端版本 1.3.128'));
+      const officialContract=JSON.parse(readerSource.match(/^const RELEASE_128_CONTRACT = (.*);$/m)[1]);
+      const notes128=html.split('<h3>1.2.8 更新内容</h3><ul>')[1]?.split('</ul>')[0];
+      assert.equal(officialContract.release_notes.length,8);
+      assert.equal((notes128?.match(/<li>/g)||[]).length,8);
+      for(const note of officialContract.release_notes)assert.ok(notes128.includes(note),note);
+      assert.ok(!html.includes('客户端版本 1.3.128'));
+      assert.ok(!html.includes('1.2.7 更新内容'));
       cases++;
     }
     for(const urls of [[root+canonicalName],[root+canonicalName,bridge+aliasName]]) {
@@ -395,6 +401,7 @@ try {
   assert.ok(!release127.includes('误报已是最新版'));
   assert.ok(!release127.includes('完成一次覆盖迁移'));
   assert.ok(!release127.includes('1.2.6 更新内容'));
+  assert.ok(!release127.includes('1.2.8 更新内容'));
   assert.ok(release127.includes('不要卸载或清除数据'));
   assert.ok(release127.includes(root+'magireco-legacy-client-1.2.7-corresponding-source.zip'));
   assert.equal((release127.match(/>下载 APK<\/a>/g)||[]).length,1);
@@ -402,6 +409,7 @@ try {
     const pending=renderContent('home','magireco-private-server',{magireco:{state}});
     assert.ok(!pending.includes('误报已是最新版'));
     assert.ok(!pending.includes('1.2.7 更新内容'));
+    assert.ok(!pending.includes('1.2.8 更新内容'));
     assert.equal((pending.match(/>下载 APK<\/a>/g)||[]).length,0);
     cases++;
   }

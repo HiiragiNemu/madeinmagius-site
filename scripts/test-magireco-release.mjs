@@ -384,7 +384,7 @@ async function discoveryContractTests() {
       'source':p=>p.source_commit='a'.repeat(40),'notes':p=>p.release_notes.push('different'),
       'migration':p=>p.single_line_migration.minimum_code++,
       'mapping':p=>p.compatibility_discovery.discovery_version='1.3.128',
-      'unknown130':p=>p.version='1.3.130','raw129':p=>p.version='1.2.9',
+      'unknown131':p=>p.version='1.3.131','raw129':p=>p.version='1.2.9',
       'route':p=>p.apk_urls=[bridge+aliasName],
     })) {use129(mutate);await assert.rejects(()=>read129(env),undefined,label);cases++;}
     for(const mutate of [p=>p.version_code=1713000880,p=>p.version_code='1713000999',p=>p.version_code=2147483648,
@@ -399,6 +399,153 @@ async function discoveryContractTests() {
       use129();mutate();await assert.rejects(()=>read129(env));cases++;
     }
     console.log('PASS129 local preparation: null rejects; synthetic bound accepts129 and preserves128/127; mismatched identity, migration, signer and assets rejected; confirmed code; synthetic payload only');
+
+    // 130 fixtures never substitute for the producer's official APK/source identity.
+    const synthetic130=structuredClone(synthetic129);
+    Object.assign(synthetic130,{version:'1.3.130',display_version:'1.3.0',version_code:1713000882,
+      sha256:sha(bytes('1.3.0')),size:bytes('1.3.0').length,source_commit:'c'.repeat(40),
+      corresponding_source:{asset:'magireco-legacy-client-1.3.0-corresponding-source.zip',sha256:'c'.repeat(64),size:130},
+      release_notes:['实际安装版本：1.3.0；1.3.130仅为旧版发现序号。合成测试，非发布。']});
+    synthetic130.compatibility_discovery={...synthetic130.compatibility_discovery,discovery_version:'1.3.130',
+      installed_public_version:'1.3.0',installed_version_code:1713000882};
+    synthetic130.single_line_migration={...synthetic130.single_line_migration,minimum_version:'1.3.0',minimum_code:1713000882,
+      legacy_discovery:{version:'1.3.130',display_version:'1.3.0'}};
+    if(Object.hasOwn(synthetic130,'release_version'))synthetic130.release_version='1.3.130';
+    const contract130=Object.fromEntries(contractFields.map(field=>[field,structuredClone(synthetic130[field])]));
+    const declaration130=/^const RELEASE_130_CONTRACT = .*;$/m;
+    assert.equal(readerSource.match(new RegExp(declaration130.source,'gm'))?.length,1);
+    const official130=JSON.parse(readerSource.match(/^const RELEASE_130_CONTRACT = (.*);$/m)[1]);
+    function use130(mutate=()=>{}) {
+      alias(signedPayload(p=>{Object.assign(p,structuredClone(synthetic130));mutate(p);}));
+      state.binaries[134]=bytes('1.3.0');
+    }
+    const moduleUrl=source=>'data:text/javascript;base64,'+Buffer.from(source).toString('base64');
+    function reader130Url(contract) {
+      return moduleUrl(readerSource.replace(contractDeclaration,'const RELEASE_128_CONTRACT = '+JSON.stringify(syntheticContract)+';')
+        .replace(/^const RELEASE_129_CONTRACT = .*;$/m,'const RELEASE_129_CONTRACT = '+JSON.stringify(contract129)+';')
+        .replace(declaration130,'const RELEASE_130_CONTRACT = '+JSON.stringify(contract)+';'));
+    }
+    async function boundReader130(contract) {return (await import(reader130Url(contract))).readMagirecoRelease;}
+    use130();await unavailable('synthetic130 is not an official bound production identity');
+    await assert.rejects(()=>(boundReader130(null)).then(reader=>reader(env)));cases++;
+    const read130=await boundReader130(contract130);
+    // Exercise the real handlers with only their reader import rebound in this process.
+    const apiSource=await readFile(new URL('../functions/api/magireco.js',import.meta.url),'utf8');
+    const downloadSource=await readFile(new URL('../functions/downloads/magireco/android.js',import.meta.url),'utf8');
+    assert.equal(apiSource.split("'../../lib/magireco-release.js'").length,2);
+    assert.equal(downloadSource.split("'../../../lib/magireco-release.js'").length,2);
+    assert.equal(downloadSource.split("'../[project]/[kind].js'").length,2);
+    const {onRequestGet:metadata130}=await import(moduleUrl(apiSource.replace("'../../lib/magireco-release.js'",JSON.stringify(reader130Url(contract130)))));
+    const {onRequestGet:download130,onRequestHead:head130}=await import(moduleUrl(downloadSource
+      .replace("'../../../lib/magireco-release.js'",JSON.stringify(reader130Url(contract130)))
+      .replace("'../[project]/[kind].js'",JSON.stringify(new URL('../functions/downloads/[project]/[kind].js',import.meta.url).href))));
+    for(const urls of [[root+canonicalName],exactDual]) {
+      use130(p=>p.apk_urls=urls);
+      const selected130=await read130(env);
+      assert.equal(selected130.version,'1.3.0');assert.equal(selected130.sha256,synthetic130.sha256);
+      assert.equal(selected130.size,synthetic130.size);assert.equal(selected130.asset.id,134);
+      assert.equal(selected130.asset.name,'magireco-cn-1.3.0.apk');assert.equal(selected130.asset.url,base+'/releases/assets/134');
+      const response=await metadata130({env});assert.equal(response.status,200);
+      assert.equal(response.headers.get('cache-control'),'no-store');
+      const current130=await response.json();assert.equal(current130.version,'1.3.0');assert.equal(current130.source,'current');
+      assert.equal(current130.asset,undefined);assert.ok(!JSON.stringify(current130).includes(env.GITHUB_RELEASES_TOKEN));
+      assert.equal(current130.download,'./downloads/magireco/android?sha256='+synthetic130.sha256);cases++;
+      calls=[];
+      const full=await download130(context('?sha256='+current130.sha256));assert.equal(full.status,200);
+      assert.equal(await full.text(),bytes('1.3.0').toString());assert.equal(full.headers.get('x-client-version'),'1.3.0');
+      assert.ok(full.headers.get('content-disposition').includes('magireco-cn-1.3.0.apk'));
+      assert.equal(full.headers.get('cache-control'),'no-store');assert.ok(calls.some(call=>call.url===base+'/releases/assets/134'));cases++;
+      calls=[];
+      const headers=await head130(context('?sha256='+current130.sha256,'HEAD'));assert.equal(headers.status,200);
+      assert.equal(await headers.text(),'');assert.equal(headers.headers.get('content-length'),String(synthetic130.size));
+      assert.equal(headers.headers.get('x-client-version'),'1.3.0');assert.equal(calls.length,2);
+      assert.ok(!calls.some(call=>call.url.includes('/releases/assets/')));cases++;
+      calls=[];
+      const range=await download130(context('?sha256='+current130.sha256,'GET',{Range:'bytes=0-1'}));assert.equal(range.status,206);
+      assert.equal(await range.text(),bytes('1.3.0').subarray(0,2).toString());
+      assert.equal(range.headers.get('content-range'),`bytes 0-1/${synthetic130.size}`);
+      assert.equal(range.headers.get('x-client-version'),'1.3.0');
+      assert.ok(calls.filter(call=>call.url.includes('/releases/assets/')||call.url.startsWith('https://objects.test/')).every(call=>call.range==='bytes=0-1'));
+      assert.ok(!calls.some(call=>call.url===bridge+aliasName||call.url===bridge+canonicalName));cases++;
+      calls=[];
+      assert.equal((await download130(context('?sha256='+'0'.repeat(64)))).status,409);
+      assert.ok(!calls.some(call=>call.url.includes('/releases/assets/')));cases++;
+      const rendered=renderContent('home','magireco-private-server',{magireco:{...current130,state:'ready'}});
+      assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);
+      assert.ok(rendered.includes('客户端版本 1.3.0'));
+      assert.ok(rendered.includes('magireco-legacy-client-1.3.0-corresponding-source.zip'));
+      assert.ok(!rendered.includes('客户端版本 1.3.130'));
+      assert.ok(!rendered.includes('magireco-legacy-client-1.3.130-corresponding-source.zip'));
+      assert.ok(!rendered.includes('实际安装版本统一为 1.2.x'));
+      assert.ok(!rendered.includes('1.2.9 更新内容'));
+      const notes130=rendered.split('<h3>1.3.0 更新内容</h3><ul>')[1]?.split('</ul>')[0];
+      // Support deploy binds the identity before activation adds its notes.
+      if(notes130 !== undefined) {
+        assert.ok(official130,'published notes require the official bound identity');
+        assert.equal((notes130?.match(/<li>/g)||[]).length,official130.release_notes.length);
+        for(const note of official130.release_notes)assert.ok(notes130.includes(note),note);
+      }
+      if(!official130) assert.equal(notes130,undefined,'unbound130 must not invent published notes');
+      cases++;
+      use129(p=>p.apk_urls=urls);assert.equal((await read130(env)).version,'1.2.9');cases++;
+      use128(p=>p.apk_urls=urls);assert.equal((await read130(env)).version,'1.2.8');cases++;
+      alias(signedPayload(p=>p.apk_urls=urls));assert.equal((await read130(env)).version,'1.2.7');cases++;
+    }
+    use130(p=>p.corresponding_source.url=root+p.corresponding_source.asset);
+    assert.equal((await read130(env)).version,'1.3.0');cases++;
+    for(const [label,mutate] of Object.entries({
+      'lower code':p=>{p.version_code--;p.compatibility_discovery.installed_version_code=p.version_code;},
+      'higher code':p=>{p.version_code++;p.compatibility_discovery.installed_version_code=p.version_code;},
+      'APK hash':p=>p.sha256='b'.repeat(64),'APK size':p=>p.size++,
+      'GPL hash':p=>p.corresponding_source.sha256='b'.repeat(64),'GPL size':p=>p.corresponding_source.size++,
+      'GPL alias name':p=>p.corresponding_source.asset='magireco-legacy-client-1.3.130-corresponding-source.zip',
+      'source':p=>p.source_commit='b'.repeat(40),'notes':p=>p.release_notes.push('different'),
+      'migration':p=>p.single_line_migration.minimum_code++,
+      'old display':p=>p.display_version='1.2.9','mapping':p=>p.compatibility_discovery.discovery_version='1.3.129',
+      'unknown131':p=>p.version='1.3.131','raw130':p=>p.version='1.3.0',
+      'coherent future131':p=>{
+        Object.assign(p,{version:'1.3.131',display_version:'1.3.1',version_code:1713000883,
+          release_notes:['实际安装版本：1.3.1；1.3.131仅为旧版发现序号。合成测试，非发布。']});
+        Object.assign(p.compatibility_discovery,{discovery_version:'1.3.131',installed_public_version:'1.3.1',installed_version_code:1713000883});
+        Object.assign(p.single_line_migration,{minimum_version:'1.3.1',minimum_code:1713000883,
+          legacy_discovery:{version:'1.3.131',display_version:'1.3.1'}});
+        p.corresponding_source.asset='magireco-legacy-client-1.3.1-corresponding-source.zip';
+        if(Object.hasOwn(p,'release_version'))p.release_version='1.3.131';
+      },
+      'release identity':p=>p.release_version='1.3.0','route':p=>p.apk_urls=[bridge+aliasName],
+      'unsigned-shape mapping':p=>p.compatibility_discovery.same_published_apk=false,
+    })) {use130(mutate);await assert.rejects(()=>read130(env),undefined,'130 '+label);cases++;}
+    for(const [label,mutate] of Object.entries({
+      'lower code':p=>p.version_code=1713000881,'higher code':p=>p.version_code=1713000883,
+      'string code':p=>p.version_code='1713000882','extra field':p=>p.extra=true,
+      'bad hash':p=>p.sha256=null,'bad size':p=>p.size=0,'bad source':p=>p.source_commit='invalid',
+      'bad source hash':p=>p.corresponding_source.sha256='invalid','bad source size':p=>p.corresponding_source.size=0,
+      'extra source field':p=>p.corresponding_source.extra=true,'missing source':p=>delete p.corresponding_source,
+      'bad notes':p=>p.release_notes=[123],'empty notes':p=>p.release_notes=[],
+      'migration code':p=>p.single_line_migration.minimum_code++,
+      'migration source':p=>p.single_line_migration.from.sha256='b'.repeat(64),
+      'migration mode':p=>p.single_line_migration.mode='other','migration line':p=>p.single_line_migration.to_line='other',
+      'migration minimum':p=>p.single_line_migration.minimum_version='1.2.9',
+    })) {
+      const invalid=structuredClone(contract130);mutate(invalid);
+      use130(p=>Object.assign(p,structuredClone(invalid)));
+      await assert.rejects(()=>(boundReader130(invalid)).then(reader=>reader(env)),undefined,'130 invalid contract '+label);cases++;
+    }
+    for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),
+      ()=>state.current.source_commit='b'.repeat(40),()=>state.current.release_notes=['not signed'],
+      ()=>state.release.assets[0].digest='sha256:'+'b'.repeat(64),()=>state.release.assets.pop(),
+      ()=>state.release.assets.at(-1).digest='sha256:'+'b'.repeat(64)]) {
+      use130();mutate();await assert.rejects(()=>read130(env));
+      assert.equal((await metadata130({env})).status,503);assert.equal((await download130(context())).status,503);cases++;
+    }
+    for(const version of ['1.3.0','1.3.00','1.3.1','1.3.130','1.3.131']) {
+      reset(version);await assert.rejects(()=>read130(env),undefined,'raw version '+version);cases++;
+      delete state.current.signed_update;await assert.rejects(()=>read130(env),undefined,'unsigned raw version '+version);cases++;
+    }
+    reset('1.3.0');state.current.version_code=1713000882;
+    state.current.signed_update.payload=JSON.stringify({...state.current,apk_urls:[root+canonicalName]});
+    await assert.rejects(()=>read130(env),undefined,'raw130 with exact production code');cases++;
+    console.log('PASS130 preparation: null and synthetic production identities reject; isolated signed130 -> display1.3.0/code1713000882 accepts; GET/HEAD/Range and stale409; preserves129/128/127; raw/future/forged/altered contracts reject; no invented notes');
 
     console.log('PASS128 support: unbound and synthetic production identities rejected; isolated frozen fixture accepts128 while preserving127; identity/migration/routes/raw bypasses rejected');
     alias(signedPayload(()=>{},'WRONG-DOMAIN\n'));await unavailable('wrong signed domain');
@@ -478,6 +625,8 @@ try {
     assert.ok(!pending.includes('1.2.7 更新内容'));
     assert.ok(!pending.includes('1.2.8 更新内容'));
     assert.ok(!pending.includes('1.2.9 更新内容'));
+    assert.ok(!pending.includes('1.3.0 更新内容'));
+    assert.ok(!pending.includes('客户端版本 1.3.0'));
     assert.equal((pending.match(/>下载 APK<\/a>/g)||[]).length,0);
     cases++;
   }

@@ -750,7 +750,10 @@ async function discoveryContractTests() {
       assert.ok(rendered.includes('客户端版本 1.3.2'));
       assert.ok(rendered.includes('magireco-legacy-client-1.3.2-corresponding-source.zip'));
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);
-      for(const hidden of ['1.3.2 更新内容','客户端版本 1.3.132','magireco-legacy-client-1.3.132-corresponding-source.zip','1.3.0 更新内容','实际安装版本统一为 1.2.x'])assert.ok(!rendered.includes(hidden),hidden);
+      const displayed132Notes=rendered.split('<h3>1.3.2 更新内容</h3><ul>')[1]?.split('</ul>')[0];
+      assert.ok(displayed132Notes);assert.equal((displayed132Notes.match(/<li>/g)||[]).length,official132.release_notes.length);
+      for(const note of official132.release_notes)assert.ok(displayed132Notes.includes(note));
+      for(const hidden of ['客户端版本 1.3.132','magireco-legacy-client-1.3.132-corresponding-source.zip','1.3.0 更新内容','实际安装版本统一为 1.2.x'])assert.ok(!rendered.includes(hidden),hidden);
       cases++;
       for(const [select,version] of [[use131,'1.3.1'],[use130,'1.3.0'],[use129,'1.2.9'],[use128,'1.2.8']]) {
         select(p=>p.apk_urls=urls);assert.equal((await read132(env)).version,version);cases++;

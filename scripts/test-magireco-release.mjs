@@ -975,8 +975,10 @@ async function discoveryContractTests() {
     const read135=(await import(reader135Url())).readMagirecoRelease;
     const handlers135=await boundHandlers(reader135Url());
     use135();await assert.rejects(()=>(import(reader135Url(null))).then(module=>module.readMagirecoRelease(env)));cases++;
-    for(const urls of [[root+fixed135],[root+fixed135,bridge+aliasName]]) {
-      use135(p=>p.apk_urls=urls);const selected135=await read135(env);
+    for(const urls of [[root+fixed135],[root+fixed135,bridge+aliasName],[bridge+aliasName]]) {
+      use135(p=>p.apk_urls=urls);
+      if(urls[0]===bridge+aliasName)Object.assign(state.current,{apk:aliasName,apk_url:urls[0]});
+      const selected135=await read135(env);
       assert.equal(selected135.version,'1.3.5');assert.equal(selected135.sha256,synthetic135.sha256);assert.equal(selected135.asset.id,134);
       const current135=await (await handlers135.metadata({env})).json();assert.equal(current135.version,'1.3.5');
       for(const [handler,method,headers,status] of [[handlers135.download,'GET',{},200],[handlers135.head,'HEAD',{},200],[handlers135.download,'GET',{Range:'bytes=0-1'},206]]) {
@@ -999,14 +1001,14 @@ async function discoveryContractTests() {
       'GPL size':p=>p.corresponding_source.size++,'notes':p=>p.release_notes=['different'],
       'mapping':p=>p.compatibility_discovery.installed_public_version='1.3.3','raw':p=>p.version='1.3.5',
       'old canonical':p=>p.apk_urls=[root+canonicalName], 'old dual':p=>p.apk_urls=exactDual,
-      'relay only':p=>p.apk_urls=[bridge+aliasName],'reversed routes':p=>p.apk_urls=[bridge+aliasName,root+fixed135],
+      'relay with stale outer URL':p=>p.apk_urls=[bridge+aliasName],'reversed routes':p=>p.apk_urls=[bridge+aliasName,root+fixed135],
       'future':p=>p.version='1.3.136'
     })) {use135(mutate);await assert.rejects(()=>read135(env),undefined,'135 '+label);cases++;}
     for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),()=>state.release.assets[0].name=canonicalName,
       ()=>state.current.apk=canonicalName,()=>state.current.apk_url=root+canonicalName,()=>state.release.assets.pop(),()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64)]) {
       use135();mutate();assert.equal((await handlers135.metadata({env})).status,503);assert.equal((await handlers135.download(context())).status,503);cases++;
     }
-    console.log('PASS135 fixed canonical single APK: signed135 -> display1.3.5/code1713000889; API/GET/HEAD/Range/stale409; preserves133 and older; signature/identity/route/source tampering rejected; version-gated notes');
+    console.log('PASS135 fixed asset plus current-only signed relay: signed135 -> display1.3.5/code1713000889; API/GET/HEAD/Range/stale409; preserves133 and older; signature/identity/route/source tampering rejected; version-gated notes');
 
     console.log('PASS128 support: unbound and synthetic production identities rejected; isolated frozen fixture accepts128 while preserving127; identity/migration/routes/raw bypasses rejected');
     alias(signedPayload(()=>{},'WRONG-DOMAIN\n'));await unavailable('wrong signed domain');

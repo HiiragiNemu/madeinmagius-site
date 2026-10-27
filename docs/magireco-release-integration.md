@@ -60,3 +60,18 @@ GitHub Pages 的 `serviceUrl()` 继续把 API 与下载请求送到现有 Cloudf
 正式映射为 `version=1.3.128 / display_version=1.2.8 / version_code=1713000880`。APK SHA/大小、源码 ZIP 文件名/SHA/大小、source commit、完整迁移合同和更新说明均按生产方 `pipeline-manifest.json.contract` 固定。字段必须与官方签名原始 payload 及已上传资产一致；未知合同和运行时覆盖入口均不接受。原 127 的已用构建号 0869/0870 保留；未来构建号或 raw 1.2.8、1.2.08 等不绕过新合同。
 
 测试中的临时 RSA 签名、数据 URL 源副本和合成128合同仅用于验证，不进入生产身份。支持部署完成后，公开入口仍读取上游 current 的 1.2.7；生产任务完成正式 APK 发布并发出切换指令后再同步 1.2.8 公告。APK/relay 发布及设备仍由生产任务持有，最终线上体验由用户验收。
+
+
+## 1.3.5 discovery support / fixed single APK
+
+Accept only publisher-signed discovery `1.3.135`, display `1.3.5`, code
+`1713000889`, bound to `RELEASE_135_CONTRACT`. Its sole canonical asset is
+`magireco-legacy-client-1.3.5.apk`; the optional second signed URL is the existing
+relay current route. Historical latest/current GitHub aliases remain untouched.
+The existing 1.3.3 metadata keeps displaying 1.3.3 until release activation.
+The UI selects 1.3.5 notes only after the verified API returns 1.3.5.
+
+APK SHA-256: `8deec9afd8297cca489c8e8cf8ff766a4aacb1b507f7ef6f936efa71a9da0d7e` (131473992 bytes).
+Corresponding source SHA-256: `fd90681e9aa93ed02ee1d55ac276475d15bd7acec884948239967d2a42698d87` (733668080 bytes).
+APK source commit: `50ede236f903b6ce9d9253fa32b4789e7d1c12b1`. CN018 is an external Pack17
+data override documented in that source ZIP, not a rebuilt APK.

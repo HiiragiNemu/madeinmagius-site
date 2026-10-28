@@ -17,6 +17,8 @@ const required = [
   'assets/fonts/night-pixel/fusion-pixel-12px-monospaced-ja.2026.07.20.woff2',
   'assets/fonts/night-pixel/OFL.txt',
   'data/releases.json',
+  'data/magireco-release.json',
+  'assets/magireco-loader.js',
   'data/exedra-docs.json',
   'data/exedra-integrity.json',
 ];

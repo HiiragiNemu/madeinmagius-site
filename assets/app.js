@@ -1,5 +1,6 @@
 import { PROGRAMS, escapeHtml, renderContent, serviceUrl } from './content.js?v=20261017-report1';
 import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260921-iosnative1';
+import { loadMagirecoReleaseData } from './magireco-loader.js';
 
 const body = document.body;
 const iosStatic = document.documentElement.dataset.crtPlatform === 'ios-webkit';
@@ -433,17 +434,15 @@ async function loadMagirecoRelease() {
   magirecoLoading = true;
   data.magireco = { state: 'loading' };
   if (programId === 'home' && subId === 'magireco-private-server') renderCurrentContent();
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
   try {
-    const response = await fetch(serviceUrl('./api/magireco'), { cache: 'no-store', signal: controller.signal });
-    if (!response.ok) throw new Error('Release sync unavailable');
-    const current = await response.json();
-    data.magireco = { ...current, state: 'ready' };
-  } catch {
-    data.magireco = { state: 'error' };
+    data.magireco = await loadMagirecoReleaseData({
+      liveUrl: serviceUrl('./api/magireco'),
+      onUpdate(current) {
+        data.magireco = current;
+        if (programId === 'home' && subId === 'magireco-private-server') renderCurrentContent();
+      },
+    });
   } finally {
-    clearTimeout(timeout);
     magirecoLoading = false;
     if (programId === 'home' && subId === 'magireco-private-server') renderCurrentContent();
   }

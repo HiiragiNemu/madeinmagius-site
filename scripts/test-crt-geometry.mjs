@@ -41,8 +41,8 @@ test('build versions dependencies and parent app so optics updates do not reuse 
   try {
     await mkdir(path.join(dir, 'assets'));
     await writeFile(path.join(dir, 'index.html'), '<link href="./assets/styles.css?v=old"><script type="module" src="./assets/app.js?v=old"></script>');
-    await writeFile(path.join(dir, 'assets/app.js'), "import {x} from './content.js?v=old';\nimport {y} from './effects.js?v=old';");
-    for (const f of ['content.js','effects.js','styles.css']) await writeFile(path.join(dir, 'assets', f), 'first-' + f);
+    await writeFile(path.join(dir, 'assets/app.js'), "import {x} from './content.js?v=old';\nimport {y} from './effects.js?v=old';\nimport {z} from './magireco-loader.js?v=old';");
+    for (const f of ['content.js','effects.js','styles.css','magireco-loader.js']) await writeFile(path.join(dir, 'assets', f), 'first-' + f);
     const first = await versionStaticAssets(dir);
     const again = await versionStaticAssets(dir); assert.deepEqual(again, first);
     await writeFile(path.join(dir, 'assets/effects.js'), 'fixed-optics');

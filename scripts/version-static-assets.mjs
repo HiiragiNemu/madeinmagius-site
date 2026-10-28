@@ -7,7 +7,7 @@ export async function versionStaticAssets(directory) {
   const assets = path.join(directory, 'assets');
   let app = await readFile(path.join(assets, 'app.js'), 'utf8');
   const versions = {};
-  for (const name of ['content.js', 'effects.js']) {
+  for (const name of ['content.js', 'effects.js', 'magireco-loader.js']) {
     versions[name] = version(await readFile(path.join(assets, name)));
     const expression = new RegExp('\\./' + name.replace('.', '\\.') + '(?:\\?[^\'\"]*)?', 'g');
     let matches = 0;

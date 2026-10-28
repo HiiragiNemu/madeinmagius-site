@@ -1,0 +1,9 @@
+{
+  "schema": "madeinmagius-magireco-snapshot/v1",
+  "version": "1.3.6",
+  "size": 131473992,
+  "sha256": "5d1877a62ebbeae6b22b239fd1d7a942061dc1e35a124ae5e59444f0bd41ab2f",
+  "source": "published-snapshot",
+  "updated": "2026-10-28T02:47:51Z",
+  "download": "https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.3.6.apk"
+}

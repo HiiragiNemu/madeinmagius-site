@@ -4,7 +4,9 @@ import { readFile } from 'node:fs/promises';
 import { createMagirecoSnapshot, fixedApkName } from './update-magireco-snapshot.mjs';
 
 const client = JSON.parse(await readFile(new URL('./fixtures/magireco-discovery138.json', import.meta.url)));
-const snapshot = JSON.parse(await readFile(new URL('../data/magireco-release.json', import.meta.url)));
+const snapshot = {schema:'madeinmagius-magireco-snapshot/v1',version:'1.3.8',version_code:1713000895,
+  size:134530376,sha256:'f140fd086be89b03e9ac65a47fc0cee1daa57561fb49dead6440bd34b9620e0c',
+  source:'published-snapshot',updated:null,download:'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.3.8.apk'};
 
 test('138 snapshot is generated from the actual publisher signature and frozen identity', async () => {
   const fetch = globalThis.fetch;

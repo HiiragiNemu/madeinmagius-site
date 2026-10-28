@@ -2,46 +2,34 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readMagirecoRelease } from '../lib/magireco-release.js';
+import { selectMagirecoRelease } from '../lib/magireco-release.js';
 
 const releaseRoot = 'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/';
-const metadataUrl = 'https://magireco-personal-release.pages.dev/magireco-current-legacy-client.version.json';
-const releaseUrl = 'https://api.github.com/repos/HiiragiNemu/ProgettoMagius-1/releases/tags/latest';
 
-// Artifact naming is generation-neutral; signature and approved release binding
+// Artifact naming is generation-neutral; signature and publisher identity
 // validation below still decides whether a version is publishable.
 export function fixedApkName(version) {
   assert.match(version || '', /^[1-9]\d*\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/);
   return 'magireco-legacy-client-' + version + '.apk';
 }
 
-// Offline only: validate the publisher signature and frozen site contract before
+// Offline only: validate the publisher signature and release identity before
 // constructing the static fallback. Asset publication is checked by the publisher.
-export async function createMagirecoSnapshot(client) {
+export async function createMagirecoSnapshot(client, publishedRelease = null) {
   assert.ok(client && typeof client === 'object');
-  const fixedName = fixedApkName(client.display_version);
+  const fixedName = fixedApkName(client.display_version ?? client.version);
   const source = client.corresponding_source;
   assert.ok(source && typeof source === 'object');
-  const release = { draft:false, prerelease:false, assets:[
+  const release = publishedRelease || { draft:false, prerelease:false, assets:[
     { id:1, name:fixedName, state:'uploaded', size:client.size, digest:'sha256:' + client.sha256 },
     { id:2, name:source.asset, state:'uploaded', size:source.size, digest:'sha256:' + source.sha256 },
   ] };
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async url => {
-    if (url === metadataUrl) return Response.json(client);
-    if (url === releaseUrl) return Response.json(release);
-    throw new Error('Unexpected network request in offline snapshot updater: ' + url);
-  };
-  let selected;
-  try {
-    selected = await readMagirecoRelease({ GITHUB_RELEASES_TOKEN:'offline-snapshot-fixture' });
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-  assert.equal(selected.version, client.display_version);
+  const selected = await selectMagirecoRelease(client, release);
+  assert.equal(selected.version, client.display_version ?? client.version);
   return {
     schema:'madeinmagius-magireco-snapshot/v1',
     version:selected.version,
+    version_code:selected.version_code,
     size:selected.size,
     sha256:selected.sha256,
     source:'published-snapshot',

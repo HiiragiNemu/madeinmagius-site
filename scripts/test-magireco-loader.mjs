@@ -4,15 +4,10 @@ import { readFile } from 'node:fs/promises';
 import { loadMagirecoReleaseData } from '../assets/magireco-loader.js';
 import { renderContent, serviceUrl } from '../assets/content.js';
 const snapshot = JSON.parse(await readFile(new URL('../data/magireco-release.json', import.meta.url)));
-const contracts = await readFile(new URL('../lib/magireco-release.js', import.meta.url), 'utf8');
-test('static snapshot tracks the newest supported published release contract', () => {
-  const entries = [...contracts.matchAll(/^const RELEASE_(\d+)_CONTRACT = (.*);$/gm)]
-    .map(match => ({number:Number(match[1]), value:JSON.parse(match[2])})).sort((a,b) => b.number-a.number);
-  assert.ok(entries.length);
-  const latest = entries[0].value;
-  assert.equal(snapshot.version, latest.display_version);
-  assert.equal(snapshot.sha256, latest.sha256);
-  assert.equal(snapshot.size, latest.size);
+const published = JSON.parse(await readFile(new URL('../data/magireco-release.signed.json', import.meta.url)));
+const { createMagirecoSnapshot } = await import('./update-magireco-snapshot.mjs');
+test('static snapshot matches the canonical signed publisher metadata', async () => {
+  assert.deepEqual(snapshot, await createMagirecoSnapshot(published));
 });
 const live = { ...snapshot, source:'current', download:'./downloads/magireco/android?sha256=' + snapshot.sha256 };
 const load = (fetcher, rest = {}) => loadMagirecoReleaseData({ fetcher, liveUrl:'https://example.test/api/magireco', ...rest });
@@ -62,5 +57,22 @@ test('static snapshot and direct URL remain local/independent on both hosts', ()
   for (const hostname of ['hiiraginemu.github.io', 'madeinmagius-site.pages.dev']) {
     assert.equal(serviceUrl('./data/magireco-release.json', {hostname}), './data/magireco-release.json');
     assert.equal(serviceUrl(snapshot.download, {hostname}), snapshot.download);
+  }
+});
+
+for (const version of ['1.3.9','1.3.10','1.4.0','2.0.0']) test('future published snapshot survives CF failure: ' + version, async () => {
+  const future = {...snapshot, version, version_code:1713000900, download:snapshot.download.replace(snapshot.version,version)};
+  const result = await load(async url => url.startsWith('./data/') ? Response.json(future) : new Response('unavailable',{status:503}));
+  assert.equal(result.version,version); assert.equal(result.download,future.download);
+});
+test('build-code order accepts same-display new builds and rejects misleading display versions', async () => {
+  for (const [candidate, accepted] of [
+    [{...live, version_code:snapshot.version_code+1, sha256:'a'.repeat(64), download:'./downloads/magireco/android?sha256='+'a'.repeat(64)}, true],
+    [{...live, version:'2.0.0', version_code:snapshot.version_code-1}, false],
+    [{...live, version:snapshot.version==='2.0.0'?'2.0.1':'2.0.0', version_code:undefined}, false],
+    [{...live, version_code:snapshot.version_code, sha256:'a'.repeat(64), download:'./downloads/magireco/android?sha256='+'a'.repeat(64)}, false],
+  ]) {
+    const result=await load(async url=>Response.json(url.startsWith('./data/')?snapshot:candidate));
+    assert.equal(result.download, accepted?candidate.download:snapshot.download);
   }
 });

@@ -1,6 +1,7 @@
 {
   "schema": "madeinmagius-magireco-snapshot/v1",
   "version": "1.3.8",
+  "version_code": 1713000895,
   "size": 134530376,
   "sha256": "f140fd086be89b03e9ac65a47fc0cee1daa57561fb49dead6440bd34b9620e0c",
   "source": "published-snapshot",

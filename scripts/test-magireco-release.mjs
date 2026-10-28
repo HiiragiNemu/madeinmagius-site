@@ -1109,9 +1109,9 @@ async function discoveryContractTests() {
     const read137=(await import(reader137Url())).readMagirecoRelease;
     const handlers137=await boundHandlers(reader137Url());
     use137();await assert.rejects(()=>(import(reader137Url(null))).then(module=>module.readMagirecoRelease(env)));cases++;
-    for(const urls of [[bridge+aliasName]]) {
+    for(const urls of [[bridge+aliasName],[root+aliasName]]) {
       use137(p=>p.apk_urls=urls);
-      if(urls[0]===bridge+aliasName)Object.assign(state.current,{apk:aliasName,apk_url:urls[0]});
+      Object.assign(state.current,{apk:aliasName,apk_url:urls[0]});
       const selected137=await read137(env);
       assert.equal(selected137.version,'1.3.7');assert.equal(selected137.sha256,synthetic137.sha256);assert.equal(selected137.asset.id,134);
       const current137=await (await handlers137.metadata({env})).json();assert.equal(current137.version,'1.3.7');

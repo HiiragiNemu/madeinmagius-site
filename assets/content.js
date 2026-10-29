@@ -319,7 +319,9 @@ function magirecoClientHtml(current) {
     const sourceUrl = 'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-' + encodeURIComponent(current.version) + '-corresponding-source.zip';
     const notes = MAGIRECO_RELEASE_NOTES[current.version] || [];
     releaseNotes = notes.length ? '<h3>' + escapeHtml(current.version) + ' 更新内容</h3><ul>' + notes.map(note => '<li>' + escapeHtml(note) + '</li>').join('') + '</ul>' : '';
+    const emergencyR2 = current.version === '1.3.8' && current.sha256 === 'f140fd086be89b03e9ac65a47fc0cee1daa57561fb49dead6440bd34b9620e0c' && current.size === 134530376;
     download = '<p><strong>客户端版本 ' + escapeHtml(current.version) + '</strong> · ' + formatBytes(current.size) + '</p>' +
+      (emergencyR2 ? '<a class="download-button" href="https://pub-121ae9980b3149dcbc4a1f88ad7a58b9.r2.dev/release-mirrors/sha256/f140fd086be89b03e9ac65a47fc0cee1daa57561fb49dead6440bd34b9620e0c/magireco-legacy-client-1.3.8.apk">R2 直连下载 APK</a> ' : '') +
       '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
       '<p><a href="' + escapeHtml(sourceUrl) + '" target="_blank" rel="noopener noreferrer">对应版本源码 ZIP</a></p>' +
       '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
@@ -328,6 +330,7 @@ function magirecoClientHtml(current) {
   }
   return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2>' +
     '<p>魔法纪录汉化客户端（Android）。无需 Root；安装包不包含随后下载的全部游戏资源。</p>' +
+    '<p><strong>下载线路拥堵或中断？</strong><a href="./assets/magireco-direct-downloads-20261029.html">打开 1.3.8 与部分资源的备用直连下载</a>（不经过下载 Worker）。原地址和 GitHub 备用保留。</p>' +
     upgradeNotice +
     '<div class="download-stack"><article class="download-card"><h3>ANDROID APK</h3>' + download +
     '<p><button class="terminal-copy-button" type="button" data-magireco-refresh' +

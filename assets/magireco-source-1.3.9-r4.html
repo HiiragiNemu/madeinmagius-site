@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>魔法纪录 1.3.9 对应源码 r4</title>
+  <style>
+    body{font:16px/1.7 system-ui,sans-serif;max-width:850px;margin:auto;padding:24px;background:#111722;color:#edf3ff}
+    a{color:#a8d5ff}h1{font-size:1.7rem}h2{font-size:1.2rem}h3{font-size:1rem}
+    article,section{padding:18px;margin:16px 0;border:1px solid #4b5b72;border-radius:10px}
+    .button{display:inline-block;padding:8px 14px;background:#224b72;border-radius:5px}
+    code,h2,h3{overflow-wrap:anywhere}pre{padding:12px;background:#1d2939;white-space:pre-wrap;overflow-wrap:anywhere}
+    aside{border-left:4px solid #9ac8ee;padding:10px 18px;background:#1d2939}
+  </style>
+</head>
+<body><main>
+  <nav aria-label="返回下载"><a href="../#home/magireco-private-server">官网当前下载</a> · <a href="./magireco-direct-downloads-20261029.html">固定 1.3.9 下载</a></nav>
+  <h1>魔法纪录 1.3.9 对应源码 r4</h1>
+  <p>本页说明固定版本的源码范围、独立构建入口及必要外部输入。r4 是源码交付修订号，不是新版 APK。</p>
+  <aside><strong>仅绑定以下 1.3.9 正式 APK</strong>
+    <p>版本代码：1713000897 · 134,604,104 字节<br>APK SHA-256：<code>fa5a29fb3a861573e92b322b3827cbb5398ee1d4cd510f181cec406560701220</code></p>
+    <p>当前 APK、更新元数据和 Pack17 均不因本次源码整理而改变；本页不表示全部历史版本源码已经恢复。</p>
+  </aside>
+
+  <article id="source">
+    <h2>1.3.9 对应源码下载</h2>
+    <p><a class="button" href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.3.9-corresponding-source-current-r4.zip">下载源码 ZIP（r4）</a></p>
+    <p><code>magireco-legacy-client-1.3.9-corresponding-source-current-r4.zip</code><br>385,379,111 字节</p>
+    <p>源码 SHA-256：<code>0cbb1990c7741a2dc3078bce37bc6914af340986eb526926fca36f762884ccaa</code></p>
+    <p>该文件单独命名、单独列出摘要；它不是旧签名发布元数据所记录的源码 ZIP，也不冒用其摘要。下载后先核对这里的文件名、长度与 SHA-256，再按包内清单检查输入。</p>
+  </article>
+
+  <section id="scope">
+    <h2>包含什么，哪些内容另行提供</h2>
+    <p>保留 3,484 个当前源码叶文件和 294 个生产输入，移除 493 个与本次交付无关的旧历史快照成员。源码基准提交为 <code>7822c145613aa863ec8fd99030df502206ec5997</code>。仅交付包内的构建配方和说明作了修订。</p>
+    <p>项目覆盖的 Java、native、runtime、构建代码及必要首选输入随包提供；4,792 张图片组成的资源补充包单独下载。外部输入由包内 <code>EXTERNAL-INPUTS.json</code> 固定摘要，构建脚本核验本地文件，不自动联网获取。</p>
+    <p>具体范围见 <code>SOURCE-SCOPE.json</code>、<code>client/LICENSE</code>、<code>client/LICENSE.additional-terms</code>、<code>client/THIRD-PARTY-NOTICES.md</code>、<code>client/offline/LICENSE.scope.md</code> 及各依赖声明。</p>
+    <p>第三方代码保留各自许可。原游戏引擎、美术、音频、翻译等材料不因纳入构建而由本项目重新许可；本包不是“所有文件均为 GPL”或游戏素材权利已全部解决的声明。</p>
+  </section>
+
+  <section id="inputs">
+    <h2>完整 APK 构建所需的两个外部输入</h2>
+    <article>
+      <h3>图片资源补充包</h3>
+      <p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/frontend-supplement-exact-r7.zip">frontend-supplement-exact-r7.zip</a> · 335,109,307 字节</p>
+      <p>SHA-256：<code>1139358c5e6b8d03c4a3e71ebfe3dcf460d7d5a69da39aa743c74665bbfeb1b5</code></p>
+    </article>
+    <article>
+      <h3>公开 1.1.9 构建基准 APK</h3>
+      <p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.1.9.apk">magireco-legacy-client-1.1.9.apk</a> · 94,360,121 字节</p>
+      <p>SHA-256：<code>bda60d8afda79d95bd4f9f5899270cc66107268008d335d744b75a486eb6a020</code></p>
+      <p>这是构建输入，不是推荐玩家安装的当前版本，也不是历史 1.1.1 比对 APK。</p>
+    </article>
+  </section>
+
+  <section id="build">
+    <h2>独立密钥构建入口</h2>
+    <p>从解压后的源码根目录开始，完整步骤以 <code>README-BUILD.md</code> 为准。准备 Python 3.11+（含 cryptography）、Node、JDK 25、Android platform/build-tools 36、NDK 27.3.13750724、CMake 和 Ninja，并先下载、校验上面两个外部输入。</p>
+    <p>先核对源码和生产输入绑定：</p>
+    <pre><code>python -B build/rebuild139.py --verify-inputs-only</code></pre>
+    <p>完整未签名 APK 路线（把占位路径换成本机路径；输出目录须为空）：</p>
+    <pre><code>python -B build/rebuild139.py --out BUILD_OUT --sdk SDK --java-home JDK --mode full-unsigned --game-apk PUBLIC119_APK --frontend-supplement-zip IMAGES_ZIP</code></pre>
+    <p>已有独立密钥 runtime 构建结果时，可使用收尾入口：</p>
+    <pre><code>python -B build/finish-source-apk.py --runtime-build RUNTIME_OUT --out FINISH_OUT --sdk SDK --java-home JDK --game-apk PUBLIC119_APK --frontend-supplement-zip IMAGES_ZIP</code></pre>
+    <p>收尾路线重建两种 ABI，并用临时本地证书处理构建载体；不需要私有历史 APK 或生产私钥。最终 <code>assembled/candidate-aligned.apk</code> 为未签名产物，runtime 使用调用者的本地密钥，不应预期与生产签名 APK 逐字节一致。</p>
+    <p>构建命令、输出、退出码和摘要记录在构建目录的 <code>verification.json</code>。完整构建复核与 Android 设备验收分别记录；提供这些入口不表示已完成线上发布或设备验收。</p>
+  </section>
+
+  <section id="license">
+    <h2>再分发与历史范围</h2>
+    <p>再分发受覆盖代码时，保留适用版权、许可证和合法归属声明，标明修改及日期，并交付与所分发版本对应的完整源码和必要构建材料。源码可按 GPLv3 §6(d) 放在外站，二进制下载旁须明确指向等效、无需额外付费的源码访问入口。</p>
+    <p>不额外要求相同 ZIP 目录、推广宣传或禁止商用；独立采用相同技术思想本身不触发本项目许可。其他内容仍须满足其各自权利条件。参见 <a href="https://www.gnu.org/licenses/gpl.en.html">GNU GPLv3 正式文本</a>。</p>
+    <p>本次仅说明上述固定 1.3.9 的 r4 源码交付，不表示其他历史版本源码入口已恢复，也不更改原有历史报告、署名或 APK 发布身份。</p>
+  </section>
+</main></body>
+</html>

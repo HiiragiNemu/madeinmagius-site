@@ -336,7 +336,9 @@ function magirecoClientHtml(current) {
       (verifiedDirectMirror ? '<a class="download-button" href="https://pub-121ae9980b3149dcbc4a1f88ad7a58b9.r2.dev/release-mirrors/sha256/' + directMirror.sha256 + '/' + fixedApkName + '">R2 直连下载 APK</a> ' +
         '<a class="download-button" href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/' + fixedApkName + '">GitHub 备用 APK</a> ' : '') +
       '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
-      '<p>源码交付方式调整中。</p>' +
+      (current.version === '1.3.9' && verifiedDirectMirror
+        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.3.9-corresponding-source-current-r4.zip">下载 1.3.9 对应源码（r4）</a> · 385,379,111 字节 · <a href="./assets/magireco-source-1.3.9-r4.html">源码范围、校验与构建说明</a></p>'
+        : '<p>源码交付方式调整中。该版本的完整对应源码入口待恢复。</p>') +
       '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
   } else if (current?.state === 'error') {
     download = '<p role="status">发布信息正在同步或暂时不可用，请稍后重新检查。</p>';

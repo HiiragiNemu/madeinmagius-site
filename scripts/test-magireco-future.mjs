@@ -219,7 +219,6 @@ for (const [label, mutate] of Object.entries({
   'APK wrong size':r => r.assets[0].size++,
   'APK pending':r => r.assets[0].state = 'new',
   'APK missing id':r => delete r.assets[0].id,
-  'missing GPL':r => r.assets.splice(1,1),
   'duplicate GPL':r => r.assets.push(structuredClone(r.assets[1])),
   'GPL wrong digest':r => r.assets[1].digest = 'sha256:' + 'e'.repeat(64),
   'GPL wrong size':r => r.assets[1].size++,
@@ -252,4 +251,12 @@ test('actual signed 138 still selects through the frozen historical path', async
     assert.equal(result.version_code, 1713000895);
     assert.equal(result.asset.id, 138);
   } finally { subtle.importKey = previous; }
+});
+
+test('source archive withdrawal preserves authenticated future APK and snapshot', async () => {
+  const f = fixture();
+  const before = await selectMagirecoRelease(f.client, f.release);
+  f.release.assets.splice(1,1);
+  assert.deepEqual(await selectMagirecoRelease(f.client, f.release), before);
+  assert.equal((await createMagirecoSnapshot(f.client, f.release)).sha256, before.sha256);
 });

@@ -23,7 +23,7 @@
 
 GitHub Pages 的 `serviceUrl()` 继续把 API 与下载请求送到现有 Cloudflare 服务，保留 CORS。图标、按钮、布局、报告和历史 1.1.1 证据下载不变。
 
-对应源码链接使用同一正式版本的 `magireco-legacy-client-{version}-corresponding-source.zip`，不使用可变分支源码 ZIP。发布脚本先核对该精确 GitHub 资产的 SHA-256、大小和已上传状态；网站不修改上游 APK 或源码资产。
+源码交付方式调整中；官网暂不展示对应源码 ZIP 下载入口。源码附件缺席不阻断已验证 APK 的分发；附件仍存在时继续校验唯一性、大小、摘要与上传状态。签名原文、APK 校验、既有许可、第三方声明与来源记录保持原状。
 
 ## 1.2.6 发布对接
 

@@ -139,8 +139,9 @@ async function discoveryContractTests() {
     assert.equal(extractable,false);assert.deepEqual(usages,['verify']);
     return testingKey; // Only in this test process. Real verify() is never mocked.
   };
-  async function accepted(envelope=fixtures.valid) {
+  async function accepted(envelope=fixtures.valid, withoutSource=false) {
     alias(envelope);
+    if (withoutSource) state.release.assets.pop();
     const response=await metadata({env});assert.equal(response.status,200);
     const result=await response.json();assert.equal(result.version,'1.2.7');
     assert.equal(result.sha256,state.current.sha256);assert.equal(result.size,state.current.size);
@@ -153,7 +154,7 @@ async function discoveryContractTests() {
     }
     const html=renderContent('home','magireco-private-server',{magireco:{...result,state:'ready'}});
     assert.ok(html.includes('客户端版本 1.2.7'));
-    assert.ok(html.includes('magireco-legacy-client-1.2.7-corresponding-source.zip'));
+    assert.ok(html.includes('源码交付方式调整中。'));
     assert.ok(!html.includes('客户端版本 1.3.127'));
     assert.ok(!html.includes('magireco-cn-1.3.127.apk'));
     assert.ok(!html.includes('magireco-legacy-client-1.3.127-corresponding-source.zip'));
@@ -163,6 +164,7 @@ async function discoveryContractTests() {
   }
   try {
     await accepted();
+    await accepted(fixtures.valid, true); // Source withdrawal preserves API, GET, HEAD, Range and stale-SHA 409.
     for(const [label,envelope] of Object.entries(fixtures.publication_negative)) {
       alias(envelope);await unavailable('signed mapping '+label);
     }
@@ -185,7 +187,6 @@ async function discoveryContractTests() {
       'signature out of range':x=>x.signed_update.signature='f'.repeat(768),
       'payload tampered':x=>x.signed_update.payload+=' ',
       'payload too large':x=>x.signed_update.payload+=' '.repeat(65537),
-      'missing source asset':x=>state.release.assets.pop(),
       'source asset mismatch':x=>state.release.assets.at(-1).digest='sha256:'+'0'.repeat(64),
     };
     for(const [label,mutate] of Object.entries(topMutations)) {
@@ -278,7 +279,7 @@ async function discoveryContractTests() {
       assert.equal(result.size,synthetic128.size);assert.equal(result.asset.name,'magireco-cn-1.2.8.apk');
       assert.equal(result.asset.id,134);assert.equal(result.asset.url,base+'/releases/assets/134');
       const html=renderContent('home','magireco-private-server',{magireco:{...result,state:'ready'}});
-      assert.ok(html.includes('magireco-legacy-client-1.2.8-corresponding-source.zip'));
+      assert.ok(html.includes('源码交付方式调整中。'));
       const officialContract=JSON.parse(readerSource.match(/^const RELEASE_128_CONTRACT = (.*);$/m)[1]);
       const notes128=html.split('<h3>1.2.8 更新内容</h3><ul>')[1]?.split('</ul>')[0];
       assert.equal(officialContract.release_notes.length,8);
@@ -364,7 +365,7 @@ async function discoveryContractTests() {
       assert.equal(selected129.asset.id,134);assert.equal(selected129.asset.name,'magireco-cn-1.2.9.apk');
       const rendered=renderContent('home','magireco-private-server',{magireco:{...selected129,state:'ready'}});
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);
-      assert.ok(rendered.includes('magireco-legacy-client-1.2.9-corresponding-source.zip'));
+      assert.ok(rendered.includes('源码交付方式调整中。'));
       const notes129=rendered.split('<h3>1.2.9 更新内容</h3><ul>')[1]?.split('</ul>')[0];
       if(notes129) {
         const official129=JSON.parse(readerSource.match(/^const RELEASE_129_CONTRACT = (.*);$/m)[1]);
@@ -477,7 +478,7 @@ async function discoveryContractTests() {
       const rendered=renderContent('home','magireco-private-server',{magireco:{...current130,state:'ready'}});
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);
       assert.ok(rendered.includes('客户端版本 1.3.0'));
-      assert.ok(rendered.includes('magireco-legacy-client-1.3.0-corresponding-source.zip'));
+      assert.ok(rendered.includes('源码交付方式调整中。'));
       assert.ok(!rendered.includes('客户端版本 1.3.130'));
       assert.ok(!rendered.includes('magireco-legacy-client-1.3.130-corresponding-source.zip'));
       assert.ok(!rendered.includes('实际安装版本统一为 1.2.x'));
@@ -535,9 +536,10 @@ async function discoveryContractTests() {
       use130(p=>Object.assign(p,structuredClone(invalid)));
       await assert.rejects(()=>(boundReader130(invalid)).then(reader=>reader(env)),undefined,'130 invalid contract '+label);cases++;
     }
+    use130();state.release.assets.pop();assert.equal((await read130(env)).version,'1.3.0');cases++;
     for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),
       ()=>state.current.source_commit='b'.repeat(40),()=>state.current.release_notes=['not signed'],
-      ()=>state.release.assets[0].digest='sha256:'+'b'.repeat(64),()=>state.release.assets.pop(),
+      ()=>state.release.assets[0].digest='sha256:'+'b'.repeat(64),
       ()=>state.release.assets.at(-1).digest='sha256:'+'b'.repeat(64)]) {
       use130();mutate();await assert.rejects(()=>read130(env));
       assert.equal((await metadata130({env})).status,503);assert.equal((await download130(context())).status,503);cases++;
@@ -615,7 +617,7 @@ async function discoveryContractTests() {
       assert.ok(!calls.some(call=>call.url.includes('/releases/assets/')));cases++;
       const rendered=renderContent('home','magireco-private-server',{magireco:{...current131,state:'ready'}});
       assert.ok(rendered.includes('客户端版本 1.3.1'));
-      assert.ok(rendered.includes('magireco-legacy-client-1.3.1-corresponding-source.zip'));
+      assert.ok(rendered.includes('源码交付方式调整中。'));
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);
       const displayed131Notes=rendered.split('<h3>1.3.1 更新内容</h3><ul>')[1]?.split('</ul>')[0];
       assert.ok(displayed131Notes);assert.equal((displayed131Notes.match(/<li>/g)||[]).length,official131.release_notes.length);
@@ -664,9 +666,10 @@ async function discoveryContractTests() {
       const invalid=structuredClone(contract131);mutate(invalid);use131(p=>Object.assign(p,structuredClone(invalid)));
       await assert.rejects(()=>(boundReader131(invalid)).then(reader=>reader(env)),undefined,'131 invalid contract '+label);cases++;
     }
+    use131();state.release.assets.pop();assert.equal((await read131(env)).version,'1.3.1');cases++;
     for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),()=>state.current.source_commit='e'.repeat(40),
       ()=>state.current.release_notes=['not signed'],()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64),
-      ()=>state.release.assets.pop(),()=>state.release.assets.at(-1).digest='sha256:'+'e'.repeat(64)]) {
+      ()=>state.release.assets.at(-1).digest='sha256:'+'e'.repeat(64)]) {
       use131();mutate();await assert.rejects(()=>read131(env));
       assert.equal((await handlers131.metadata({env})).status,503);assert.equal((await handlers131.download(context())).status,503);cases++;
     }
@@ -748,7 +751,7 @@ async function discoveryContractTests() {
       assert.ok(!calls.some(call=>call.url.includes('/releases/assets/')));cases++;
       const rendered=renderContent('home','magireco-private-server',{magireco:{...current132,state:'ready'}});
       assert.ok(rendered.includes('客户端版本 1.3.2'));
-      assert.ok(rendered.includes('magireco-legacy-client-1.3.2-corresponding-source.zip'));
+      assert.ok(rendered.includes('源码交付方式调整中。'));
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);
       const displayed132Notes=rendered.split('<h3>1.3.2 更新内容</h3><ul>')[1]?.split('</ul>')[0];
       assert.ok(displayed132Notes);assert.equal((displayed132Notes.match(/<li>/g)||[]).length,official132.release_notes.length);
@@ -797,9 +800,10 @@ async function discoveryContractTests() {
       const invalid=structuredClone(contract132);mutate(invalid);use132(p=>Object.assign(p,structuredClone(invalid)));
       await assert.rejects(()=>(boundReader132(invalid)).then(reader=>reader(env)),undefined,'132 invalid contract '+label);cases++;
     }
+    use132();state.release.assets.pop();assert.equal((await read132(env)).version,'1.3.2');cases++;
     for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),()=>state.current.source_commit='e'.repeat(40),
       ()=>state.current.release_notes=['not signed'],()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64),
-      ()=>state.release.assets.pop(),()=>state.release.assets.at(-1).digest='sha256:'+'e'.repeat(64)]) {
+      ()=>state.release.assets.at(-1).digest='sha256:'+'e'.repeat(64)]) {
       use132();mutate();await assert.rejects(()=>read132(env));
       assert.equal((await handlers132.metadata({env})).status,503);assert.equal((await handlers132.download(context())).status,503);cases++;
     }
@@ -882,7 +886,7 @@ async function discoveryContractTests() {
       assert.ok(!calls.some(call=>call.url.includes('/releases/assets/')));cases++;
       const rendered=renderContent('home','magireco-private-server',{magireco:{...current133,state:'ready'}});
       assert.ok(rendered.includes('客户端版本 1.3.3'));
-      assert.ok(rendered.includes('magireco-legacy-client-1.3.3-corresponding-source.zip'));
+      assert.ok(rendered.includes('源码交付方式调整中。'));
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);
       for(const hidden of ['1.3.3 更新内容','客户端版本 1.3.133','magireco-legacy-client-1.3.133-corresponding-source.zip','1.3.0 更新内容','实际安装版本统一为 1.2.x'])assert.ok(!rendered.includes(hidden),hidden);
       cases++;
@@ -928,9 +932,10 @@ async function discoveryContractTests() {
       const invalid=structuredClone(contract133);mutate(invalid);use133(p=>Object.assign(p,structuredClone(invalid)));
       await assert.rejects(()=>(boundReader133(invalid)).then(reader=>reader(env)),undefined,'133 invalid contract '+label);cases++;
     }
+    use133();state.release.assets.pop();assert.equal((await read133(env)).version,'1.3.3');cases++;
     for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),()=>state.current.source_commit='e'.repeat(40),
       ()=>state.current.release_notes=['not signed'],()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64),
-      ()=>state.release.assets.pop(),()=>state.release.assets.at(-1).digest='sha256:'+'e'.repeat(64)]) {
+      ()=>state.release.assets.at(-1).digest='sha256:'+'e'.repeat(64)]) {
       use133();mutate();await assert.rejects(()=>read133(env));
       assert.equal((await handlers133.metadata({env})).status,503);assert.equal((await handlers133.download(context())).status,503);cases++;
     }
@@ -991,7 +996,7 @@ async function discoveryContractTests() {
       assert.equal((await handlers135.download(context('?sha256='+'0'.repeat(64)))).status,409);cases++;
       const rendered=renderContent('home','magireco-private-server',{magireco:{...current135,state:'ready'}});
       assert.ok(rendered.includes('客户端版本 1.3.5'));assert.ok(rendered.includes('1.3.5 更新内容'));
-      assert.ok(rendered.includes('magireco-legacy-client-1.3.5-corresponding-source.zip'));assert.ok(!rendered.includes('客户端版本 1.3.135'));
+      assert.ok(rendered.includes('源码交付方式调整中。'));assert.ok(!rendered.includes('客户端版本 1.3.135'));
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);for(const note of official135.release_notes)assert.ok(rendered.includes(note));cases++;
     }
     for(const select of [use133,use132,use131,use130,use129,use128]) {select();const older=await read135(env);assert.notEqual(older.version,'1.3.5');assert.ok(!renderContent('home','magireco-private-server',{magireco:{...older,state:'ready'}}).includes('1.3.5 更新内容'));cases++;}
@@ -1004,8 +1009,9 @@ async function discoveryContractTests() {
       'relay with stale outer URL':p=>p.apk_urls=[bridge+aliasName],'reversed routes':p=>p.apk_urls=[bridge+aliasName,root+fixed135],
       'future':p=>p.version='1.3.136'
     })) {use135(mutate);await assert.rejects(()=>read135(env),undefined,'135 '+label);cases++;}
+    use135();state.release.assets.pop();assert.equal((await read135(env)).version,'1.3.5');cases++;
     for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),()=>state.release.assets[0].name=canonicalName,
-      ()=>state.current.apk=canonicalName,()=>state.current.apk_url=root+canonicalName,()=>state.release.assets.pop(),()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64)]) {
+      ()=>state.current.apk=canonicalName,()=>state.current.apk_url=root+canonicalName,()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64)]) {
       use135();mutate();assert.equal((await handlers135.metadata({env})).status,503);assert.equal((await handlers135.download(context())).status,503);cases++;
     }
     console.log('PASS135 fixed asset plus current-only signed relay: signed135 -> display1.3.5/code1713000889; API/GET/HEAD/Range/stale409; preserves133 and older; signature/identity/route/source tampering rejected; version-gated notes');
@@ -1056,7 +1062,7 @@ async function discoveryContractTests() {
       assert.equal((await handlers136.download(context('?sha256='+'0'.repeat(64)))).status,409);cases++;
       const rendered=renderContent('home','magireco-private-server',{magireco:{...current136,state:'ready'}});
       assert.ok(rendered.includes('客户端版本 1.3.6'));assert.ok(rendered.includes('1.3.6 更新内容'));
-      assert.ok(rendered.includes('magireco-legacy-client-1.3.6-corresponding-source.zip'));assert.ok(!rendered.includes('客户端版本 1.3.136'));
+      assert.ok(rendered.includes('源码交付方式调整中。'));assert.ok(!rendered.includes('客户端版本 1.3.136'));
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);for(const note of official136.release_notes)assert.ok(rendered.includes(note));cases++;
     }
     for(const select of [use135,use133,use132,use131,use130,use129,use128]) {select();const older=await read136(env);assert.notEqual(older.version,'1.3.6');assert.ok(!renderContent('home','magireco-private-server',{magireco:{...older,state:'ready'}}).includes('1.3.6 更新内容'));cases++;}
@@ -1069,8 +1075,9 @@ async function discoveryContractTests() {
       'fixed canonical forbidden':p=>p.apk_urls=[root+fixed136],'fixed dual forbidden':p=>p.apk_urls=[root+fixed136,bridge+aliasName],'GPL URL':p=>p.corresponding_source.url=root+official135.corresponding_source.asset,'reversed routes':p=>p.apk_urls=[bridge+aliasName,root+fixed136],
       'future':p=>p.version='1.3.137'
     })) {use136(mutate);await assert.rejects(()=>read136(env),undefined,'136 '+label);cases++;}
+    use136();state.release.assets.splice(4,1);assert.equal((await read136(env)).version,'1.3.6');cases++;
     for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),()=>state.release.assets[0].name=canonicalName,
-      ()=>state.current.apk=canonicalName,()=>state.current.apk_url=root+canonicalName,()=>state.release.assets.splice(4,1),()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64),()=>state.release.assets.shift(),()=>state.release.assets.push(structuredClone(state.release.assets[0])),()=>state.release.assets[0].id=0,()=>state.current.apk_url=root+fixed136]) {
+      ()=>state.current.apk=canonicalName,()=>state.current.apk_url=root+canonicalName,()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64),()=>state.release.assets.shift(),()=>state.release.assets.push(structuredClone(state.release.assets[0])),()=>state.release.assets[0].id=0,()=>state.current.apk_url=root+fixed136]) {
       use136();mutate();assert.equal((await handlers136.metadata({env})).status,503);assert.equal((await handlers136.download(context())).status,503);cases++;
     }
     for(const stateName of ['loading','error']) {
@@ -1125,7 +1132,7 @@ async function discoveryContractTests() {
       assert.equal((await handlers137.download(context('?sha256='+'0'.repeat(64)))).status,409);cases++;
       const rendered=renderContent('home','magireco-private-server',{magireco:{...current137,state:'ready'}});
       assert.ok(rendered.includes('客户端版本 1.3.7'));assert.ok(rendered.includes('1.3.7 更新内容'));
-      assert.ok(rendered.includes('magireco-legacy-client-1.3.7-corresponding-source.zip'));assert.ok(!rendered.includes('客户端版本 1.3.137'));
+      assert.ok(rendered.includes('源码交付方式调整中。'));assert.ok(!rendered.includes('客户端版本 1.3.137'));
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);for(const note of official137.release_notes)assert.ok(rendered.includes(note));cases++;
     }
     for(const select of [use136,use135,use133,use132,use131,use130,use129,use128]) {select();const older=await read137(env);assert.notEqual(older.version,'1.3.7');assert.ok(!renderContent('home','magireco-private-server',{magireco:{...older,state:'ready'}}).includes('1.3.7 更新内容'));cases++;}
@@ -1138,8 +1145,9 @@ async function discoveryContractTests() {
       'fixed canonical forbidden':p=>p.apk_urls=[root+fixed137],'fixed dual forbidden':p=>p.apk_urls=[root+fixed137,bridge+aliasName],'GPL URL':p=>p.corresponding_source.url=root+official135.corresponding_source.asset,'reversed routes':p=>p.apk_urls=[bridge+aliasName,root+fixed137],
       'future':p=>p.version='1.3.138'
     })) {use137(mutate);await assert.rejects(()=>read137(env),undefined,'137 '+label);cases++;}
+    use137();state.release.assets.splice(4,1);assert.equal((await read137(env)).version,'1.3.7');cases++;
     for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),()=>state.release.assets[0].name=canonicalName,
-      ()=>state.current.apk=canonicalName,()=>state.current.apk_url=root+canonicalName,()=>state.release.assets.splice(4,1),()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64),()=>state.release.assets.shift(),()=>state.release.assets.push(structuredClone(state.release.assets[0])),()=>state.release.assets[0].id=0,()=>state.current.apk_url=root+fixed137]) {
+      ()=>state.current.apk=canonicalName,()=>state.current.apk_url=root+canonicalName,()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64),()=>state.release.assets.shift(),()=>state.release.assets.push(structuredClone(state.release.assets[0])),()=>state.release.assets[0].id=0,()=>state.current.apk_url=root+fixed137]) {
       use137();mutate();assert.equal((await handlers137.metadata({env})).status,503);assert.equal((await handlers137.download(context())).status,503);cases++;
     }
     for(const stateName of ['loading','error']) {
@@ -1194,7 +1202,7 @@ async function discoveryContractTests() {
       assert.equal((await handlers138.download(context('?sha256='+'0'.repeat(64)))).status,409);cases++;
       const rendered=renderContent('home','magireco-private-server',{magireco:{...current138,state:'ready'}});
       assert.ok(rendered.includes('客户端版本 1.3.8'));assert.ok(rendered.includes('1.3.8 更新内容'));
-      assert.ok(rendered.includes('magireco-legacy-client-1.3.8-corresponding-source.zip'));assert.ok(!rendered.includes('客户端版本 1.3.138'));
+      assert.ok(rendered.includes('源码交付方式调整中。'));assert.ok(!rendered.includes('客户端版本 1.3.138'));
       assert.equal((rendered.match(/>下载 APK<\/a>/g)||[]).length,1);for(const note of official138.release_notes)assert.ok(rendered.includes(note));cases++;
     }
     for(const select of [use137,use136,use135,use133,use132,use131,use130,use129,use128]) {select();const older=await read138(env);assert.notEqual(older.version,'1.3.8');assert.ok(!renderContent('home','magireco-private-server',{magireco:{...older,state:'ready'}}).includes('1.3.8 更新内容'));cases++;}
@@ -1207,8 +1215,9 @@ async function discoveryContractTests() {
       'fixed canonical forbidden':p=>p.apk_urls=[root+fixed138],'fixed dual forbidden':p=>p.apk_urls=[root+fixed138,bridge+aliasName],'GPL URL':p=>p.corresponding_source.url=root+official135.corresponding_source.asset,'reversed routes':p=>p.apk_urls=[bridge+aliasName,root+fixed138],
       'relay current forbidden':p=>p.apk_urls=[bridge+aliasName], 'future':p=>p.version='1.3.139'
     })) {use138(mutate);await assert.rejects(()=>read138(env),undefined,'138 '+label);cases++;}
+    use138();state.release.assets.splice(4,1);assert.equal((await read138(env)).version,'1.3.8');cases++;
     for(const mutate of [()=>state.current.signed_update.signature='0'.repeat(768),()=>state.release.assets[0].name=canonicalName,
-      ()=>state.current.apk=canonicalName,()=>state.current.apk_url=root+canonicalName,()=>state.release.assets.splice(4,1),()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64),()=>state.release.assets.shift(),()=>state.release.assets.push(structuredClone(state.release.assets[0])),()=>state.release.assets[0].id=0,()=>state.current.apk_url=root+fixed138]) {
+      ()=>state.current.apk=canonicalName,()=>state.current.apk_url=root+canonicalName,()=>state.release.assets[0].digest='sha256:'+'e'.repeat(64),()=>state.release.assets.shift(),()=>state.release.assets.push(structuredClone(state.release.assets[0])),()=>state.release.assets[0].id=0,()=>state.current.apk_url=root+fixed138]) {
       use138();mutate();assert.equal((await handlers138.metadata({env})).status,503);assert.equal((await handlers138.download(context())).status,503);cases++;
     }
     for(const stateName of ['loading','error']) {
@@ -1264,10 +1273,10 @@ try {
     assert.equal(serviceUrl(path,{hostname:'hiiraginemu.github.io'}),'https://madeinmagius-site.pages.dev/'+path.slice(2));
     assert.equal(serviceUrl(path,{hostname:'madeinmagius-site.pages.dev'}),path);
   }
-  assert.ok(html.includes(root+'magireco-legacy-client-1.2.5-corresponding-source.zip'));
+  assert.ok(html.includes('源码交付方式调整中。'));
   assert.ok(!html.includes('1.2.6 更新内容'));
   const release126=renderContent('home','magireco-private-server',{magireco:{...latest,version:'1.2.6',state:'ready'}});
-  assert.ok(release126.includes(root+'magireco-legacy-client-1.2.6-corresponding-source.zip'));
+  assert.ok(release126.includes('源码交付方式调整中。'));
   assert.equal((release126.match(/>下载 APK<\/a>/g)||[]).length,1);
   const notes126=release126.split('<h3>1.2.6 更新内容</h3><ul>')[1]?.split('</ul>')[0];
   assert.equal((notes126?.match(/<li>/g)||[]).length,6);
@@ -1287,7 +1296,7 @@ try {
   assert.ok(!release127.includes('1.2.8 更新内容'));
   assert.ok(!release127.includes('1.2.9 更新内容'));
   assert.ok(release127.includes('不要卸载或清除数据'));
-  assert.ok(release127.includes(root+'magireco-legacy-client-1.2.7-corresponding-source.zip'));
+  assert.ok(release127.includes('源码交付方式调整中。'));
   assert.equal((release127.match(/>下载 APK<\/a>/g)||[]).length,1);
   for(const state of ['loading','error']) {
     const pending=renderContent('home','magireco-private-server',{magireco:{state}});

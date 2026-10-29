@@ -33,12 +33,5 @@ export default {
     "digest": "sha256:60031daf95e42448f4ddb2d80a1b0b08f007734a488e0b7318a4decc20a02815",
     "content_type": "application/vnd.android.package-archive",
     "url": "https://api.github.com/repos/HiiragiNemu/ProgettoMagius-1/releases/assets/648431048"
-  },
-  "magireco/1.1.1-evidence-source": {
-    "name": "magireco-legacy-client-1.1.1-corresponding-source.zip",
-    "size": 61686724,
-    "digest": "sha256:ad9899a1b2af0ac1c45a4f316cf655dcd3c94293814b12e6aeeb375c2641b513",
-    "content_type": "application/zip",
-    "url": "https://api.github.com/repos/HiiragiNemu/ProgettoMagius-1/releases/assets/648432154"
   }
 };

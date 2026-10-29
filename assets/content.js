@@ -323,7 +323,6 @@ function magirecoClientHtml(current) {
       ? '<li>此前显示为 1.3.4 的用户，请下载本页的 1.2.6 或后续 1.2.x 安装包，完成一次覆盖迁移。之后统一使用 1.2.x 更新，不再区分主版与兼容版。</li>'
       : '<li>使用应用内“检查更新”或本页正式安装包更新；实际版本以发布信息为准。</li>';
   if (current?.state === 'ready') {
-    const sourceUrl = 'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-' + encodeURIComponent(current.version) + '-corresponding-source.zip';
     const notes = MAGIRECO_RELEASE_NOTES[current.version] || [];
     releaseNotes = notes.length ? '<h3>' + escapeHtml(current.version) + ' 更新内容</h3><ul>' + notes.map(note => '<li>' + escapeHtml(note) + '</li>').join('') + '</ul>' : '';
     const directMirrors = {
@@ -337,7 +336,7 @@ function magirecoClientHtml(current) {
       (verifiedDirectMirror ? '<a class="download-button" href="https://pub-121ae9980b3149dcbc4a1f88ad7a58b9.r2.dev/release-mirrors/sha256/' + directMirror.sha256 + '/' + fixedApkName + '">R2 直连下载 APK</a> ' +
         '<a class="download-button" href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/' + fixedApkName + '">GitHub 备用 APK</a> ' : '') +
       '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
-      '<p><a href="' + escapeHtml(sourceUrl) + '" target="_blank" rel="noopener noreferrer">对应版本源码 ZIP</a></p>' +
+      '<p>源码交付方式调整中。</p>' +
       '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
   } else if (current?.state === 'error') {
     download = '<p role="status">发布信息正在同步或暂时不可用，请稍后重新检查。</p>';
@@ -415,7 +414,7 @@ export function renderContent(programId, subId, data) {
         '<div class="quick-links"><a href="./assets/reports/resource-client-comparison-20261017.png" download="resource-client-comparison-20261017.png">下载报告长图</a>' +
         '<a href="./assets/reports/resource-client-comparison-20261017.pdf" download="resource-client-comparison-20261017.pdf">下载 PDF</a>' +
         '<a href="' + escapeHtml(serviceUrl('./downloads/pinned/magireco/1.1.1-evidence')) + '">历史 1.1.1 APK</a>' +
-        '<a href="' + escapeHtml(serviceUrl('./downloads/pinned/magireco/1.1.1-evidence-source')) + '">对应源码</a>' +
+        '<span>源码交付方式调整中。</span>' +
         '<a href="./assets/reports/client-111-reproduce.html" target="_blank" rel="noopener noreferrer">复现方法与工具 ↗</a></div>' +
         '</article><article class="download-card">' +
         '<p class="meta-line">2026-10-17 · 个人版 1.1.1 复核</p><h3>原报告长图（匿名版）</h3>' +

@@ -138,7 +138,7 @@ assert.ok(adv.includes('https://universal-adv-reader.pages.dev/apps/web'));
 for(const [program,sub] of [['home','contact'],['about','contact-about']]){const contact=renderContent(program,sub,{});assert.ok(contact.includes('加入群858083286'));assert.ok(contact.includes('inviteCode=2oaXZG3lL1g'));}
 
 // First report refresh is independent of the retained original report and response.
-const firstReportFiles = [["resource-client-comparison-20261017.html", 33528, "623410256c0b0acd6b227c0ffca908e03683804bb01489c729863090d334403f"], ["resource-client-comparison-20261017.png", 2387588, "36f8b89f3079b35cbd2d01cbef03a17fd24fdc24e3072678d4198a35610e53a5"], ["resource-client-comparison-20261017.pdf", 414989, "577508f156d7e0d6661d4b0dbd028b86bb0ff3a19fe247b28a3105e9c4eaed3e"], ["resource-client-comparison-20261017.txt", 11540, "c71b4c57614a95bdad0feb9de0ff0f56a8ef2d5ffd7494911b84c7b70d1b9f7d"], ["resource-client-comparison-20261017-thumbnail.webp", 38812, "36825c1cafd8b9e625d75a27163a5e25937d811ae133b0e1a5da6c69392b09ba"], ["resource-client-comparison-20261017-image.html", 909, "1d30ad4d5003ccd2eec724c211afe71d08e2c5359da2c326cfac243796d9843d"], ["client-111-reproduce.html", 21918, "761277c869744347f98995bb17f23551ad4e1ba5da58db0b7656d0098e276155"], ["reproduce-client-1.1.1.zip", 47555, "4d112af7a6d1a86bca8dc6dfa1fc180ef2ef290828e61a62339c62f49c7e58e6"]];
+const firstReportFiles = [["resource-client-comparison-20261017.html", 33528, "623410256c0b0acd6b227c0ffca908e03683804bb01489c729863090d334403f"], ["resource-client-comparison-20261017.png", 2387588, "36f8b89f3079b35cbd2d01cbef03a17fd24fdc24e3072678d4198a35610e53a5"], ["resource-client-comparison-20261017.pdf", 414989, "577508f156d7e0d6661d4b0dbd028b86bb0ff3a19fe247b28a3105e9c4eaed3e"], ["resource-client-comparison-20261017.txt", 11540, "c71b4c57614a95bdad0feb9de0ff0f56a8ef2d5ffd7494911b84c7b70d1b9f7d"], ["resource-client-comparison-20261017-thumbnail.webp", 38812, "36825c1cafd8b9e625d75a27163a5e25937d811ae133b0e1a5da6c69392b09ba"], ["resource-client-comparison-20261017-image.html", 909, "1d30ad4d5003ccd2eec724c211afe71d08e2c5359da2c326cfac243796d9843d"], ["client-111-reproduce.html", 21796, "b7d4ef3806f047cee667f4493267869a01314e6a60e0dc78d6b8373366bff789"], ["reproduce-client-1.1.1.zip", 47555, "4d112af7a6d1a86bca8dc6dfa1fc180ef2ef290828e61a62339c62f49c7e58e6"]];
 for (const [file, size, sha] of firstReportFiles) {
   const bytes = await readFile(new URL('../assets/reports/' + file, import.meta.url));
   assert.equal(bytes.length, size, file);
@@ -149,14 +149,17 @@ for (const link of ['resource-client-comparison-20261017-image.html', 'resource-
   assert.ok(future.includes('./assets/reports/' + link), link);
 }
 const reproduction = await readFile(new URL('../assets/reports/client-111-reproduce.html', import.meta.url), 'utf8');
-for (const suffix of ['1.1.1-evidence', '1.1.1-evidence-source']) {
+for (const suffix of ['1.1.1-evidence']) {
   assert.ok(reproduction.includes('https://madeinmagius-site.pages.dev/downloads/pinned/magireco/' + suffix));
 }
 const pinned = (await import('../data/pinned-assets.js')).default;
 const pinnedRoute = await import('../functions/downloads/pinned/[project]/[version].js');
+assert.equal(pinned['magireco/1.1.1-evidence-source'], undefined);
+assert.ok(!reproduction.includes('/downloads/pinned/magireco/1.1.1-evidence-source'));
+assert.ok(reproduction.includes('源码交付方式调整中。'));
+assert.equal((await pinnedRoute.onRequestHead({params:{project:'magireco',version:'1.1.1-evidence-source'},env:{},request:new Request('https://example.test/source')})).status,404);
 for (const [version, id, size, sha, name] of [
   ['1.1.1-evidence', 648431048, 103821876, '60031daf95e42448f4ddb2d80a1b0b08f007734a488e0b7318a4decc20a02815', 'magireco-personal-1.1.1-evidence.apk'],
-  ['1.1.1-evidence-source', 648432154, 61686724, 'ad9899a1b2af0ac1c45a4f316cf655dcd3c94293814b12e6aeeb375c2641b513', 'magireco-legacy-client-1.1.1-corresponding-source.zip'],
 ]) {
   const asset = pinned['magireco/' + version];
   assert.equal(asset.url, 'https://api.github.com/repos/HiiragiNemu/ProgettoMagius-1/releases/assets/' + id);
@@ -182,7 +185,7 @@ for (const [version, id, size, sha, name] of [
     assert.equal(await response.text(), 'PK');
   } finally { globalThis.fetch = savedFetch; }
 }
-console.log('FIRST_REPORT_111=PASS: frozen 8 files, old URL alias, mirror links, fixed historical APK/source HEAD and Range');
+console.log('FIRST_REPORT_111=PASS: frozen 8 files, old URL alias, mirror links, historical APK HEAD/Range retained; source entry withdrawn');
 
 const secondReportFiles = [["forensic-report-20261017.html", 38108, "233fb21f4fcb608d303d03bd5d4c4c12167e1344ccecc5d401526a32e9612897"], ["forensic-report-20261017.png", 2892144, "13fe9bd00b4965933f3e992efc98ab8161c853ff014cc3490689dc2e2003f482"], ["forensic-report-20261017.pdf", 478504, "b0cf03e199108515fd86e6d209b5ec6c8a99adf20c60ea2864f8fd234b23bad0"], ["forensic-report-20261017.txt", 14184, "8d6d166c74009ecdaf85d10b79a6bb1676c195877b1fe4e009b24474884e2cc9"], ["forensic-report-20261017-thumbnail.webp", 42736, "0ddd4fe058e13d525450b36f6aa5384e16a33ec90d3670559e43249376d5540f"], ["forensic-report-20261017-image.html", 860, "f300de290ec1dc2aaaddb36d414586435fa3609706a073d8a397c494d6a7f118"]];
 for (const [file, size, sha] of secondReportFiles) {

@@ -200,6 +200,13 @@ function contactHtml() {
 }
 
 const MAGIRECO_RELEASE_NOTES = {
+  "1.3.9": [
+  "实际安装版本：1.3.9；1.3.139 为旧客户端兼容更新发现序号。覆盖安装保留存档与已安装资源。",
+  "修复全解锁档案的记忆加载；完善存档隔离、复制以及导入导出，保留不同档案各自的本地状态。",
+  "修复初次安装的基础资源包处理与重复热更新循环，继续使用现行 Pack17 v4 与 delta58 资源。",
+  "已匹配的下载镜像优先使用 R2，缺失镜像继续使用原线路或 GitHub 回退；基础包仅部分分流，并非全部资源已迁移。",
+  "大存档卡顿仅作部分优化，完整延迟修复列入 1.4 P0；独立 native error 110 尚未解决。"
+],
   "1.3.8": [
   "实际安装版本：1.3.8；1.3.138 为更新发现序号。覆盖安装保留存档与已安装资源。",
   "修复教程抽卡后的编队引导被遗留筛选条件锁住：引导中显示已拥有角色，完成引导后保留原筛选偏好。",
@@ -319,9 +326,16 @@ function magirecoClientHtml(current) {
     const sourceUrl = 'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-' + encodeURIComponent(current.version) + '-corresponding-source.zip';
     const notes = MAGIRECO_RELEASE_NOTES[current.version] || [];
     releaseNotes = notes.length ? '<h3>' + escapeHtml(current.version) + ' 更新内容</h3><ul>' + notes.map(note => '<li>' + escapeHtml(note) + '</li>').join('') + '</ul>' : '';
-    const emergencyR2 = current.version === '1.3.8' && current.sha256 === 'f140fd086be89b03e9ac65a47fc0cee1daa57561fb49dead6440bd34b9620e0c' && current.size === 134530376;
+    const directMirrors = {
+      '1.3.8': { sha256:'f140fd086be89b03e9ac65a47fc0cee1daa57561fb49dead6440bd34b9620e0c', size:134530376 },
+      '1.3.9': { sha256:'fa5a29fb3a861573e92b322b3827cbb5398ee1d4cd510f181cec406560701220', size:134604104 },
+    };
+    const directMirror = directMirrors[current.version];
+    const verifiedDirectMirror = directMirror && current.sha256 === directMirror.sha256 && current.size === directMirror.size;
+    const fixedApkName = 'magireco-legacy-client-' + encodeURIComponent(current.version) + '.apk';
     download = '<p><strong>客户端版本 ' + escapeHtml(current.version) + '</strong> · ' + formatBytes(current.size) + '</p>' +
-      (emergencyR2 ? '<a class="download-button" href="https://pub-121ae9980b3149dcbc4a1f88ad7a58b9.r2.dev/release-mirrors/sha256/f140fd086be89b03e9ac65a47fc0cee1daa57561fb49dead6440bd34b9620e0c/magireco-legacy-client-1.3.8.apk">R2 直连下载 APK</a> ' : '') +
+      (verifiedDirectMirror ? '<a class="download-button" href="https://pub-121ae9980b3149dcbc4a1f88ad7a58b9.r2.dev/release-mirrors/sha256/' + directMirror.sha256 + '/' + fixedApkName + '">R2 直连下载 APK</a> ' +
+        '<a class="download-button" href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/' + fixedApkName + '">GitHub 备用 APK</a> ' : '') +
       '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
       '<p><a href="' + escapeHtml(sourceUrl) + '" target="_blank" rel="noopener noreferrer">对应版本源码 ZIP</a></p>' +
       '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
@@ -330,7 +344,7 @@ function magirecoClientHtml(current) {
   }
   return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2>' +
     '<p>魔法纪录汉化客户端（Android）。无需 Root；安装包不包含随后下载的全部游戏资源。</p>' +
-    '<p><strong>下载线路拥堵或中断？</strong><a href="./assets/magireco-direct-downloads-20261029.html">打开 1.3.8 与部分资源的备用直连下载</a>（不经过下载 Worker）。原地址和 GitHub 备用保留。</p>' +
+    (!ready || current.version === '1.3.8' || current.version === '1.3.9' ? '<p><strong>下载线路拥堵或中断？</strong><a href="./assets/magireco-direct-downloads-20261029.html">打开固定 1.3.9 与部分资源的备用直连下载</a>（不经过下载 Worker）。原地址和 GitHub 备用保留。</p>' : '') +
     upgradeNotice +
     '<div class="download-stack"><article class="download-card"><h3>ANDROID APK</h3>' + download +
     '<p><button class="terminal-copy-button" type="button" data-magireco-refresh' +

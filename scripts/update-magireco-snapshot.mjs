@@ -18,7 +18,7 @@ export function fixedApkName(version) {
 export async function createMagirecoSnapshot(client, publishedRelease = null) {
   assert.ok(client && typeof client === 'object');
   const fixedName = fixedApkName(client.display_version ?? client.version);
-  const source = client.corresponding_source;
+  const source = client.corresponding_source ?? client.source_materials;
   assert.ok(source && typeof source === 'object');
   const release = publishedRelease || { draft:false, prerelease:false, assets:[
     { id:1, name:fixedName, state:'uploaded', size:client.size, digest:'sha256:' + client.sha256 },

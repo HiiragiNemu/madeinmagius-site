@@ -19,7 +19,7 @@ for (const original of clients) {
   const version = original.compatibility_discovery.installed_public_version;
   function fixture() {
     const client = structuredClone(original);
-    const source = client.corresponding_source;
+    const source = client.corresponding_source ?? client.source_materials;
     const release = {draft:false,prerelease:false,assets:[
       {id:9101,name:'magireco-legacy-client-' + version + '.apk',state:'uploaded',size:client.size,digest:'sha256:' + client.sha256},
       {id:9102,name:source.asset,state:'uploaded',size:source.size,digest:'sha256:' + source.sha256},
@@ -49,7 +49,7 @@ for (const original of clients) {
     'duplicate APK':f => f.release.assets.push(structuredClone(f.release.assets[0])),
     'APK digest mismatch':f => f.release.assets[0].digest = 'sha256:' + '0'.repeat(64),
     'withdrawn source plus bad signature':f => {f.release.assets.pop(); f.client.signed_update.signature='0'.repeat(768);},
-    'withdrawn source plus unsigned source identity':f => {f.release.assets.pop(); f.client.corresponding_source.sha256='0'.repeat(64);},
+    'withdrawn source plus unsigned source identity':f => {f.release.assets.pop(); (f.client.corresponding_source ?? f.client.source_materials).sha256='0'.repeat(64);},
     'withdrawn source plus unsigned APK identity':f => {f.release.assets.pop(); f.client.sha256='0'.repeat(64);},
     'withdrawn source plus unsigned version':f => {f.release.assets.pop(); f.client.version='9.9.9';},
   })) {

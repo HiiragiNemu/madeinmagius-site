@@ -98,11 +98,11 @@ const PROJECTS = {
     mode: 'scan',
     legacy: {
       'jp-xapk': {
-        name: 'com.aniplex.magia.exedra.jp-3.21.0.xapk',
-        size: 959302997,
-        digest: 'sha256:9add4ea7d585c532b082e41b8bcaad1a7f567cb7e0a4692087dd8632d1a32df2',
+        name: 'com.aniplex.magia.exedra.jp-3.22.0-26102219.xapk',
+        size: 950073201,
+        digest: 'sha256:6d5e82ae0ea11860b972dab8bdd91bff258694e2447c355e0b8dc9a372407f91',
         content_type: 'application/xapk-package-archive',
-        legacy_url: 'https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/jp-v3.21.0/com.aniplex.magia.exedra.jp-3.21.0.xapk',
+        legacy_url: 'https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/jp-v3.22.0/com.aniplex.magia.exedra.jp-3.22.0-26102219.xapk',
         redirect_to_origin: true,
       },
     },
@@ -159,10 +159,10 @@ async function getAsset(config, kind, token) {
   if (config.pinned?.[kind]) return config.pinned[kind];
 
   if (config.mode === 'scan') {
-    const releases = await githubJson(
+    const releases = (await githubJson(
       `https://api.github.com/repos/${config.repo}/releases?per_page=30`,
       token,
-    );
+    )).filter(release => !release.draft && !release.prerelease);
     for (const release of releases) {
       const found = (release.assets || []).find(candidate => matcher.test(candidate.name));
       if (found) return found;

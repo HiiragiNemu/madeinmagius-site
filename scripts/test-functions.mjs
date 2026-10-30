@@ -43,6 +43,17 @@ const exedraReleases = [
   },
 ];
 
+// Authenticated release lists can contain unpublished entries before stable ones.
+const unpublishedReleases = ['draft', 'prerelease'].map((flag, index) => ({
+  tag_name: `${flag}-v99.0.0`, [flag]: true, published_at: '2099-01-01T00:00:00Z',
+  assets: [
+    {id: 900 + index, name: 'com.aniplex.magia.exedra.jp-99.0.0.xapk', size: 99, digest: 'sha256:unpublished-jp', url: 'https://unexpected.test/unpublished-jp'},
+    {id: 910 + index, name: 'tw.sonet.magiaexedra-99.0.0.xapk', size: 99, digest: 'sha256:unpublished-tw', url: 'https://unexpected.test/unpublished-tw'},
+    {id: 920 + index, name: 'MagiaExedraTWJPTools-v99.0.0.zip', size: 99, digest: 'sha256:unpublished-tools', url: 'https://unexpected.test/unpublished-tools'},
+  ],
+}));
+exedraReleases.unshift(...unpublishedReleases);
+
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input);
 
@@ -134,9 +145,17 @@ try {
 
   assert.equal(data.projects.exedra.assets.twXapk.name,'tw.sonet.magiaexedra-9.0.0-99999999.xapk');
   assert.equal(data.projects.exedra.assets.twXapk.download,'./downloads/exedra/tw-xapk');
-  assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-3.21.0.xapk');
+  assert.equal(data.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-3.22.0-26102219.xapk');
   assert.equal(data.projects.exedra.assets.jpXapk.download,'./downloads/exedra/jp-xapk');
   assert.equal(data.projects.exedra.assets.tools.name,'MagiaExedraTWJPTools-v9.0.0.zip');
+  assert.equal(data.projects.exedra.published_at,'2026-09-19T00:00:00Z');
+  assert.equal(data.projects.exedra.source_tags.twXapk,'v9.0.0');
+  assert.ok(!JSON.stringify(data.projects.exedra).includes('unpublished'));
+  for (const [kind, digest] of [['tw-xapk','sha256:ggg'],['tools','sha256:eee']]) {
+    const stableHead = await headDownload({env:{GITHUB_RELEASES_TOKEN:'fake-token'},params:{project:'exedra',kind},request:new Request(`https://site.test/downloads/exedra/${kind}`,{method:'HEAD'})});
+    assert.equal(stableHead.status,200);
+    assert.equal(stableHead.headers.get('x-release-digest'),digest);
+  }
   assert.ok(!JSON.stringify(data).includes('fake-token'));
 
   const binary = await download({
@@ -200,7 +219,7 @@ try {
     request:new Request('https://site.test/downloads/exedra/jp-xapk'),
   });
   assert.equal(jp.status,302);
-  assert.equal(jp.headers.get('location'),'https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/jp-v3.21.0/com.aniplex.magia.exedra.jp-3.21.0.xapk');
+  assert.equal(jp.headers.get('location'),'https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/jp-v3.22.0/com.aniplex.magia.exedra.jp-3.22.0-26102219.xapk');
   assert.equal(jp.headers.get('x-release-digest'),null);
   assert.equal(jp.headers.get('content-length'),null);
   assert.ok(!JSON.stringify([...jp.headers]).includes('fake-token'));
@@ -214,7 +233,7 @@ try {
   assert.equal(jpHead.headers.get('location'),jp.headers.get('location'));
 
   // Once the source repository has a JP asset, keep the canonical route and stream it.
-  exedraReleases[1].assets.push({
+  exedraReleases.find(item => item.tag_name === 'jp-v3.21.0').assets.push({
     id:44,name:'com.aniplex.magia.exedra.jp-3.21.0.xapk',size:3,
     digest:'sha256:jp-test',content_type:'application/octet-stream',
     url:'https://api.github.test/assets/44',
@@ -237,7 +256,25 @@ try {
   });
   assert.equal(missing.status,404);
 
-  console.log('cloudflare function tests: ok');
+  // Unpublished-only or empty lists use the fixed public fallback, not previews.
+  const stableList = exedraReleases.slice();
+  for (const list of [unpublishedReleases, []]) {
+    exedraReleases.splice(0,exedraReleases.length,...list);
+    const fallback = await (await releases({env:{GITHUB_RELEASES_TOKEN:'fake-token'}})).json();
+    assert.equal(fallback.projects.exedra.assets.jpXapk.name,'com.aniplex.magia.exedra.jp-3.22.0-26102219.xapk');
+    assert.equal(fallback.projects.exedra.assets.jpXapk.size,950073201);
+    assert.equal(fallback.projects.exedra.assets.jpXapk.digest,'sha256:6d5e82ae0ea11860b972dab8bdd91bff258694e2447c355e0b8dc9a372407f91');
+    assert.equal(fallback.projects.exedra.published_at,null);
+    assert.deepEqual(fallback.projects.exedra.source_tags,{});
+    for (const handler of [download,headDownload]) {
+      const reply = await handler({env:{GITHUB_RELEASES_TOKEN:'fake-token'},params:{project:'exedra',kind:'jp-xapk'},request:new Request('https://site.test/downloads/exedra/jp-xapk')});
+      assert.equal(reply.status,302);
+      assert.equal(reply.headers.get('location'),'https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/jp-v3.22.0/com.aniplex.magia.exedra.jp-3.22.0-26102219.xapk');
+    }
+  }
+  exedraReleases.splice(0,exedraReleases.length,...stableList);
+
+  console.log('cloudflare function tests: ok; Exedra draft/prerelease, current fallback and stable GET/HEAD preserved');
 } finally {
   globalThis.fetch = originalFetch;
 }

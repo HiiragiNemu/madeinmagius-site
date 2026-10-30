@@ -116,9 +116,9 @@ const PROJECTS = {
     routes: { twXapk: 'tw-xapk', jpXapk: 'jp-xapk' },
     fallbackAssets: {
       jpXapk: {
-        name: 'com.aniplex.magia.exedra.jp-3.21.0.xapk',
-        size: 959302997,
-        digest: 'sha256:9add4ea7d585c532b082e41b8bcaad1a7f567cb7e0a4692087dd8632d1a32df2',
+        name: 'com.aniplex.magia.exedra.jp-3.22.0-26102219.xapk',
+        size: 950073201,
+        digest: 'sha256:6d5e82ae0ea11860b972dab8bdd91bff258694e2447c355e0b8dc9a372407f91',
         content_type: 'application/xapk-package-archive',
         download: './downloads/exedra/jp-xapk',
       },
@@ -217,10 +217,10 @@ async function latestProject(key, config, token) {
 }
 
 async function scannedProject(key, config, token) {
-  const releases = await githubJson(
+  const releases = (await githubJson(
     `https://api.github.com/repos/${config.repo}/releases?per_page=30`,
     token,
-  );
+  )).filter(release => !release.draft && !release.prerelease);
   const found = {};
   const sourceTags = {};
   for (const release of releases) {

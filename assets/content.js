@@ -200,6 +200,7 @@ function contactHtml() {
 }
 
 const MAGIRECO_RELEASE_NOTES = {
+  "1.4.2": ["1.4.2 紧急修复。覆盖安装保留现有存档与已安装资源；本轮客户端修复需要更新 APK。", "撤销在线与离线共用的游戏内下载拦截，恢复原生资源刷新、视频和语音下载及真实回调流程，撤回跳过下载的临时处理；保留清档及账号删除保护。", "修复教程抽卡仅有付费石时的余额判定，保持免费石优先、重复请求不重复扣费。修正32个历史卡池和阶梯变体的普通抽取分布，恢复日期依据的低星角色和记忆背景；特殊保证位、券及百抽保底保持。完整历史名单与逐项UP权重仍有本地重建部分。", "补充未扣BP的镜层准备记录恢复提示与继续/取消入口，保护旧档和战斗记录。修复全解锁档案前五关首通准入并补齐当前资料中的72个主页背景；新号和100级档案的解锁规则保持。", "修复 MainQuestSingleRaid 剧情地图404。调整本地镜层匹配范围，加入6组scene0专属兑换入口；兑换券不自动赠送，完整阶梯规则继续补齐。", "13个固定资源包已完成同字节R2分发，旧Pages固定包地址转为静态分流。客户端新增独立固定包校验清单并统一尊重系统HTTP代理，保留直连排除、断点验证及原回退线路；4类热更新继续原动态发现和签名校验。", "本次按紧急发布要求上线。主机编译产物与签名、覆盖安装已验证；跨设备战斗/助战/剧情、全解锁游玩、导入和全17包首次下载的完整设备验收继续跟进，不宣称全量活动或卡池完成。"],
   "1.4.1": ["实际安装版本：1.4.1；1.3.141 / 1.2.141 为兼容发现序号。覆盖安装保留存档与已安装资源。", "修复可选视频下载等待导致的离线启动黑屏，以及商店数据复制异常导致的503白屏；MuMu同一100级测试档已验证启动、商店列表、返回和再次进入。", "调整存档管理面板：紧凑自适应卡片、统一选中高亮、勾选与批量删除确认；保留原有档案和备份。", "合入已验证的累计修复、六组Scene0卡池名单、官方商店短摘要字段及3419篇中文公告与贡献说明。六组名单修复不代表全部阶梯机制已还原。", "保持前端资源104、累计修订60和离线补充6；资源已安装者正常复用，不要求重新导入下载文件。", "新号与100级可养成档优先。全解锁首关409、镜层强度平衡及尚未覆盖的活动/卡池规则继续跟进，不计入本次全部修复。"],
   "1.4.0": ["实际安装版本：1.4.0；1.3.140 / 1.2.140 为兼容发现序号。覆盖安装保留存档与已安装资源。", "改善大存档加载、战斗结算和续战的内存与等待问题，完善损坏存档诊断及有效备份恢复为独立命名档。", "增加独立命名档删除，统一选中提示与管理布局；加强游戏内危险数据操作入口保护。", "修正下载页按钮、显示比例与长文件名布局；调整字体/显示大小后保留待确认更新。下载线路菜单将 R2 前置，说明与既有自动选择规则一致。", "修复小丘比三期（532、749、1088），补齐五个卡池（63、433、1072、1133、1984）的已知背景成员，保留已实现的 UP、费用、券与保证规则。", "补入21家心魔商店：16店的18种已知商品，以及5家商品资料仍待补齐的空店。已补商品价格、数量和库存沿用本地重建配置。", "包含镜层/排名入口回调与结果奖励收集修复；匹配对手跨度另行处理。", "后续仍在推进：御魂等历史横幅与“普通活动不激活”选项的衔接、镜层匹配跨度、BGM，以及 LostRecord、博物馆、SUMO 和剩余历史/特殊卡池整合。全部616历史卡池继续以1.4.1阶段推进；423原日历键、15目标领域及后续追加内容保持长期范围。"],
   "1.3.9": [
@@ -328,6 +329,7 @@ function magirecoClientHtml(current) {
     const notes = MAGIRECO_RELEASE_NOTES[current.version] || [];
     releaseNotes = notes.length ? '<h3>' + escapeHtml(current.version) + ' 更新内容</h3><ul>' + notes.map(note => '<li>' + escapeHtml(note) + '</li>').join('') + '</ul>' : '';
     const directMirrors = {
+      '1.4.2': { sha256:'b0bfb557d561100567a2db3245d31cde26ce8625391770385918cf1779c7c0d6', size:136950683 },
       '1.4.1': { sha256:'ae081b57976961504b0aca9cca1a41764b48a444c66441572babd330b550a76b', size:136913819 },
       '1.4.0': { sha256:'6d4bd921ac41b2ea4f426b6aba9efadaad7b598fa5978a30a36900c3a062b242', size:134673736 },
       '1.3.8': { sha256:'f140fd086be89b03e9ac65a47fc0cee1daa57561fb49dead6440bd34b9620e0c', size:134530376 },
@@ -340,7 +342,9 @@ function magirecoClientHtml(current) {
       (verifiedDirectMirror ? '<a class="download-button" href="https://pub-121ae9980b3149dcbc4a1f88ad7a58b9.r2.dev/release-mirrors/sha256/' + directMirror.sha256 + '/' + fixedApkName + '">R2 直连下载 APK</a> ' +
         '<a class="download-button" href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/' + fixedApkName + '">GitHub 备用 APK</a> ' : '') +
       '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
-      (current.version === '1.4.1' && verifiedDirectMirror
+      (current.version === '1.4.2' && verifiedDirectMirror
+        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.2-public-patch-third-party-source-materials.zip">下载 1.4.2 公开补丁及第三方源码材料</a> · 34,744,292 字节 · <a href="./assets/magireco-source-materials-1.4.2.html">范围、校验与构建材料说明</a></p>'
+        : current.version === '1.4.1' && verifiedDirectMirror
         ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.1-public-patch-third-party-source-materials.zip">下载 1.4.1 公开补丁及第三方源码材料</a> · 34,743,127 字节 · <a href="./assets/magireco-source-materials-1.4.1.html">范围、校验与构建材料说明</a></p>'
         : current.version === '1.4.0' && verifiedDirectMirror
         ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.0-public-patch-third-party-source-materials.zip">下载 1.4.0 公开补丁及第三方源码材料</a> · 34,734,122 字节 · <a href="./assets/magireco-source-materials-1.4.0.html">范围、校验与构建材料说明</a></p>'
@@ -353,7 +357,7 @@ function magirecoClientHtml(current) {
   }
   return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2>' +
     '<p>魔法纪录汉化客户端（Android）。无需 Root；安装包不包含随后下载的全部游戏资源。</p>' +
-    (!ready || current.version === '1.3.8' || current.version === '1.3.9' || current.version === '1.4.0' || current.version === '1.4.1' ? '<p><strong>下载线路拥堵或中断？</strong><a href="./assets/magireco-direct-downloads-20261029.html">打开固定 1.4.1、历史版本与部分资源的备用直连下载</a>（不经过下载 Worker）。原地址和 GitHub 备用保留。</p>' : '') +
+    (!ready || current.version === '1.3.8' || current.version === '1.3.9' || current.version === '1.4.0' || current.version === '1.4.1' || current.version === '1.4.2' ? '<p><strong>下载线路拥堵或中断？</strong><a href="./assets/magireco-direct-downloads-20261029.html">打开固定 1.4.2、历史版本与部分资源的备用直连下载</a>（不经过下载 Worker）。原地址和 GitHub 备用保留。</p>' : '') +
     upgradeNotice +
     '<div class="download-stack"><article class="download-card"><h3>ANDROID APK</h3>' + download +
     '<p><button class="terminal-copy-button" type="button" data-magireco-refresh' +

@@ -1,10 +1,10 @@
 {
   "schema": "madeinmagius-magireco-snapshot/v1",
-  "version": "1.4.0",
-  "version_code": 1713000900,
-  "size": 134673736,
-  "sha256": "6d4bd921ac41b2ea4f426b6aba9efadaad7b598fa5978a30a36900c3a062b242",
+  "version": "1.4.1",
+  "version_code": 1713000902,
+  "size": 136913819,
+  "sha256": "ae081b57976961504b0aca9cca1a41764b48a444c66441572babd330b550a76b",
   "source": "published-snapshot",
   "updated": null,
-  "download": "https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.0.apk"
+  "download": "https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.1.apk"
 }

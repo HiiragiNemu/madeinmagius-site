@@ -3,6 +3,7 @@ import test from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {createMagirecoSnapshot} from './update-magireco-snapshot.mjs';
 const original=JSON.parse(await readFile(new URL('../data/magireco-release.signed.json',import.meta.url)));
+const historical143=JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials143.json',import.meta.url)));
 const historical142=JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials142.json',import.meta.url)));
 const historical141=JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials141.json',import.meta.url)));
 const historical140=JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials140.json',import.meta.url)));
@@ -33,14 +34,24 @@ test('142 exact material scope is signed and pins the RC2 artifact',async()=>{
  assert.equal(x.sha256,'b0bfb557d561100567a2db3245d31cde26ce8625391770385918cf1779c7c0d6');
 });
 test('143 exact material scope is signed and pins the RC4 artifact',async()=>{
+ assert.equal(historical143.corresponding_source,undefined);
+ assert.equal(historical143.source_materials.complete_apk_corresponding_source,false);
+ assert.equal(historical143.source_materials.selected_source_leaf_count,199);
+ assert.equal(historical143.source_materials.sha256,'5aa238ba8af616ab64f21edf727294753a40484a2524bdd98dd237a062b8755d');
+ assert.equal(historical143.source_materials.size,34746202);
+ const x=await createMagirecoSnapshot(historical143);
+ assert.equal(x.version,'1.4.3');assert.equal(x.version_code,1713000904);assert.equal(x.size,136958875);
+ assert.equal(x.sha256,'33ca7b1a00a5f4bb933ebfc88e8c26f6c45856f4010e28c7824d80387f62ea8c');
+});
+test('144 exact material scope is signed and pins the RC2 artifact',async()=>{
  assert.equal(original.corresponding_source,undefined);
  assert.equal(original.source_materials.complete_apk_corresponding_source,false);
  assert.equal(original.source_materials.selected_source_leaf_count,199);
- assert.equal(original.source_materials.sha256,'5aa238ba8af616ab64f21edf727294753a40484a2524bdd98dd237a062b8755d');
- assert.equal(original.source_materials.size,34746202);
+ assert.equal(original.source_materials.sha256,'f7af9a2366cddfe758c39242f8c80384d5c6cd692168ff5f3c210d171150d7d9');
+ assert.equal(original.source_materials.size,34746599);
  const x=await createMagirecoSnapshot(original);
- assert.equal(x.version,'1.4.3');assert.equal(x.version_code,1713000904);assert.equal(x.size,136958875);
- assert.equal(x.sha256,'33ca7b1a00a5f4bb933ebfc88e8c26f6c45856f4010e28c7824d80387f62ea8c');
+ assert.equal(x.version,'1.4.4');assert.equal(x.version_code,1713001002);assert.equal(x.size,137061952);
+ assert.equal(x.sha256,'a5f286b3def40109b943ce7c981aba5d80ca663276307e53afdfb478209f29b8');
 });
 for(const field of ['sha256','size','url','kind','complete_apk_corresponding_source','selected_source_leaf_count','apk_sha256','build_source_freeze_sha256'])test('reject unsigned material mutation '+field,async()=>{
  const x=structuredClone(original);x.source_materials[field]=typeof x.source_materials[field]==='number'?x.source_materials[field]+1:'tampered';

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { selectMagirecoRelease } from '../lib/magireco-release.js';
+import { selectMagirecoRelease, approvedBuildAssetName } from '../lib/magireco-release.js';
 
 const releaseRoot = 'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/';
 
@@ -17,7 +17,7 @@ export function fixedApkName(version) {
 // constructing the static fallback. Asset publication is checked by the publisher.
 export async function createMagirecoSnapshot(client, publishedRelease = null) {
   assert.ok(client && typeof client === 'object');
-  const fixedName = fixedApkName(client.display_version ?? client.version);
+  const fixedName = await approvedBuildAssetName(client,fixedApkName(client.display_version ?? client.version));
   const source = client.corresponding_source ?? client.source_materials;
   assert.ok(source && typeof source === 'object');
   const release = publishedRelease || { draft:false, prerelease:false, assets:[

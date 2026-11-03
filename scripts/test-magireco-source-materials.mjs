@@ -3,6 +3,7 @@ import test from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {createMagirecoSnapshot} from './update-magireco-snapshot.mjs';
 const original=JSON.parse(await readFile(new URL('../data/magireco-release.signed.json',import.meta.url)));
+const historical144=JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials144.json',import.meta.url)));
 const historical143=JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials143.json',import.meta.url)));
 const historical142=JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials142.json',import.meta.url)));
 const historical141=JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials141.json',import.meta.url)));
@@ -44,14 +45,25 @@ test('143 exact material scope is signed and pins the RC4 artifact',async()=>{
  assert.equal(x.sha256,'33ca7b1a00a5f4bb933ebfc88e8c26f6c45856f4010e28c7824d80387f62ea8c');
 });
 test('144 exact material scope is signed and pins the RC2 artifact',async()=>{
- assert.equal(original.corresponding_source,undefined);
- assert.equal(original.source_materials.complete_apk_corresponding_source,false);
- assert.equal(original.source_materials.selected_source_leaf_count,199);
- assert.equal(original.source_materials.sha256,'f7af9a2366cddfe758c39242f8c80384d5c6cd692168ff5f3c210d171150d7d9');
- assert.equal(original.source_materials.size,34746599);
- const x=await createMagirecoSnapshot(original);
+ assert.equal(historical144.corresponding_source,undefined);
+ assert.equal(historical144.source_materials.complete_apk_corresponding_source,false);
+ assert.equal(historical144.source_materials.selected_source_leaf_count,199);
+ assert.equal(historical144.source_materials.sha256,'f7af9a2366cddfe758c39242f8c80384d5c6cd692168ff5f3c210d171150d7d9');
+ assert.equal(historical144.source_materials.size,34746599);
+ const x=await createMagirecoSnapshot(historical144);
  assert.equal(x.version,'1.4.4');assert.equal(x.version_code,1713001002);assert.equal(x.size,137061952);
  assert.equal(x.sha256,'a5f286b3def40109b943ce7c981aba5d80ca663276307e53afdfb478209f29b8');
+});
+test('144 build1003 exact material scope is signed and pins the b1713001003 artifact',async()=>{
+ assert.equal(original.corresponding_source,undefined);
+ assert.equal(original.source_materials.complete_apk_corresponding_source,false);
+ assert.equal(original.source_materials.selected_source_leaf_count,200);
+ assert.equal(original.source_materials.sha256,'6b3061e191bd1d7385ade5a7d5bf165cd56ff97a9736709899c6142fc799296f');
+ assert.equal(original.source_materials.size,34748979);
+ const x=await createMagirecoSnapshot(original);
+ assert.equal(x.download,'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.4-b1713001003.apk');
+ assert.equal(x.version,'1.4.4');assert.equal(x.version_code,1713001003);assert.equal(x.size,137135680);
+ assert.equal(x.sha256,'af78bad30b572cbcdf41b019faf62a36196751349b5eb71d9dec3931d6c7919e');
 });
 for(const field of ['sha256','size','url','kind','complete_apk_corresponding_source','selected_source_leaf_count','apk_sha256','build_source_freeze_sha256'])test('reject unsigned material mutation '+field,async()=>{
  const x=structuredClone(original);x.source_materials[field]=typeof x.source_materials[field]==='number'?x.source_materials[field]+1:'tampered';

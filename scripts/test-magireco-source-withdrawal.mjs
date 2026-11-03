@@ -7,8 +7,10 @@ const baseline = process.argv.indexOf('--baseline-module');
 const moduleUrl = baseline >= 0 ? pathToFileURL(process.argv[baseline + 1]) : new URL('../lib/magireco-release.js', import.meta.url);
 const { selectMagirecoRelease } = await import(moduleUrl);
 const sourceRequired = process.argv.includes('--expect-source-required');
+const publishedSnapshot = JSON.parse(await readFile(new URL('../data/magireco-release.json', import.meta.url)));
 const clients = [
   JSON.parse(await readFile(new URL('../data/magireco-release.signed.json', import.meta.url))),
+  JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials144.json', import.meta.url))),
   JSON.parse(await readFile(new URL('./fixtures/magireco-discovery138.json', import.meta.url))),
 ];
 const originalFetch = globalThis.fetch;
@@ -17,23 +19,25 @@ process.on('exit', () => { globalThis.fetch = originalFetch; });
 
 for (const original of clients) {
   const version = original.compatibility_discovery.installed_public_version;
+  const label = version + ' b' + original.version_code;
+  const apkName = original === clients[0] ? new URL(publishedSnapshot.download).pathname.split('/').at(-1) : 'magireco-legacy-client-' + version + '.apk';
   function fixture() {
     const client = structuredClone(original);
     const source = client.corresponding_source ?? client.source_materials;
     const release = {draft:false,prerelease:false,assets:[
-      {id:9101,name:'magireco-legacy-client-' + version + '.apk',state:'uploaded',size:client.size,digest:'sha256:' + client.sha256},
+      {id:9101,name:apkName,state:'uploaded',size:client.size,digest:'sha256:' + client.sha256},
       {id:9102,name:source.asset,state:'uploaded',size:source.size,digest:'sha256:' + source.sha256},
     ]};
     return {client,release};
   }
-  test('production signature and APK identity retained: ' + version, async () => {
+  test('production signature and APK identity retained: ' + label, async () => {
     const f = fixture();
     const selected = await selectMagirecoRelease(f.client, f.release);
     assert.equal(selected.version, version);
     assert.equal(selected.sha256, original.sha256);
     assert.equal(selected.size, original.size);
   });
-  test('source withdrawal changes no selected APK fields: ' + version, async () => {
+  test('source withdrawal changes no selected APK fields: ' + label, async () => {
     const f = fixture();
     const before = await selectMagirecoRelease(f.client, f.release);
     f.release.assets.pop();
@@ -53,7 +57,7 @@ for (const original of clients) {
     'withdrawn source plus unsigned APK identity':f => {f.release.assets.pop(); f.client.sha256='0'.repeat(64);},
     'withdrawn source plus unsigned version':f => {f.release.assets.pop(); f.client.version='9.9.9';},
   })) {
-    test('still rejects ' + label + ': ' + version, async () => {
+    test('still rejects ' + label + ': ' + label, async () => {
       const f=fixture();mutate(f);await assert.rejects(() => selectMagirecoRelease(f.client,f.release));
     });
   }

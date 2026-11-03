@@ -8,13 +8,17 @@ const versionParts = value => {
 };
 const validCode = value => Number.isSafeInteger(value) && value > 0 && value <= 2147483647;
 
+const fixedSnapshotAsset = value => value.version === '1.4.4' && value.version_code === 1713001003 &&
+  value.size === 137135680 && value.sha256 === 'af78bad30b572cbcdf41b019faf62a36196751349b5eb71d9dec3931d6c7919e'
+    ? 'magireco-legacy-client-1.4.4-b1713001003.apk' : 'magireco-legacy-client-' + value.version + '.apk';
+
 function valid(value, snapshot) {
   if (!value || !versionParts(value.version) || !Number.isSafeInteger(value.size) || value.size <= 0 ||
       !/^[a-f0-9]{64}$/.test(value.sha256 || '') ||
       (value.version_code !== undefined && !validCode(value.version_code))) return false;
   return snapshot
     ? value.schema === 'madeinmagius-magireco-snapshot/v1' &&
-      value.download === PUBLIC_RELEASE + 'magireco-legacy-client-' + value.version + '.apk'
+      value.download === PUBLIC_RELEASE + fixedSnapshotAsset(value)
     : value.download === './downloads/magireco/android?sha256=' + value.sha256;
 }
 

@@ -61,7 +61,7 @@ test('static snapshot and direct URL remain local/independent on both hosts', ()
 });
 
 for (const version of ['1.3.9','1.3.10','1.4.0','2.0.0']) test('future published snapshot survives CF failure: ' + version, async () => {
-  const future = {...snapshot, version, version_code:1713000900, download:snapshot.download.replace(snapshot.version,version)};
+  const future = {...snapshot, version, version_code:1713000900, download:'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-' + version + '.apk'};
   const result = await load(async url => url.startsWith('./data/') ? Response.json(future) : new Response('unavailable',{status:503}));
   assert.equal(result.version,version); assert.equal(result.download,future.download);
 });
@@ -74,5 +74,32 @@ test('build-code order accepts same-display new builds and rejects misleading di
   ]) {
     const result=await load(async url=>Response.json(url.startsWith('./data/')?snapshot:candidate));
     assert.equal(result.download, accepted?candidate.download:snapshot.download);
+  }
+});
+
+const historical144 = JSON.parse(await readFile(new URL('./fixtures/magireco-source-materials144.json', import.meta.url)));
+const snapshot1002 = await createMagirecoSnapshot(historical144);
+test('historical 144 build1002 fixed URL survives live failure unchanged', async () => {
+  assert.equal(snapshot1002.version,'1.4.4'); assert.equal(snapshot1002.version_code,1713001002);
+  assert.equal(snapshot1002.download,'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.4.apk');
+  const result=await load(async url=>url.startsWith('./data/')?Response.json(snapshot1002):new Response('',{status:503}));
+  assert.equal(result.state,'ready'); assert.equal(result.download,snapshot1002.download);
+});
+test('exact 144 build1003 static path survives live failure and supersedes old code', async () => {
+  assert.equal(snapshot.version,'1.4.4'); assert.equal(snapshot.version_code,1713001003);
+  assert.equal(snapshot.sha256,'af78bad30b572cbcdf41b019faf62a36196751349b5eb71d9dec3931d6c7919e'); assert.equal(snapshot.size,137135680);
+  assert.equal(snapshot.download,'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.4-b1713001003.apk');
+  const result=await load(async url=>url.startsWith('./data/')?Response.json(snapshot):new Response('',{status:503}));
+  assert.equal(result.state,'ready'); assert.equal(result.download,snapshot.download);
+  const upgraded=await load(async url=>Response.json(url.startsWith('./data/')?snapshot1002:live));
+  assert.equal(upgraded.version_code,1713001003); assert.equal(upgraded.download,live.download);
+});
+test('build-specific static path rejects wrong identity or suffix', async () => {
+  for(const change of [{version_code:1713001002},{version_code:1713001004},{version:'1.4.5'},
+    {sha256:'0'.repeat(64)},{size:snapshot.size+1},
+    {download:'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.4.apk'},
+    {download:'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.4-b1713001004.apk'}]) {
+    const result=await load(async url=>url.startsWith('./data/')?Response.json({...snapshot,...change}):new Response('',{status:503}));
+    assert.equal(result.state,'error',JSON.stringify(change));
   }
 });

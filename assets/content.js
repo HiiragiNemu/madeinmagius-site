@@ -200,7 +200,7 @@ function contactHtml() {
 }
 
 const MAGIRECO_RELEASE_NOTES = {
-  "1.4.4": ["• 1.4.4 累计修复；覆盖安装保留已有资源、独立档案与进度。", "• 修复已核对的主线特殊关卡首战、再战与续关链：10160654及1016042、1016044、1016064；保留首通奖励、战斗结果和重复请求保护。后三关再战使用有原始首战及同族依据的适配，不宣称取得同关完整再战回包。", "• 按已取得的原公告补齐六组 scene0 阶梯池的价格、保证、轮次和奖励规则；逐项官方概率仍有缺口，不宣称全部历史池已还原。", "• 补回原始资料中的历史记忆结晶及原生技能依赖；全解锁档案的可装备记忆达到1036种，保留已消耗、售出和战斗中状态。4种强化/突破素材不冒充装备，1491的原生语音依赖仍待补齐。新号与100级档案不自动获赠这些记忆。", "• 修复记忆结晶剧情经验加成、角色剧情所属角色加成、剧情等级4/5的免费石奖励及64000累计剧情点上限；奖励与存档原子提交，重复结算不重复发放，不追溯补发旧奖励。", "• 补齐九个有原公告依据卡池的记忆成员，修正池25开池时间；为175个已分类普通历史卡池补上单抽券、十连券兼容。特殊阶梯池不套用普通券规则，已有稀有度概率、日期和保底保持。券支持包含有原始同族依据的适配，不宣称逐池原始kind数据均已找回。", "• APK内置卡池模板清理和5张原版CLEAR/巡逻图片，与已发布delta61一致；不会重新引入已移除的附加文本层。", "• 活动1040逐关票价与基础获券、部分特殊关卡、历史卡池逐项概率和跨设备问题仍待处理；本次不宣称423活动、616卡池或全解锁内容已全部完成。", "• 补齐第一部第6章第5话五个挑战关卡10160551～10160555的战斗定义，修复进本409；原始同关再战敌人/15AP成本与主表首通奖励分别绑定，首通和补星不重复领奖。", "• 修复手动检查更新后包16/17等资源行残留旧查询失败；应用与资源检查结果分别说明，仅旧兼容源可达时不再误报已是最新。查询失败保留已装资源和重试入口。", "• 本轮新增空白报错/抽卡409与特定池保底反馈继续跟进；现有附件未包含对应当前失败请求，三个代表池的计数回归通过，不列作已定位修复。"],
+  "1.4.4": ["• 1.4.4 紧急修订（构建 1713001003）。已安装上一构建 1713001002 的用户也需更新；沿用原签名和应用身份，覆盖升级保留已有资源、档案与进度。", "• 修复已扣 BP 的镜层战斗中断后，旧档在恢复检查中反复 409 的缺口。原生检查点仍在时提供续战；检查点缺失时提供明确退出本场的选择，保留其余存档，不自动清档、不重复扣 BP，也不补发胜利奖励或退还本场已扣 BP。", "• 修复离线新号序章等视频播放遭遇明确 CRI 错误后一直黑屏的退出分支：失败片段沿原有场景完成回调继续。正常播放及在线模式沿用原逻辑；这是播放失败后的恢复处理，解码器线程创建失败的根因仍待查，不宣称视频播放本身已修好。", "• 合入此前十一批已验证的历史卡池修订，包括圣诞相关池、贞德相关普通及阶梯池、部分早期卡池、阿莉娜池专属记忆、Historia 1803 自选池和夏日 2018／2029 池；这些数字为卡池 ID，不是年份。按已取得的原公告和原始资料修正规则、名单、赠币与日期，并保留各项资料缺口说明。", "• Historia 1803 补上自选及重复选择、100 次计数与赠币处理；选中角色并不等于每次保底都必中该角色。夏日 2018／2029 恢复多角色 UP 名单及赠币；部分背景名单与数值仍属明确标注的同族重建，相关兑换商店尚未全部补齐。", "• 顶部“点击看视频”链接更新；继续包含上一构建 1.4.4 的主线关卡、记忆结晶、历史卡池和资源版本检查修复。", "• 首次镜层结算 incomplete_victory 的原请求内容尚未取得，原胜利校验保持，不将无效结算直接改成成功；本次先修复异常后旧档持续被恢复流程卡住的问题。", "• 本轮通过三类档案的主机回归与双 ABI 构建验证；用户原存档未随日志提供，未做该原档回放或新增实机测试。空白报错、未定位的抽卡 409／特定池保底、跨设备问题及全部 423 活动、616 历史卡池、全解锁内容仍有后续缺口。"],
   "1.4.3": ["1.4.3 紧急修复", "修复御魂特训切换历史活动后混入旧关卡及相关角色事件等级结果页错误。", "修复包括 1016055 在内的 28 个普通主线关卡通关后再次挑战可能出现的 409，保留首次与重复挑战各自的消耗和奖励规则。", "修复大存档抽卡等新增记录时的分片容量与读取问题；每组容量从 8 片扩展到 32 片，保持存档完整性和重复请求不重复扣费。", "修复一类离线目录读取失败：从当前已安装 APK 读取同一受保护目录，继续执行原有校验。", "修复下载进度页被旧回调隐藏和失败后提前离开重试页；改善日志按钮、版本查询失败提示及联系入口。", "修正周年 529 PICKUP 的开放范围、横幅和卡池组成，保留普通角色与记忆结晶。概率按已留存同类来源重建，原池完整原始概率表仍待补齐。", "更新视频跳转目标。", "资源版本保持剧情 3323、JS 104、累计增量 60、离线包 6；本次主要通过 APK 更新交付。", "存档提示：超过 8 分片的新存档需要 1.4.3 或兼容读取器；降回旧 APK 时应配合升级前可读取的备份，单独降级 APK 不会转换存档。"],
   "1.4.2": ["1.4.2 紧急修复。覆盖安装保留现有存档与已安装资源；本轮客户端修复需要更新 APK。", "撤销在线与离线共用的游戏内下载拦截，恢复原生资源刷新、视频和语音下载及真实回调流程，撤回跳过下载的临时处理；保留清档及账号删除保护。", "修复教程抽卡仅有付费石时的余额判定，保持免费石优先、重复请求不重复扣费。修正32个历史卡池和阶梯变体的普通抽取分布，恢复日期依据的低星角色和记忆背景；特殊保证位、券及百抽保底保持。完整历史名单与逐项UP权重仍有本地重建部分。", "补充未扣BP的镜层准备记录恢复提示与继续/取消入口，保护旧档和战斗记录。修复全解锁档案前五关首通准入并补齐当前资料中的72个主页背景；新号和100级档案的解锁规则保持。", "修复 MainQuestSingleRaid 剧情地图404。调整本地镜层匹配范围，加入6组scene0专属兑换入口；兑换券不自动赠送，完整阶梯规则继续补齐。", "13个固定资源包已完成同字节R2分发，旧Pages固定包地址转为静态分流。客户端新增独立固定包校验清单并统一尊重系统HTTP代理，保留直连排除、断点验证及原回退线路；4类热更新继续原动态发现和签名校验。", "本次按紧急发布要求上线。主机编译产物与签名、覆盖安装已验证；跨设备战斗/助战/剧情、全解锁游玩、导入和全17包首次下载的完整设备验收继续跟进，不宣称全量活动或卡池完成。"],
   "1.4.1": ["实际安装版本：1.4.1；1.3.141 / 1.2.141 为兼容发现序号。覆盖安装保留存档与已安装资源。", "修复可选视频下载等待导致的离线启动黑屏，以及商店数据复制异常导致的503白屏；MuMu同一100级测试档已验证启动、商店列表、返回和再次进入。", "调整存档管理面板：紧凑自适应卡片、统一选中高亮、勾选与批量删除确认；保留原有档案和备份。", "合入已验证的累计修复、六组Scene0卡池名单、官方商店短摘要字段及3419篇中文公告与贡献说明。六组名单修复不代表全部阶梯机制已还原。", "保持前端资源104、累计修订60和离线补充6；资源已安装者正常复用，不要求重新导入下载文件。", "新号与100级可养成档优先。全解锁首关409、镜层强度平衡及尚未覆盖的活动/卡池规则继续跟进，不计入本次全部修复。"],
@@ -331,7 +331,7 @@ function magirecoClientHtml(current) {
     const notes = MAGIRECO_RELEASE_NOTES[current.version] || [];
     releaseNotes = notes.length ? '<h3>' + escapeHtml(current.version) + ' 更新内容</h3><ul>' + notes.map(note => '<li>' + escapeHtml(note) + '</li>').join('') + '</ul>' : '';
     const directMirrors = {
-      '1.4.4': { sha256:'a5f286b3def40109b943ce7c981aba5d80ca663276307e53afdfb478209f29b8', size:137061952 },
+      '1.4.4': { sha256:'af78bad30b572cbcdf41b019faf62a36196751349b5eb71d9dec3931d6c7919e', size:137135680, asset:'magireco-legacy-client-1.4.4-b1713001003.apk' },
       '1.4.3': { sha256:'33ca7b1a00a5f4bb933ebfc88e8c26f6c45856f4010e28c7824d80387f62ea8c', size:136958875 },
       '1.4.2': { sha256:'b0bfb557d561100567a2db3245d31cde26ce8625391770385918cf1779c7c0d6', size:136950683 },
       '1.4.1': { sha256:'ae081b57976961504b0aca9cca1a41764b48a444c66441572babd330b550a76b', size:136913819 },
@@ -341,13 +341,13 @@ function magirecoClientHtml(current) {
     };
     const directMirror = directMirrors[current.version];
     const verifiedDirectMirror = directMirror && current.sha256 === directMirror.sha256 && current.size === directMirror.size;
-    const fixedApkName = 'magireco-legacy-client-' + encodeURIComponent(current.version) + '.apk';
+    const fixedApkName = verifiedDirectMirror && directMirror.asset ? directMirror.asset : 'magireco-legacy-client-' + encodeURIComponent(current.version) + '.apk';
     download = '<p><strong>客户端版本 ' + escapeHtml(current.version) + '</strong> · ' + formatBytes(current.size) + '</p>' +
       (verifiedDirectMirror ? '<a class="download-button" href="https://pub-121ae9980b3149dcbc4a1f88ad7a58b9.r2.dev/release-mirrors/sha256/' + directMirror.sha256 + '/' + fixedApkName + '">R2 直连下载 APK</a> ' +
         '<a class="download-button" href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/' + fixedApkName + '">GitHub 备用 APK</a> ' : '') +
       '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
       (current.version === '1.4.4' && verifiedDirectMirror
-        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.4-public-patch-third-party-source-materials.zip">下载 1.4.4 公开补丁及第三方源码材料</a> · 34,746,599 字节 · <a href="./assets/magireco-source-materials-1.4.4.html">范围、校验与构建材料说明</a></p>'
+        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.4-b1713001003-public-patch-third-party-source-materials.zip">下载 1.4.4 公开补丁及第三方源码材料</a> · 34,748,979 字节 · <a href="./assets/magireco-source-materials-1.4.4-b1713001003.html">范围、校验与构建材料说明</a></p>'
         : current.version === '1.4.3' && verifiedDirectMirror
         ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.3-public-patch-third-party-source-materials.zip">下载 1.4.3 公开补丁及第三方源码材料</a> · 34,746,202 字节 · <a href="./assets/magireco-source-materials-1.4.3.html">范围、校验与构建材料说明</a></p>'
         : current.version === '1.4.2' && verifiedDirectMirror

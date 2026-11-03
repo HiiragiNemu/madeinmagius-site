@@ -18,7 +18,7 @@ export const HOME_WEBSITES = [
 export const PROGRAMS = {
   home: { subs: [
     { id: 'welcome', label: '魔法纪录相关网站', note: '作品导航' },
-    { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: 'APK / 教程' },
+    { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: '已暂停下载' },
     { id: 'universal-adv-reader', label: '通用 ADV 阅读网站', note: 'Narcissu / KANA' },
     { id: 'programs', label: '资源比对与证据记录', note: '报告' },
     { id: 'contact', label: 'CONTACT', note: '联系' }
@@ -199,194 +199,8 @@ function contactHtml() {
     '</div>';
 }
 
-const MAGIRECO_RELEASE_NOTES = {
-  "1.4.4": ["• 1.4.4 紧急修订（构建 1713001003）。已安装上一构建 1713001002 的用户也需更新；沿用原签名和应用身份，覆盖升级保留已有资源、档案与进度。", "• 修复已扣 BP 的镜层战斗中断后，旧档在恢复检查中反复 409 的缺口。原生检查点仍在时提供续战；检查点缺失时提供明确退出本场的选择，保留其余存档，不自动清档、不重复扣 BP，也不补发胜利奖励或退还本场已扣 BP。", "• 修复离线新号序章等视频播放遭遇明确 CRI 错误后一直黑屏的退出分支：失败片段沿原有场景完成回调继续。正常播放及在线模式沿用原逻辑；这是播放失败后的恢复处理，解码器线程创建失败的根因仍待查，不宣称视频播放本身已修好。", "• 合入此前十一批已验证的历史卡池修订，包括圣诞相关池、贞德相关普通及阶梯池、部分早期卡池、阿莉娜池专属记忆、Historia 1803 自选池和夏日 2018／2029 池；这些数字为卡池 ID，不是年份。按已取得的原公告和原始资料修正规则、名单、赠币与日期，并保留各项资料缺口说明。", "• Historia 1803 补上自选及重复选择、100 次计数与赠币处理；选中角色并不等于每次保底都必中该角色。夏日 2018／2029 恢复多角色 UP 名单及赠币；部分背景名单与数值仍属明确标注的同族重建，相关兑换商店尚未全部补齐。", "• 顶部“点击看视频”链接更新；继续包含上一构建 1.4.4 的主线关卡、记忆结晶、历史卡池和资源版本检查修复。", "• 首次镜层结算 incomplete_victory 的原请求内容尚未取得，原胜利校验保持，不将无效结算直接改成成功；本次先修复异常后旧档持续被恢复流程卡住的问题。", "• 本轮通过三类档案的主机回归与双 ABI 构建验证；用户原存档未随日志提供，未做该原档回放或新增实机测试。空白报错、未定位的抽卡 409／特定池保底、跨设备问题及全部 423 活动、616 历史卡池、全解锁内容仍有后续缺口。"],
-  "1.4.3": ["1.4.3 紧急修复", "修复御魂特训切换历史活动后混入旧关卡及相关角色事件等级结果页错误。", "修复包括 1016055 在内的 28 个普通主线关卡通关后再次挑战可能出现的 409，保留首次与重复挑战各自的消耗和奖励规则。", "修复大存档抽卡等新增记录时的分片容量与读取问题；每组容量从 8 片扩展到 32 片，保持存档完整性和重复请求不重复扣费。", "修复一类离线目录读取失败：从当前已安装 APK 读取同一受保护目录，继续执行原有校验。", "修复下载进度页被旧回调隐藏和失败后提前离开重试页；改善日志按钮、版本查询失败提示及联系入口。", "修正周年 529 PICKUP 的开放范围、横幅和卡池组成，保留普通角色与记忆结晶。概率按已留存同类来源重建，原池完整原始概率表仍待补齐。", "更新视频跳转目标。", "资源版本保持剧情 3323、JS 104、累计增量 60、离线包 6；本次主要通过 APK 更新交付。", "存档提示：超过 8 分片的新存档需要 1.4.3 或兼容读取器；降回旧 APK 时应配合升级前可读取的备份，单独降级 APK 不会转换存档。"],
-  "1.4.2": ["1.4.2 紧急修复。覆盖安装保留现有存档与已安装资源；本轮客户端修复需要更新 APK。", "撤销在线与离线共用的游戏内下载拦截，恢复原生资源刷新、视频和语音下载及真实回调流程，撤回跳过下载的临时处理；保留清档及账号删除保护。", "修复教程抽卡仅有付费石时的余额判定，保持免费石优先、重复请求不重复扣费。修正32个历史卡池和阶梯变体的普通抽取分布，恢复日期依据的低星角色和记忆背景；特殊保证位、券及百抽保底保持。完整历史名单与逐项UP权重仍有本地重建部分。", "补充未扣BP的镜层准备记录恢复提示与继续/取消入口，保护旧档和战斗记录。修复全解锁档案前五关首通准入并补齐当前资料中的72个主页背景；新号和100级档案的解锁规则保持。", "修复 MainQuestSingleRaid 剧情地图404。调整本地镜层匹配范围，加入6组scene0专属兑换入口；兑换券不自动赠送，完整阶梯规则继续补齐。", "13个固定资源包已完成同字节R2分发，旧Pages固定包地址转为静态分流。客户端新增独立固定包校验清单并统一尊重系统HTTP代理，保留直连排除、断点验证及原回退线路；4类热更新继续原动态发现和签名校验。", "本次按紧急发布要求上线。主机编译产物与签名、覆盖安装已验证；跨设备战斗/助战/剧情、全解锁游玩、导入和全17包首次下载的完整设备验收继续跟进，不宣称全量活动或卡池完成。"],
-  "1.4.1": ["实际安装版本：1.4.1；1.3.141 / 1.2.141 为兼容发现序号。覆盖安装保留存档与已安装资源。", "修复可选视频下载等待导致的离线启动黑屏，以及商店数据复制异常导致的503白屏；MuMu同一100级测试档已验证启动、商店列表、返回和再次进入。", "调整存档管理面板：紧凑自适应卡片、统一选中高亮、勾选与批量删除确认；保留原有档案和备份。", "合入已验证的累计修复、六组Scene0卡池名单、官方商店短摘要字段及3419篇中文公告与贡献说明。六组名单修复不代表全部阶梯机制已还原。", "保持前端资源104、累计修订60和离线补充6；资源已安装者正常复用，不要求重新导入下载文件。", "新号与100级可养成档优先。全解锁首关409、镜层强度平衡及尚未覆盖的活动/卡池规则继续跟进，不计入本次全部修复。"],
-  "1.4.0": ["实际安装版本：1.4.0；1.3.140 / 1.2.140 为兼容发现序号。覆盖安装保留存档与已安装资源。", "改善大存档加载、战斗结算和续战的内存与等待问题，完善损坏存档诊断及有效备份恢复为独立命名档。", "增加独立命名档删除，统一选中提示与管理布局；加强游戏内危险数据操作入口保护。", "修正下载页按钮、显示比例与长文件名布局；调整字体/显示大小后保留待确认更新。下载线路菜单将 R2 前置，说明与既有自动选择规则一致。", "修复小丘比三期（532、749、1088），补齐五个卡池（63、433、1072、1133、1984）的已知背景成员，保留已实现的 UP、费用、券与保证规则。", "补入21家心魔商店：16店的18种已知商品，以及5家商品资料仍待补齐的空店。已补商品价格、数量和库存沿用本地重建配置。", "包含镜层/排名入口回调与结果奖励收集修复；匹配对手跨度另行处理。", "后续仍在推进：御魂等历史横幅与“普通活动不激活”选项的衔接、镜层匹配跨度、BGM，以及 LostRecord、博物馆、SUMO 和剩余历史/特殊卡池整合。全部616历史卡池继续以1.4.1阶段推进；423原日历键、15目标领域及后续追加内容保持长期范围。"],
-  "1.3.9": [
-  "实际安装版本：1.3.9；1.3.139 为旧客户端兼容更新发现序号。覆盖安装保留存档与已安装资源。",
-  "修复全解锁档案的记忆加载；完善存档隔离、复制以及导入导出，保留不同档案各自的本地状态。",
-  "修复初次安装的基础资源包处理与重复热更新循环，继续使用现行 Pack17 v4 与 delta58 资源。",
-  "已匹配的下载镜像优先使用 R2，缺失镜像继续使用原线路或 GitHub 回退；基础包仅部分分流，并非全部资源已迁移。",
-  "大存档卡顿仅作部分优化，完整延迟修复列入 1.4 P0；独立 native error 110 尚未解决。"
-],
-  "1.3.8": [
-  "实际安装版本：1.3.8；1.3.138 为更新发现序号。覆盖安装保留存档与已安装资源。",
-  "修复教程抽卡后的编队引导被遗留筛选条件锁住：引导中显示已拥有角色，完成引导后保留原筛选偏好。",
-  "修复教程战斗准备记录与原生教程类型不一致导致的恢复409，保留原战斗、奖励和重复提交校验。",
-  "保留1.3.7的本地助战、心魔结算、存储容量与活动修复，以及启动和手动更新双选界面。",
-  "支持后续个人发行的1.4、2.0及更高版本升级；仅信任MadeInMagius个人频道、固定发行仓库与发行签名，不接入组织或其他仓库的同名版本。升级仍按APK构建号判断，保留旧客户端的签名更新发现兼容。"
-],
-  "1.3.7": [
-  "实际安装版本：1.3.7；1.3.137 为更新发现序号。覆盖安装保留存档与已安装资源。",
-  "修复公告归档加载内存过高，以及固定存档分片被64命名空间额度拒绝引发的清档失败和战斗入口409。",
-  "修正心魔结算对原生伤害统计的错误校验，保留真实奖励与重复提交校验；识别开战保存失败留下的准备记录，提供明确退出准备入口，避免残留记录阻挡后续战斗。",
-  "修复档案好友列表覆盖本地助战、导致部分主线助战全灰的问题；助战显示与开战统一按所选游玩日期校验，保留剧情指定助战。",
-  "修复已确认的敌方Doppel动画编号、御魂特训助战与再战周回、编队字段及海边缎带等活动的掉落映射。",
-  "启动与手动检查使用同一更新界面：热更新与APK可独立勾选，可用项默认全选；可查看当期及历史说明，双选先完成资源再更新APK。",
-  "本地游玩新增普通活动不激活选项，镜层和心魔独立选择；保留既有下载签名、完整性校验与离线导入。",
-  "修正多期卡池原图绑定，并按已核实原始资料补齐对应概率和十连保证；未确认的历史逐项权重及特殊阶梯规则继续单列。"
-],
-  "1.3.6": [
-    "实际安装版本：1.3.6；1.3.136 为兼容旧客户端的更新发现序号。覆盖安装保留存档与已安装资源。",
-    "修复1号 scenario 与2号 JS 热更新在重试、重下和资源恢复时丢失发行签名身份，导致下载完成后安装失败的问题。",
-    "保留签名与完整性校验、断点续传及已完成资源复用；保留用户离线导入，不修改玩法和第17资源包。"
-  ],
-  "1.3.5": [
-    "实际安装版本：1.3.5；更新发现编号为 1.3.135，版本代码 1713000889，覆盖此前误发版本号，不清除现有存档。",
-    "精简客户端至约 131 MB；离线资源改为第 17 包 cn_offline_update.zip，首次下载后复用，后续按包更新。",
-    "新增第 17 包签名、完整性检查及安装复用；中文公告资源包含 CN018。",
-    "修正选关场景误用战斗 BGM 的配置与切换逻辑；实际听感及剩余玩法由玩家继续测试。",
-    "每个仓库仅新增一份固定版本 APK，兼容下载入口转发；对应源码随版本提供。"
-  ],
-  "1.3.2": [
-    "实际安装版本：1.3.2；1.3.132为兼容旧客户端的更新发现序号。覆盖安装保留存档与已安装资源。",
-    "修复旧档限时任务资料不完整引起的首页异常；调整战斗恢复确认和明确放弃流程，保留未成功放弃的战斗现场与已扣费用。",
-    "补齐第5章已核实关卡的结算数据，修正百祸挑战同分区错误前置条件，保留普通挑战和跨分区的原有门槛。",
-    "恢复部分活动的原版入口图片和已核实的选关角色；保留现有中文图片及原始剧情文本。",
-    "补入首次环彩羽特训的14项累计任务，按实际完成次数记录进度，并防止重复结算或领奖。",
-    "筛选按钮随可用宽度铺满整行；压缩游玩日志顶部及按钮留白，扩大日志正文区域；调整长关卡标题显示。",
-    "修正取消下载后的任务锁释放和首次连接失败的重试衔接，保留断点续传与完整性校验。",
-    "修正已通关关卡的自动战斗开关，普通AUTO不再误用三任务全完成门槛；自动周回继续按原条件判断。",
-    "恢复6家历史活动商店的259项商品及对应时间和库存，补齐两期活动共92个关卡的缺失代币掉落。",
-    "修复阿莉娜工作室3期活动的可能性因子扭蛋图标路径，使用同活动原始图标。",
-    "纳入resource54已核实的角色台词名称修订。"
-  ],
-  "1.3.1": [
-    "实际安装版本：1.3.1；1.3.131为兼容旧客户端的更新发现序号。覆盖安装保留存档与已安装资源，无需卸载。",
-    "镜层与心魔入口取消独立关闭选项；旧档案中的关闭选择恢复为跟随档案时间，档期未开放时仍保持原开放条件。常驻默认与已保存的手动入口保留。",
-    "恢复旧格式档案的镜层、心魔常驻默认选择；未解锁时可先保存常驻偏好，并显示所需主线条件。已保存的手动选择保持不变。",
-    "修复切换历史活动后旧限时任务定义丢失、导致首页及其他入口报错的问题；保留原任务进度与奖励。",
-    "活动与卡池筛选按钮自适应排列，消除中间大块留白，保留字号和按钮高度。",
-    "修复角色复活后战斗结算409，以及付费续关后丢失战斗现场、恢复再结算时的计数冲突；保留已扣费用与重复提交校验。",
-    "补齐结果页所需的助战资料，修复相关结算页面异常；补全角色剧情的主线前置条件提示。",
-    "资源和热更新下载跟随系统代理，备用下载引擎同步采用所选代理；保留分片、断点续传与完整性校验。",
-    "延长启动切换的排队等待，修复设备繁忙时进入本地游玩失败的问题。",
-    "完善游玩日志的默认记录、跨重启保留与导出，优化更新提示和版本检查。",
-    "修正部分镜界排行商店数据及原生界面文字、自动设置显示。"
-  ],
-  "1.3.0": [
-    "实际安装版本：1.3.0；1.3.130为兼容旧版检查更新的发现序号。覆盖安装保留存档和已安装资源，无需卸载。",
-    "修复部分档案容量过大时战斗、巡逻和普通扭蛋请求失败的问题，以及未完成普通战斗期间保存后续编队时的请求冲突；保留费用和重复提交校验。",
-    "修复未完成战斗恢复时的数据衔接，保留已扣费用和关卡进度。",
-    "调整部分活动在战斗期与兑换期的入口衔接，保留原有开放时间和战斗限制。",
-    "补充部分塔型活动关卡的固定助战配置。"
-  ],
-  "1.2.9": [
-    "实际安装版本：1.2.9；1.3.129仅为旧版检查更新的兼容发现序号。覆盖安装保留存档与已安装资源，无需卸载。",
-    "修复升级、材料兑换、编队保存及巡逻等操作因执行时间限制而出现的504，保留已完成操作的重试回执，避免重复扣除。",
-    "降低全解锁档和图鉴魔法少女页面的响应内存峰值，保留完整角色与库存数据。",
-    "减少页面切换、编队和战斗入口的重复计算，不缩短请求超时。",
-    "修复部分活动战斗消耗魔法石复活时的409，兼容更新前未结束的战斗，重试不重复扣石。",
-    "修复全解锁档部分章节与关卡完成标记不一致导致的409，保留首通奖励状态。",
-    "修复商店限购数量跨期刷新和记忆结晶编队保存后的显示。",
-    "修复角色个人介绍中的换行控制符显示，保留现有中文文本。"
-  ],
-  "1.2.8": [
-    "实际安装版本：1.2.8；1.3.128仅为旧版检查更新的兼容发现序号。同签名覆盖更新保留档案与资源标记，已完整安装的固定资源无需重新下载。",
-    "优化结算504相关超时预算与重复回执处理，减少重复整档读取和序列化。",
-    "修复切换属性分页选择关卡NPC助战时的409，并兼容已完成新手流程但遗失旧标记的档案。",
-    "修复属性强化材料名称与消耗数量的配对，保留材料不足、扣除及重复操作校验。",
-    "修复全解锁档的记忆结晶库存显示与容量同步，普通档不增发库存。",
-    "修复无限购商品购买后的累计购买数、库存与持有数刷新，保留限购及跨月重置规则。",
-    "将已选卡图和行动盘外观传递到原生战斗，保留角色实际星级、等级与战斗数值。",
-    "支持按档案选择活动类型与期次，补入35期登录剧情及2036心魔战和商店。"
-  ],
-  "1.2.7": [
-      "实际安装版本：1.2.7；1.3.127仅为兼容旧1.3.4检查更新的发现序号，安装包只有一份，覆盖安装保留存档与资源。",
-      "接通魔法石回复AP按钮，按5颗魔法石、免费优先的规则扣款并保存AP。",
-      "修复排队与实际执行共用超时导致的结算成功响应丢失；保留真正超时提示和重复结算回执。",
-      "修复商店首购、多商品库存及持有数刷新，兼容旧档Android魔法石余额。",
-      "恢复2020新年三档福袋：通过本地免费模拟买钻购买，不涉及真实充值；打通383/384自选券、385券及28种记忆兑换。",
-      "补齐福袋记忆兑换券的原版小图，调整礼包说明为两行，避免与价格重叠。"
-  ],
-  "1.2.6": [
-    "补齐行动盘外观到原生战斗的传递：卡图与SD选择作用于新发起的战斗，角色属性与战斗小人不变。",
-    "LOG新增手动游玩记录、上一次错误与跨重启查看、复制、分享和导出。",
-    "补全离线结算台词的换行匹配与角色名，修正商店兑换券文字布局。",
-    "移除觉醒特效旧资源中重复的“醒”字轨道，保留原版Awaken文字。",
-    "延续1.2.x单一版本线；从旧1.3.4覆盖安装时保留同签名与更高内部构建号，不卸载、不清档。",
-    "恢复未完成战斗提示改用原版紧凑横向弹窗，完整显示说明和按钮，去除底部大块空白。"
-  ]
-};
-
-function magirecoClientHtml(current) {
-  let download = '<p role="status">正在读取最新正式版本…</p>';
-  let releaseNotes = '';
-  const ready = current?.state === 'ready';
-  const discoveryUpgrade = ready && releaseAtLeast(current.version, 1, 2, 7);
-  const upgradeNotice = discoveryUpgrade
-    ? '<p><strong>已安装 1.3.4？可以使用旧版“检查更新”接收新版安装包，也可下载本页 APK 覆盖更新。</strong>兼容发现序号只用于旧版识别，并非另一份安装包；实际安装版本以本页为准。不要卸载或清除数据。</p>'
-    : ready
-      ? '<p><strong>已安装 1.3.4？旧版“检查更新”会因版本号比较误报已是最新版，请手动下载下方的 1.2.6 或后续 1.2.x 安装包。</strong>同签名、更高构建号可直接覆盖安装一次；不要卸载或清除数据。自 1.2.5 起按签名构建号检查后续更新。</p>'
-      : '<p>旧版本用户可使用应用内“检查更新”，或待本页读取正式发布信息后下载同签名安装包覆盖更新；不要卸载或清除数据。</p>';
-  const upgradeStep = discoveryUpgrade
-    ? '<li>此前显示为 1.3.4 的用户，可在旧版检查更新或下载本页 APK 覆盖升级。实际安装版本为 ' + escapeHtml(current.version) + '，不再区分主版与兼容版。</li>'
-    : ready
-      ? '<li>此前显示为 1.3.4 的用户，请下载本页的 1.2.6 或后续 1.2.x 安装包，完成一次覆盖迁移。之后统一使用 1.2.x 更新，不再区分主版与兼容版。</li>'
-      : '<li>使用应用内“检查更新”或本页正式安装包更新；实际版本以发布信息为准。</li>';
-  if (current?.state === 'ready') {
-    const notes = MAGIRECO_RELEASE_NOTES[current.version] || [];
-    releaseNotes = notes.length ? '<h3>' + escapeHtml(current.version) + ' 更新内容</h3><ul>' + notes.map(note => '<li>' + escapeHtml(note) + '</li>').join('') + '</ul>' : '';
-    const directMirrors = {
-      '1.4.4': { sha256:'af78bad30b572cbcdf41b019faf62a36196751349b5eb71d9dec3931d6c7919e', size:137135680, asset:'magireco-legacy-client-1.4.4-b1713001003.apk' },
-      '1.4.3': { sha256:'33ca7b1a00a5f4bb933ebfc88e8c26f6c45856f4010e28c7824d80387f62ea8c', size:136958875 },
-      '1.4.2': { sha256:'b0bfb557d561100567a2db3245d31cde26ce8625391770385918cf1779c7c0d6', size:136950683 },
-      '1.4.1': { sha256:'ae081b57976961504b0aca9cca1a41764b48a444c66441572babd330b550a76b', size:136913819 },
-      '1.4.0': { sha256:'6d4bd921ac41b2ea4f426b6aba9efadaad7b598fa5978a30a36900c3a062b242', size:134673736 },
-      '1.3.8': { sha256:'f140fd086be89b03e9ac65a47fc0cee1daa57561fb49dead6440bd34b9620e0c', size:134530376 },
-      '1.3.9': { sha256:'fa5a29fb3a861573e92b322b3827cbb5398ee1d4cd510f181cec406560701220', size:134604104 },
-    };
-    const directMirror = directMirrors[current.version];
-    const verifiedDirectMirror = directMirror && current.sha256 === directMirror.sha256 && current.size === directMirror.size;
-    const fixedApkName = verifiedDirectMirror && directMirror.asset ? directMirror.asset : 'magireco-legacy-client-' + encodeURIComponent(current.version) + '.apk';
-    download = '<p><strong>客户端版本 ' + escapeHtml(current.version) + '</strong> · ' + formatBytes(current.size) + '</p>' +
-      (verifiedDirectMirror ? '<a class="download-button" href="https://pub-121ae9980b3149dcbc4a1f88ad7a58b9.r2.dev/release-mirrors/sha256/' + directMirror.sha256 + '/' + fixedApkName + '">R2 直连下载 APK</a> ' +
-        '<a class="download-button" href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/' + fixedApkName + '">GitHub 备用 APK</a> ' : '') +
-      '<a class="download-button" href="' + escapeHtml(serviceUrl(current.download)) + '">下载 APK</a>' +
-      (current.version === '1.4.4' && verifiedDirectMirror
-        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.4-b1713001003-public-patch-third-party-source-materials.zip">下载 1.4.4 公开补丁及第三方源码材料</a> · 34,748,979 字节 · <a href="./assets/magireco-source-materials-1.4.4-b1713001003.html">范围、校验与构建材料说明</a></p>'
-        : current.version === '1.4.3' && verifiedDirectMirror
-        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.3-public-patch-third-party-source-materials.zip">下载 1.4.3 公开补丁及第三方源码材料</a> · 34,746,202 字节 · <a href="./assets/magireco-source-materials-1.4.3.html">范围、校验与构建材料说明</a></p>'
-        : current.version === '1.4.2' && verifiedDirectMirror
-        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.2-public-patch-third-party-source-materials.zip">下载 1.4.2 公开补丁及第三方源码材料</a> · 34,744,292 字节 · <a href="./assets/magireco-source-materials-1.4.2.html">范围、校验与构建材料说明</a></p>'
-        : current.version === '1.4.1' && verifiedDirectMirror
-        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.1-public-patch-third-party-source-materials.zip">下载 1.4.1 公开补丁及第三方源码材料</a> · 34,743,127 字节 · <a href="./assets/magireco-source-materials-1.4.1.html">范围、校验与构建材料说明</a></p>'
-        : current.version === '1.4.0' && verifiedDirectMirror
-        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.4.0-public-patch-third-party-source-materials.zip">下载 1.4.0 公开补丁及第三方源码材料</a> · 34,734,122 字节 · <a href="./assets/magireco-source-materials-1.4.0.html">范围、校验与构建材料说明</a></p>'
-        : current.version === '1.3.9' && verifiedDirectMirror
-        ? '<p><a href="https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/magireco-legacy-client-1.3.9-corresponding-source-current-r4.zip">下载 1.3.9 对应源码（r4）</a> · 385,379,111 字节 · <a href="./assets/magireco-source-1.3.9-r4.html">源码范围、校验与构建说明</a></p>'
-        : '<p>源码交付方式调整中。该版本的完整对应源码入口待恢复。</p>') +
-      '<p class="meta-line">SHA-256: ' + escapeHtml(current.sha256) + '</p>';
-  } else if (current?.state === 'error') {
-    download = '<p role="status">发布信息正在同步或暂时不可用，请稍后重新检查。</p>';
-  }
-  return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2>' +
-    '<p>魔法纪录汉化客户端（Android）。无需 Root；安装包不包含随后下载的全部游戏资源。</p>' +
-    (!ready || current.version === '1.3.8' || current.version === '1.3.9' || current.version === '1.4.0' || current.version === '1.4.1' || current.version === '1.4.2' || current.version === '1.4.3' || current.version === '1.4.4' ? '<p><strong>下载线路拥堵或中断？</strong><a href="./assets/magireco-direct-downloads-20261029.html">打开固定 1.4.4、历史版本与部分资源的备用直连下载</a>（不经过下载 Worker）。原地址和 GitHub 备用保留。</p>' : '') +
-    upgradeNotice +
-    '<div class="download-stack"><article class="download-card"><h3>ANDROID APK</h3>' + download +
-    '<p><button class="terminal-copy-button" type="button" data-magireco-refresh' +
-    (current?.state === 'loading' ? ' disabled' : '') + '>重新检查版本</button></p></article></div>' +
-    '<p>这里自动读取正式发布版本，版本、文件大小和摘要以当前发布信息为准。</p>' +
-    releaseNotes +
-    '<h3>初次安装</h3><ol>' +
-    '<li>点击“下载 APK”，下载完成后打开文件。</li>' +
-    '<li>如系统询问，允许当前浏览器或文件管理器安装未知来源应用，再按提示完成安装。</li>' +
-    '<li>打开客户端。资源服务器地址已经内置，无需手工填写。</li>' +
-    '<li>在应用内下载资源，保持联网并预留下载与解压空间，以界面的进度和空间提示为准。完成后按“进入游戏”或界面启动提示继续。</li></ol>' +
-    '<h3>下载资源与线路</h3>' +
-    '<p>网络较慢但进度仍在增加时，可以继续等待。低速提示中的“关闭”和“继续下载”都会保留当前任务；Logo 右侧的“线路”可手动选择下载线路。</p>' +
-    '<p>资源行中的“重下”表示从头下载，不是继续当前下载。已有兼容下载内容会保留断点。</p>' +
-    '<h3>已有客户端如何更新</h3><ol>' +
-    upgradeStep +
-    '<li>同来源、同签名的版本可以直接安装新版覆盖更新，不要先卸载或清除数据。</li>' +
-    '<li>更新后打开客户端，保留已有资源与本地状态，并按版本检查下载所需更新。</li>' +
-    '<li>若系统提示安装冲突，先核对旧包来源、包名和签名并保留原数据，不要用卸载作为通用解决办法。</li></ol>' +
-    '<h3>文件权限</h3>' +
-    '<p>正常资源下载使用应用目录，无需开启所有文件访问。只有需要读写共享存储时，再使用 Logo 右侧的“文件权限”，手动进入系统设置授权。</p>';
+function magirecoClientHtml() {
+  return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2><p role="status"><strong>已暂停下载</strong></p><p>魔法纪录中文化私服 APK 与公开源码下载已暂停。实际使用的资源 ZIP 下载保留。</p><p><a href="./assets/magireco-direct-downloads-20261029.html">保留的资源 ZIP 下载</a></p>';
 }
 
 // Feature copy follows the released APK, including fallback and loading states.
@@ -429,14 +243,14 @@ export function renderContent(programId, subId, data) {
         '<div class="evidence-report-grid"><article class="download-card">' +
         '<p class="meta-line">2026-10-17 · 个人版 1.1.1 复核</p><h3>资源与客户端比对报告</h3>' +
         '<p>本报告记录：17 个分发包中有 10 个与参考包的全部分块匹配；196 个反编译补丁类文件一致；72 条资源命中对应 70 个受检文件。</p>' +
-        '<p>客户端参考：MadeInMagius 个人版 1.1.1。下列 APK 是历史比对基准，不替换玩家最新版。</p>' +
+        '<p>客户端参考：MadeInMagius 个人版 1.1.1。历史 APK 为比对基准，其下载已暂停。</p>' +
         '<a class="evidence-thumbnail" href="./assets/reports/resource-client-comparison-20261017-image.html" target="_blank" rel="noopener noreferrer" aria-label="查看资源与客户端比对报告完整长图">' +
         '<img src="./assets/reports/resource-client-comparison-20261017-thumbnail.webp" loading="lazy" decoding="async" alt="第一份报告长图缩略图，个人版 1.1.1 复核"></a>' +
         '<a class="download-button" href="./assets/reports/resource-comparison-20261014.html" target="_blank" rel="noopener noreferrer">阅读完整报告 ↗</a>' +
         '<div class="quick-links"><a href="./assets/reports/resource-client-comparison-20261017.png" download="resource-client-comparison-20261017.png">下载报告长图</a>' +
         '<a href="./assets/reports/resource-client-comparison-20261017.pdf" download="resource-client-comparison-20261017.pdf">下载 PDF</a>' +
-        '<a href="' + escapeHtml(serviceUrl('./downloads/pinned/magireco/1.1.1-evidence')) + '">历史 1.1.1 APK</a>' +
-        '<span>源码交付方式调整中。</span>' +
+        '<span>历史 APK 下载已暂停。</span>' +
+        '<span>公开源码下载已暂停。</span>' +
         '<a href="./assets/reports/client-111-reproduce.html" target="_blank" rel="noopener noreferrer">复现方法与工具 ↗</a></div>' +
         '</article><article class="download-card">' +
         '<p class="meta-line">2026-10-17 · 个人版 1.1.1 复核</p><h3>原报告长图（匿名版）</h3>' +

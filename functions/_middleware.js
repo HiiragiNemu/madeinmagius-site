@@ -1,3 +1,4 @@
+import { isMagirecoWithdrawnPath, magirecoGone } from '../lib/magireco-withdrawal.js';
 // Only public metadata and the existing public console script need fetch CORS.
 // Downloads navigate normally. No cookie/credential access is granted.
 const MIRROR_READ_PATHS = new Set([
@@ -8,7 +9,7 @@ const MIRROR_READ_PATHS = new Set([
 ]);
 
 export async function onRequest(context) {
-  const response = await context.next();
+  const response = isMagirecoWithdrawnPath(new URL(context.request.url).pathname) ? magirecoGone(context.request) : await context.next();
   const { pathname } = new URL(context.request.url);
   if (!MIRROR_READ_PATHS.has(pathname) || !['GET', 'HEAD'].includes(context.request.method)) return response;
   const publicResponse = new Response(response.body, response);

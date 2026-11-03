@@ -16,6 +16,7 @@ export function fixedApkName(version) {
 // Offline only: validate the publisher signature and release identity before
 // constructing the static fallback. Asset publication is checked by the publisher.
 export async function createMagirecoSnapshot(client, publishedRelease = null) {
+  throw new Error('MAGIRECO_WITHDRAWN: publication and snapshot regeneration are paused.');
   assert.ok(client && typeof client === 'object');
   const fixedName = await approvedBuildAssetName(client,fixedApkName(client.display_version ?? client.version));
   const source = client.corresponding_source ?? client.source_materials;
@@ -39,6 +40,7 @@ export async function createMagirecoSnapshot(client, publishedRelease = null) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  console.log('MAGIRECO_PUBLICATION_PAUSED; networkRequests=0; writes=0');process.exit(0);
   const args = process.argv.slice(2);
   const check = args.at(-1) === '--check';
   if (check) args.pop();

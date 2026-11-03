@@ -1,6 +1,4 @@
-// The signed release is checked when publishing the static snapshot. It stays
-// usable when the account's Functions quota makes the live API unavailable.
-const PUBLIC_RELEASE = 'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/';
+// Emergency withdrawal: never fetch metadata or revive a cached snapshot.
 const versionParts = value => {
   if (typeof value !== 'string' || !/^[1-9]\d*\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(value)) return null;
   const parts = value.split('.').map(Number);
@@ -8,19 +6,6 @@ const versionParts = value => {
 };
 const validCode = value => Number.isSafeInteger(value) && value > 0 && value <= 2147483647;
 
-const fixedSnapshotAsset = value => value.version === '1.4.4' && value.version_code === 1713001003 &&
-  value.size === 137135680 && value.sha256 === 'af78bad30b572cbcdf41b019faf62a36196751349b5eb71d9dec3931d6c7919e'
-    ? 'magireco-legacy-client-1.4.4-b1713001003.apk' : 'magireco-legacy-client-' + value.version + '.apk';
-
-function valid(value, snapshot) {
-  if (!value || !versionParts(value.version) || !Number.isSafeInteger(value.size) || value.size <= 0 ||
-      !/^[a-f0-9]{64}$/.test(value.sha256 || '') ||
-      (value.version_code !== undefined && !validCode(value.version_code))) return false;
-  return snapshot
-    ? value.schema === 'madeinmagius-magireco-snapshot/v1' &&
-      value.download === PUBLIC_RELEASE + fixedSnapshotAsset(value)
-    : value.download === './downloads/magireco/android?sha256=' + value.sha256;
-}
 
 export function atLeast(candidate, baseline) {
   const sameIdentity = candidate.version === baseline.version && candidate.sha256 === baseline.sha256 && candidate.size === baseline.size;
@@ -37,30 +22,6 @@ export function atLeast(candidate, baseline) {
   return sameIdentity;
 }
 
-export async function loadMagirecoReleaseData({ liveUrl, fetcher = fetch, onUpdate = () => {}, timeoutMs = 5000 } = {}) {
-  let current = null;
-  async function read(url) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const response = await fetcher(url, { cache: 'no-cache', signal: controller.signal });
-      if (!response.ok) throw new Error('Release endpoint unavailable');
-      return await response.json();
-    } finally { clearTimeout(timeout); }
-  }
-  try {
-    const snapshot = await read('./data/magireco-release.json');
-    if (valid(snapshot, true)) {
-      current = { ...snapshot, state: 'ready' };
-      onUpdate(current);
-    }
-  } catch { /* Keep the independent live path available. */ }
-  try {
-    const live = await read(liveUrl);
-    if (valid(live, false) && (!current || atLeast(live, current))) {
-      current = { ...live, version_code: live.version_code ?? current?.version_code, state: 'ready' };
-      onUpdate(current);
-    }
-  } catch { /* A failed Function must not erase a verified static download. */ }
-  return current || { state: 'error' };
+export async function loadMagirecoReleaseData({onUpdate=()=>{}}={}) {
+  const current={state:'withdrawn'};onUpdate(current);return current;
 }

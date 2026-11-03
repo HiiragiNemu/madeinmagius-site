@@ -13,6 +13,7 @@ const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 
 // Two bounded public reads, no Cloudflare Function and no APK/body download.
 export async function readPublishedBundle({fetcher = fetch, token = '', receipt = null} = {}) {
+  throw new Error('MAGIRECO_WITHDRAWN: publication and snapshot regeneration are paused.');
   const headers = {'User-Agent':'Magius-Snapshot-Sync/1.0', 'Cache-Control':'no-cache'};
   async function bytes(url, limit, auth = false) {
     const response = await fetcher(url, {headers:{...headers,
@@ -46,6 +47,7 @@ export async function readPublishedBundle({fetcher = fetch, token = '', receipt 
 }
 
 export async function prepareSnapshotUpdate({client, release}, previousClient) {
+  throw new Error('MAGIRECO_WITHDRAWN: publication and snapshot regeneration are paused.');
   const next = await createMagirecoSnapshot(client, release);
   const previous = await createMagirecoSnapshot(previousClient);
   assert.ok(atLeast(next, previous), 'Published build regressed or reused a build identity');
@@ -53,6 +55,7 @@ export async function prepareSnapshotUpdate({client, release}, previousClient) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  console.log('MAGIRECO_PUBLICATION_PAUSED; networkRequests=0; writes=0');process.exit(0);
   const args = process.argv.slice(2);
   assert.ok(args.length === 0 || (args.length === 2 && args[0] === '--receipt'),
     'Usage: node scripts/sync-magireco-release.mjs [--receipt verified-mirror-report.json]');

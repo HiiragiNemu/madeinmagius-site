@@ -19,7 +19,7 @@ for (const hostname of ['madeinmagius-site.pages.dev','hiiraginemu.github.io']) 
       assert.ok(!html.includes('href="undefined"'));
       if (hostname.endsWith('github.io')) {
         assert.ok(!/(?:href|data-copy-url|data-copy-fallback)="\.\/downloads\//.test(html),`${program}/${sub}: mirror route`);
-        if((sub!=='netease-verify'||releases) && !(program==='exedra' && releases)) assert.ok(html.includes(origin+'/downloads/'),`${program}/${sub}: service URL`);
+        if(program!=='home' && (sub!=='netease-verify'||releases) && !(program==='exedra' && releases)) assert.ok(html.includes(origin+'/downloads/'),`${program}/${sub}: service URL`);
       }
     }
   }
@@ -29,7 +29,8 @@ delete globalThis.location;
 for (const status of [200,503]) {
   for (const path of ['/api/releases','/api/magireco','/downloads/bilibili-follower-snapshot-console.js','/downloads/bilibili-follower-snapshot-console.txt','/downloads/netease/python']) {
     const response=await onRequest({request:new Request(origin+path),next:async()=>new Response('fixture',{status,headers:{'cache-control':'no-store'}})});
-    assert.equal(response.status,status);assert.equal(await response.text(),'fixture');
+    if(path==='/api/magireco'){assert.equal(response.status,410);assert.equal((await response.json()).status,'withdrawn');}
+    else {assert.equal(response.status,status);assert.equal(await response.text(),'fixture');}
     assert.equal(response.headers.get('access-control-allow-origin'),path.includes('netease')?null:'https://hiiraginemu.github.io');
     assert.equal(response.headers.get('access-control-allow-credentials'),null);
     assert.equal(response.headers.get('cache-control'),'no-store');

@@ -18,7 +18,7 @@ export const HOME_WEBSITES = [
 export const PROGRAMS = {
   home: { subs: [
     { id: 'welcome', label: '魔法纪录相关网站', note: '作品导航' },
-    { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: '已暂停下载' },
+    { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: '停止公开分发' },
     { id: 'universal-adv-reader', label: '通用 ADV 阅读网站', note: 'Narcissu / KANA' },
     { id: 'programs', label: '资源比对与证据记录', note: '报告' },
     { id: 'contact', label: 'CONTACT', note: '联系' }
@@ -200,7 +200,7 @@ function contactHtml() {
 }
 
 function magirecoClientHtml() {
-  return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2><p role="status"><strong>已暂停下载</strong></p><p>魔法纪录中文化私服 APK 与公开源码下载已暂停。实际使用的资源 ZIP 下载保留。</p><p><a href="./assets/magireco-direct-downloads-20261029.html">保留的资源 ZIP 下载</a></p>';
+  return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2><p role="status">本项目停止公开分发；现有客户端继续维护</p>';
 }
 
 // Feature copy follows the released APK, including fallback and loading states.

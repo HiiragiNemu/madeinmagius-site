@@ -1,29 +1,29 @@
 {
   "schema": "madeinmagius-release-snapshot/v1",
-  "generated_at": "2026-10-15T09:15:37.368846Z",
+  "generated_at": "2026-11-12T05:16:19.254384Z",
   "source": "verified-cloudflare-built-release-snapshot",
   "projects": {
     "bilibili": {
-      "tag": "v0.1.16",
-      "name": "B站粉丝快照伴侣 v0.1.16 · 官方 APP 登录恢复",
-      "published_at": "2026-10-11T09:36:37Z",
-      "release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/tag/v0.1.16",
+      "tag": "v0.1.17",
+      "name": "B站粉丝快照伴侣 v0.1.17 · 快照对照恢复",
+      "published_at": "2026-11-12T05:15:28Z",
+      "release_url": "https://github.com/HiiragiNemu/Bilibili-Follower-Snapshot/releases/tag/v0.1.17",
       "assets": {
         "android": {
-          "id": 630346818,
-          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.16.apk",
-          "size": 2565798,
-          "digest": "sha256:243d40ba603d3d51d6c5a9a2e5d803cef6510f6cb8a888aa852aacd8e037c87d",
+          "id": 738173994,
+          "name": "Bilibili-Follower-Snapshot-Companion-v0.1.17.apk",
+          "size": 2567842,
+          "digest": "sha256:8c4082d73906b58346e21438a79caa6d60d26379c6971a661e32d631fd5b5a52",
           "content_type": "application/vnd.android.package-archive",
           "download": "./downloads/bilibili/android"
         },
         "userscript": {
-          "name": "bilibili-follower-snapshot-v0.2.12.user.js",
-          "size": 160012,
-          "digest": "sha256:3d196d8a60d5b131d65c6898506ef1fa7dac50cdbb9890a290b9825c7ce8ec21",
+          "name": "bilibili-follower-snapshot-v0.2.13.user.js",
+          "size": 171344,
+          "digest": "sha256:e96d873f8c278e9c7f4b9e45243c03ebc32388e72093f65cb6e801c12e39b936",
           "content_type": "application/javascript; charset=utf-8",
           "download": "./downloads/bilibili/userscript",
-          "source_commit": "828283f42001780dcf9621e3ee904a455f4e1b75"
+          "source_commit": "90753c267a77c79593411578854bcbed19d51868"
         },
         "consoleScript": {
           "name": "bilibili-follower-snapshot-console.js",

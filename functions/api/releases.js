@@ -1,10 +1,10 @@
 const BILIBILI_PINNED_USERSCRIPT = {
-  name: 'bilibili-follower-snapshot-v0.2.12.user.js',
-  size: 160012,
-  digest: 'sha256:3d196d8a60d5b131d65c6898506ef1fa7dac50cdbb9890a290b9825c7ce8ec21',
+  name: 'bilibili-follower-snapshot-v0.2.13.user.js',
+  size: 171344,
+  digest: 'sha256:e96d873f8c278e9c7f4b9e45243c03ebc32388e72093f65cb6e801c12e39b936',
   content_type: 'application/javascript; charset=utf-8',
   download: './downloads/bilibili/userscript',
-  source_commit: '828283f42001780dcf9621e3ee904a455f4e1b75',
+  source_commit: '90753c267a77c79593411578854bcbed19d51868',
 };
 
 const NETEASE_LEGACY_251 = {

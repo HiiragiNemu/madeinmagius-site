@@ -1,9 +1,9 @@
 const BILIBILI_PINNED_USERSCRIPT = {
-  name: 'bilibili-follower-snapshot-v0.2.12.user.js',
-  size: 160012,
-  digest: 'sha256:3d196d8a60d5b131d65c6898506ef1fa7dac50cdbb9890a290b9825c7ce8ec21',
+  name: 'bilibili-follower-snapshot-v0.2.13.user.js',
+  size: 171344,
+  digest: 'sha256:e96d873f8c278e9c7f4b9e45243c03ebc32388e72093f65cb6e801c12e39b936',
   content_type: 'application/javascript; charset=utf-8',
-  github_blob_url: 'https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/git/blobs/c7a47c8b6b87f13757eda5639b5954ef3bc13c4b',
+  github_blob_url: 'https://api.github.com/repos/HiiragiNemu/Bilibili-Follower-Snapshot/git/blobs/e8d81a58204590e04caea355dae930ecc31a89c4',
 };
 
 const NETEASE_LEGACY = {

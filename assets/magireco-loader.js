@@ -1,4 +1,5 @@
-// Emergency withdrawal: never fetch metadata or revive a cached snapshot.
+// Only the exact signature-checked revision3 build snapshot is public.
+import release from './magireco-release163.js';
 const versionParts = value => {
   if (typeof value !== 'string' || !/^[1-9]\d*\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(value)) return null;
   const parts = value.split('.').map(Number);
@@ -23,5 +24,5 @@ export function atLeast(candidate, baseline) {
 }
 
 export async function loadMagirecoReleaseData({onUpdate=()=>{}}={}) {
-  const current={state:'withdrawn'};onUpdate(current);return current;
+  const current={...release,state:'ready'};onUpdate(current);return current;
 }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { selectMagirecoRelease, approvedBuildAssetName } from '../lib/magireco-release.js';
+import { selectMagirecoRelease, approvedBuildAssetName, RELEASE163_PUBLIC } from '../lib/magireco-release.js';
 
 const releaseRoot = 'https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/latest/';
 
@@ -16,14 +16,14 @@ export function fixedApkName(version) {
 // Offline only: validate the publisher signature and release identity before
 // constructing the static fallback. Asset publication is checked by the publisher.
 export async function createMagirecoSnapshot(client, publishedRelease = null) {
-  throw new Error('MAGIRECO_WITHDRAWN: publication and snapshot regeneration are paused.');
+  if(client?.version_code !== 1713001030) throw new Error('MAGIRECO_WITHDRAWN: only the exact approved revision3 public snapshot may be generated.');
   assert.ok(client && typeof client === 'object');
   const fixedName = await approvedBuildAssetName(client,fixedApkName(client.display_version ?? client.version));
   const source = client.corresponding_source ?? client.source_materials;
   assert.ok(source && typeof source === 'object');
   const release = publishedRelease || { draft:false, prerelease:false, assets:[
     { id:1, name:fixedName, state:'uploaded', size:client.size, digest:'sha256:' + client.sha256 },
-    { id:2, name:source.asset, state:'uploaded', size:source.size, digest:'sha256:' + source.sha256 },
+    { id:2, name:RELEASE163_PUBLIC.sourceAsset, state:'uploaded', size:source.size, digest:'sha256:' + source.sha256 },
   ] };
   const selected = await selectMagirecoRelease(client, release);
   assert.equal(selected.version, client.display_version ?? client.version);
@@ -36,11 +36,11 @@ export async function createMagirecoSnapshot(client, publishedRelease = null) {
     source:'published-snapshot',
     updated:client.updated || null,
     download:releaseRoot + fixedName,
+    corresponding_source:{...source,url:releaseRoot + RELEASE163_PUBLIC.sourceAsset},
   };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  console.log('MAGIRECO_PUBLICATION_PAUSED; networkRequests=0; writes=0');process.exit(0);
   const args = process.argv.slice(2);
   const check = args.at(-1) === '--check';
   if (check) args.pop();
@@ -50,7 +50,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const snapshot = await createMagirecoSnapshot(client);
   const output = new URL('../data/magireco-release.json', import.meta.url);
   const text = JSON.stringify(snapshot, null, 2) + '\n';
-  if (check) assert.equal(await readFile(output, 'utf8'), text, 'Published snapshot differs from verified metadata');
-  else await writeFile(output, text);
+  const browserOutput = new URL('../assets/magireco-release163.js', import.meta.url);
+  const browserText = 'export default ' + JSON.stringify(snapshot) + ';\n';
+  if (check) {
+    assert.equal(await readFile(output, 'utf8'), text, 'Published snapshot differs from verified metadata');
+    assert.equal(await readFile(browserOutput, 'utf8'), browserText, 'Browser snapshot differs from verified metadata');
+  } else {await writeFile(output, text);await writeFile(browserOutput, browserText);}
   console.log('MAGIRECO_SNAPSHOT_' + (check ? 'CHECK' : 'UPDATED') + '=PASS version=' + snapshot.version + '; realRSA=true; networkRequests=0');
 }

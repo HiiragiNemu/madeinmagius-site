@@ -4,6 +4,9 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
 const checkOnly = process.argv.includes('--check');
+const snapshotCheck = spawnSync(process.execPath, ['scripts/update-magireco-snapshot.mjs','--metadata','data/magireco-release.signed.json','--check'], {encoding:'utf8'});
+if(snapshotCheck.status !== 0) throw new Error('Revision3 signed snapshot check failed: '+snapshotCheck.stdout+snapshotCheck.stderr);
+console.log(snapshotCheck.stdout.trim());
 const required = [
   'index.html',
   'assets/styles.css',

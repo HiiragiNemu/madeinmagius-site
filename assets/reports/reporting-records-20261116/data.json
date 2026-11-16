@@ -1,0 +1,1063 @@
+{
+  "schemaVersion": 2,
+  "title": "事件截图与处理记录",
+  "updatedAt": "2026-11-16",
+  "timeZone": "Asia/Shanghai",
+  "relatedVideo": {
+    "label": "相关视频",
+    "href": "https://www.bilibili.com/video/BV1q4Wa67EB2/"
+  },
+  "summary": {
+    "dynamicEvents": 63,
+    "dynamicObjects": 62,
+    "rightsHolderEvents": 15,
+    "rightsHolderObjects": 14,
+    "videoObjects": 9,
+    "videoTriggerCounts": {
+      "rights_holder_complaint": 3,
+      "user_report": 3,
+      "not_specified": 3
+    },
+    "ownCommentRemovalsAtLeast": 3,
+    "datedDynamicEvents": 57,
+    "undatedDynamicEvents": 6,
+    "reasonCounts": {
+      "rights_holder_complaint": 15,
+      "inappropriate": 14,
+      "personal_attack": 16,
+      "provocation": 18
+    }
+  },
+  "summaryNote": "63 条动态处理通知对应 62 个不同动态；其中 15 条明确权利人侵权投诉，对应 14 个动态。这里统计的是处理记录和内容对象，不是举报提交次数。",
+  "galleryNote": "18 项事件说明图按原编号排列。03、05、09C 为原图，其余标为“遮盖副本”，遮盖个人信息、无关片段或新增辱骂文字。点击图片放大，使用编号跳到对应材料。",
+  "gallery": [
+    {
+      "id": "source-01",
+      "number": "01",
+      "title": "合作沟通与时间线",
+      "label": "作者说明图 · 01",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-01.png",
+      "alt": "事件说明图 01：合作沟通与时间线",
+      "caption": "关于合作、交接与后续回应的作者说明。按图中日期和对话顺序阅读。",
+      "redactionNote": "保留时间线、源代码交付聊天和公开项目链接；遮去底部私人自伤指控及一处新增个人贬损标签。"
+    },
+    {
+      "id": "source-02",
+      "number": "02",
+      "title": "得知争议与交涉记录",
+      "label": "作者说明图 · 02",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-02.png",
+      "alt": "事件说明图 02：得知争议与交涉记录",
+      "caption": "作者得知争议后保存的沟通与转述记录；转述内容按截图中的说话者理解。",
+      "redactionNote": "只遮 4 个手机截图标题下的联系号细行，保留五列聊天、交涉过程及日期。"
+    },
+    {
+      "id": "source-03",
+      "number": "03",
+      "title": "群公告原文与代码使用争议",
+      "label": "作者说明图 · 03",
+      "version": "original",
+      "versionLabel": "原图",
+      "src": "reporting-records-20261116/source-03.png",
+      "alt": "事件说明图 03：群公告原文与代码使用争议",
+      "caption": "保留群公告及作者对代码使用问题的说明，可结合公告原文核对各方表述。"
+    },
+    {
+      "id": "source-04",
+      "number": "04",
+      "title": "后续说明与资源使用声明",
+      "label": "作者说明图 · 04",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-04.png",
+      "alt": "事件说明图 04：后续说明与资源使用声明",
+      "caption": "围绕资源使用和授权的后续说明，与图 03 连续阅读。",
+      "redactionNote": "保留合作终止、源代码及使用许可语境；遮去第 1 列私人健康经历和顶部对这些经历的贬损性复述。"
+    },
+    {
+      "id": "source-05",
+      "number": "05",
+      "title": "群内针对作者的攻击性发言",
+      "label": "作者说明图 · 05",
+      "version": "original",
+      "versionLabel": "原图",
+      "src": "reporting-records-20261116/source-05.png",
+      "alt": "事件说明图 05：群内针对作者的攻击性发言",
+      "caption": "第四列截图昵称“沉恋古川”的攻击性原话另列于图集下方。图中“封禁7天”为作者说明，此图不计入平台处置通知。"
+    },
+    {
+      "id": "source-06",
+      "number": "06",
+      "title": "版本进度与交涉记录",
+      "label": "作者说明图 · 06",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-06.png",
+      "alt": "事件说明图 06：版本进度与交涉记录",
+      "caption": "版本进度、时间线与相关沟通记录。",
+      "redactionNote": "只遮 3 块网盘链接、令牌和口令，保留版本名称、项目讨论与交付时间。"
+    },
+    {
+      "id": "source-07",
+      "number": "07",
+      "title": "公开计划调整与群内讨论",
+      "label": "作者说明图 · 07",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-07.png",
+      "alt": "事件说明图 07：公开计划调整与群内讨论",
+      "caption": "公开计划的调整及相关群内讨论，保留对话顺序。",
+      "redactionNote": "保留五列原始攻击性聊天、群解散通知和时间；只遮编辑新增的贬损性群体标签。"
+    },
+    {
+      "id": "source-08",
+      "number": "08",
+      "title": "资源使用与开发过程讨论",
+      "label": "作者说明图 · 08",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-08.png",
+      "alt": "事件说明图 08：资源使用与开发过程讨论",
+      "caption": "关于资源来源、使用方式与开发过程的讨论。",
+      "redactionNote": "保留代码使用、授权争议及完整聊天上下文；只遮新增贬损标签和两处人身攻击性反问。"
+    },
+    {
+      "id": "source-09",
+      "number": "09",
+      "title": "二次开发方案讨论",
+      "label": "作者说明图 · 09",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-09.png",
+      "alt": "事件说明图 09：二次开发方案讨论",
+      "caption": "保留与项目二次开发方案有关的对话。",
+      "redactionNote": "只遮第 4 列三个无关私人经历文字气泡，保留合同、付款、代码复用争议及作者的项目批评。"
+    },
+    {
+      "id": "source-09b",
+      "number": "09B",
+      "title": "开发说明与后续沟通",
+      "label": "作者说明图 · 09B",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-09b.png",
+      "alt": "事件说明图 09B：开发说明与后续沟通",
+      "caption": "开发过程中的说明与后续交流，与图 09 连续阅读。",
+      "redactionNote": "仅遮盖群号。"
+    },
+    {
+      "id": "source-09c",
+      "number": "09C",
+      "title": "资源包与早期发布记录对照",
+      "label": "作者说明图 · 09C",
+      "version": "original",
+      "versionLabel": "原图",
+      "src": "reporting-records-20261116/source-09c.png",
+      "alt": "事件说明图 09C：资源包与早期发布记录对照",
+      "caption": "资源包文件列表与早期发布记录对照。资源与客户端比对报告另附入口。",
+      "links": [
+        {
+          "label": "资源与客户端比对报告",
+          "href": "resource-client-comparison-20261017.html",
+          "webOnly": true
+        }
+      ]
+    },
+    {
+      "id": "source-10",
+      "number": "10",
+      "title": "资源授权与后续沟通",
+      "label": "作者说明图 · 10",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-10.png",
+      "alt": "事件说明图 10：资源授权与后续沟通",
+      "caption": "围绕资源授权、道歉及后续处理的沟通。",
+      "redactionNote": "遮盖顶部含无关职业、健康断言及辱骂的编辑说明区域；保留下方五栏事件对话。"
+    },
+    {
+      "id": "source-11",
+      "number": "11",
+      "title": "回应视频与账号页面记录",
+      "label": "作者说明图 · 11",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-11.png",
+      "alt": "事件说明图 11：回应视频与账号页面记录",
+      "caption": "与事件有关的回应视频及账号页面截图；按各自页面显示的信息核对。",
+      "redactionNote": "遮盖局部新增辱骂词，保留事件页面记录。"
+    },
+    {
+      "id": "source-12",
+      "number": "12",
+      "title": "视频标签与评论区状态",
+      "label": "作者说明图 · 12",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-12.png",
+      "alt": "事件说明图 12：视频标签与评论区状态",
+      "caption": "相关视频标签、评论区和页面状态记录。",
+      "redactionNote": "遮盖无关第三方经历、健康段落、辱骂词及左侧旧投稿中的学校与 IP 线索；保留事件相关内容。"
+    },
+    {
+      "id": "source-14",
+      "number": "14",
+      "title": "11月11日公开回应与后续对话",
+      "label": "作者说明图 · 14",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-14.png",
+      "alt": "事件说明图 14：11月11日公开回应与后续对话",
+      "caption": "保留公开回应与后续交流的上下文，各方说法按截图署名区分。",
+      "redactionNote": "遮盖局部新增辱骂词，保留公开回应与对话上下文。"
+    },
+    {
+      "id": "source-15",
+      "number": "15",
+      "title": "群内关于举报的发言",
+      "label": "作者说明图 · 15",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-15.png",
+      "alt": "事件说明图 15：群内关于举报的发言",
+      "caption": "图中关于举报的发言者为截图昵称“DD魔女”。与下一图连续阅读。",
+      "redactionNote": "仅遮盖新增人格贬损词，保留底部举报相关对话。"
+    },
+    {
+      "id": "source-16",
+      "number": "16",
+      "title": "举报渠道与个人行动声明",
+      "label": "作者说明图 · 16",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-16.png",
+      "alt": "事件说明图 16：举报渠道与个人行动声明",
+      "caption": "截图昵称“DD魔女”谈及举报渠道，并说明个人行动与集体行动的区别。",
+      "redactionNote": "仅遮盖新增人格贬损词，保留底部对话与个人行动声明。"
+    },
+    {
+      "id": "source-17",
+      "number": "17",
+      "title": "补档与举报相关讨论",
+      "label": "作者说明图 · 17",
+      "version": "redacted",
+      "versionLabel": "遮盖副本",
+      "src": "reporting-records-20261116/source-17.png",
+      "alt": "事件说明图 17：补档与举报相关讨论",
+      "caption": "围绕视频补档及举报的相关讨论，按截图中的发言者和语境阅读。",
+      "redactionNote": "遮盖顶部别名关联与无关指控、底部后四列无关内容；保留前两列举报及补档讨论。"
+    }
+  ],
+  "attackQuote": {
+    "imageId": "source-05",
+    "speaker": "沉恋古川",
+    "text": "当事人换成我没给她攻击到自杀算我是个废物",
+    "attribution": "图 05 第四列，发言者为截图昵称“沉恋古川”。这是针对作者的攻击性言论；完整对话见原图。"
+  },
+  "noticeNote": "下列 3 张通知原图展示 8 个不同动态 ID，是已核对记录中的示例。完整动态明细在下方展开；视频处理和本人评论移除另列。通知页面没有公开举报账号。",
+  "notices": [
+    {
+      "id": "notice-01",
+      "title": "动态处理通知 01",
+      "label": "平台页面原图",
+      "src": "reporting-records-20261116/notice-01.jpg",
+      "alt": "动态处理页面：涉及引战信息、人身攻击及不适宜内容",
+      "caption": "显示引战信息、人身攻击、不适宜内容等处理理由。",
+      "version": "original",
+      "versionLabel": "原图"
+    },
+    {
+      "id": "notice-02",
+      "title": "动态处理通知 02",
+      "label": "平台页面原图",
+      "src": "reporting-records-20261116/notice-02.jpg",
+      "alt": "动态处理页面，包含收到权利人侵权投诉的通知",
+      "caption": "包含“收到权利人对该内容发起侵权投诉”的通知。",
+      "version": "original",
+      "versionLabel": "原图"
+    },
+    {
+      "id": "notice-03",
+      "title": "动态处理通知 03",
+      "label": "平台页面原图",
+      "src": "reporting-records-20261116/notice-03.jpg",
+      "alt": "动态处理页面：多条涉及不适宜内容的通知",
+      "caption": "显示不适宜内容通知，其中一条与图02重复。",
+      "version": "original",
+      "versionLabel": "原图"
+    }
+  ],
+  "dynamicRecordNote": "处理理由合计：引战 18 条、人身攻击 16 条、不适宜内容 14 条、权利人侵权投诉 15 条。57 条有日期，6 条日期未记录；其中 10 条日期由录屏补证。通知时间不是举报提交时间。15 条权利人通知分布于 9 个日期，11 月 5 日和 6 日合计 7 条。",
+  "dynamicRecords": [
+    {
+      "id": "dynamic-event-01",
+      "dynamicId": "1270609385304883202",
+      "noticeAt": "2026-11-16T15:51:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": [
+        "notice-02"
+      ]
+    },
+    {
+      "id": "dynamic-event-02",
+      "dynamicId": "1271138838759079968",
+      "noticeAt": "2026-11-16T11:10:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": [
+        "notice-02"
+      ]
+    },
+    {
+      "id": "dynamic-event-03",
+      "dynamicId": "1271138675548225556",
+      "noticeAt": "2026-11-16T11:08:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": [
+        "notice-02",
+        "notice-03"
+      ]
+    },
+    {
+      "id": "dynamic-event-04",
+      "dynamicId": "1271136901766578214",
+      "noticeAt": "2026-11-16T11:03:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": [
+        "notice-03"
+      ]
+    },
+    {
+      "id": "dynamic-event-05",
+      "dynamicId": "1271132392062451748",
+      "noticeAt": "2026-11-16T10:55:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": [
+        "notice-03"
+      ]
+    },
+    {
+      "id": "dynamic-event-06",
+      "dynamicId": "1271121766267224071",
+      "noticeAt": "2026-11-16T10:40:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-07",
+      "dynamicId": "1271120172841697284",
+      "noticeAt": "2026-11-16T09:57:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-08",
+      "dynamicId": "1271115727586197511",
+      "noticeAt": "2026-11-16T09:39:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": [
+        "notice-01"
+      ]
+    },
+    {
+      "id": "dynamic-event-09",
+      "dynamicId": "1270821784271192083",
+      "noticeAt": "2026-11-15T17:16:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "人身攻击",
+      "exampleImages": [
+        "notice-01"
+      ]
+    },
+    {
+      "id": "dynamic-event-10",
+      "dynamicId": "1269479022875639814",
+      "noticeAt": "2026-11-15T16:21:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": [
+        "notice-01"
+      ]
+    },
+    {
+      "id": "dynamic-event-11",
+      "dynamicId": "1270430491301904402",
+      "noticeAt": "2026-11-15T14:38:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-12",
+      "dynamicId": "1270137793608155143",
+      "noticeAt": "2026-11-15T09:40:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-13",
+      "dynamicId": "1270137793608155143",
+      "noticeAt": "2026-11-14T11:15:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-14",
+      "dynamicId": "1269978132447756312",
+      "noticeAt": "2026-11-13T18:13:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-15",
+      "dynamicId": "1269892701258514448",
+      "noticeAt": null,
+      "timeBasis": "unrecorded",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-16",
+      "dynamicId": "1269894406339559430",
+      "noticeAt": "2026-11-13T17:06:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-17",
+      "dynamicId": "1269468749362102280",
+      "noticeAt": "2026-11-12T09:18:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-18",
+      "dynamicId": "1269555370267770903",
+      "noticeAt": "2026-11-12T04:53:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-19",
+      "dynamicId": "1269472047861334023",
+      "noticeAt": "2026-11-11T23:23:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-20",
+      "dynamicId": "1269153936841900032",
+      "noticeAt": "2026-11-11T04:42:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-21",
+      "dynamicId": "1269152072837627907",
+      "noticeAt": "2026-11-11T02:52:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-22",
+      "dynamicId": "1267487407945547783",
+      "noticeAt": "2026-11-07T13:50:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-23",
+      "dynamicId": "1267484951179165699",
+      "noticeAt": "2026-11-06T14:55:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-24",
+      "dynamicId": "1267468969628925957",
+      "noticeAt": "2026-11-06T14:46:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-25",
+      "dynamicId": "1267435030815178773",
+      "noticeAt": "2026-11-06T13:44:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-26",
+      "dynamicId": "1267198120410742803",
+      "noticeAt": "2026-11-06T11:29:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-27",
+      "dynamicId": "1267164572420145156",
+      "noticeAt": "2026-11-05T18:22:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-28",
+      "dynamicId": "1267162506496835603",
+      "noticeAt": "2026-11-05T18:00:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-29",
+      "dynamicId": "1267159611740258309",
+      "noticeAt": "2026-11-05T17:51:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-30",
+      "dynamicId": "1267137638651920408",
+      "noticeAt": "2026-11-05T17:25:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-31",
+      "dynamicId": "1266054559550144537",
+      "noticeAt": "2026-11-05T00:43:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-32",
+      "dynamicId": "1266754763801755656",
+      "noticeAt": "2026-11-04T15:37:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-33",
+      "dynamicId": "1266443627791384615",
+      "noticeAt": "2026-11-04T14:57:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-34",
+      "dynamicId": "1266484069202395171",
+      "noticeAt": "2026-11-04T01:19:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "引战",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-35",
+      "dynamicId": "1266442760222670873",
+      "noticeAt": "2026-11-03T19:28:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-36",
+      "dynamicId": "1266442180406280200",
+      "noticeAt": "2026-11-03T19:24:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-37",
+      "dynamicId": "1266434853174247441",
+      "noticeAt": "2026-11-03T19:09:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-38",
+      "dynamicId": "1266142340106420264",
+      "noticeAt": "2026-11-03T16:04:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-39",
+      "dynamicId": "1266386204039839748",
+      "noticeAt": "2026-11-03T15:48:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-40",
+      "dynamicId": "1266338070394830854",
+      "noticeAt": "2026-11-03T12:45:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-41",
+      "dynamicId": "1266339182776680456",
+      "noticeAt": "2026-11-03T12:43:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "inappropriate",
+      "reason": "涉及不适宜内容",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-42",
+      "dynamicId": "1265749655571923000",
+      "noticeAt": "2026-11-03T10:47:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-43",
+      "dynamicId": "1266055663409168419",
+      "noticeAt": "2026-11-02T18:39:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-44",
+      "dynamicId": "1265743174448447494",
+      "noticeAt": null,
+      "timeBasis": "unrecorded",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-45",
+      "dynamicId": "1265762330022510609",
+      "noticeAt": "2026-11-02T18:08:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-46",
+      "dynamicId": "1265738415616294920",
+      "noticeAt": null,
+      "timeBasis": "unrecorded",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-47",
+      "dynamicId": "1265735121405739011",
+      "noticeAt": "2026-11-02T18:07:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-48",
+      "dynamicId": "1265730521505202201",
+      "noticeAt": "2026-11-02T16:18:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "rights_holder_complaint",
+      "reason": "收到权利人对该内容发起侵权投诉，根据其要求及相关法律规定故对该内容进行下线处理",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-49",
+      "dynamicId": "1265913186433892354",
+      "noticeAt": "2026-11-02T09:32:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-50",
+      "dynamicId": "1265732106300948504",
+      "noticeAt": "2026-11-01T21:30:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "引战",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-51",
+      "dynamicId": "1265726681775079427",
+      "noticeAt": "2026-11-01T21:13:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "provocation",
+      "reason": "引战",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-52",
+      "dynamicId": "1265715643730100225",
+      "noticeAt": "2026-11-01T21:11:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "provocation",
+      "reason": "引战",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-53",
+      "dynamicId": "1265717700989026327",
+      "noticeAt": "2026-11-01T21:10:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "引战",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-54",
+      "dynamicId": "1265718581479342115",
+      "noticeAt": "2026-11-01T20:38:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-55",
+      "dynamicId": "1265717275827109893",
+      "noticeAt": "2026-11-01T20:35:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-56",
+      "dynamicId": "1265631247612248067",
+      "noticeAt": null,
+      "timeBasis": "unrecorded",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-57",
+      "dynamicId": "1265630779430404117",
+      "noticeAt": "2026-11-01T17:38:00+08:00",
+      "timeBasis": "recording_supplement",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-58",
+      "dynamicId": "1265327632040329239",
+      "noticeAt": "2026-11-01T17:37:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "涉及引战信息",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-59",
+      "dynamicId": "1265630500252286985",
+      "noticeAt": "2026-11-01T14:53:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-60",
+      "dynamicId": "1257266429437149190",
+      "noticeAt": null,
+      "timeBasis": "unrecorded",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-61",
+      "dynamicId": "1257265871105032208",
+      "noticeAt": null,
+      "timeBasis": "unrecorded",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-62",
+      "dynamicId": "1257264556818825220",
+      "noticeAt": "2026-10-10T01:51:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "personal_attack",
+      "reason": "涉及人身攻击",
+      "exampleImages": []
+    },
+    {
+      "id": "dynamic-event-63",
+      "dynamicId": "1257088733713268740",
+      "noticeAt": "2026-10-09T18:10:00+08:00",
+      "timeBasis": "notice_record",
+      "reasonCategory": "provocation",
+      "reason": "引战",
+      "exampleImages": []
+    }
+  ],
+  "videoRecordNote": "9 个不同视频：3 项详情明确权利人投诉、3 项明确用户举报、3 项未写明来源。时间取自视频列表，不当作处理时间；视频入口用于核对 BVID，因当前状态可能无法播放。",
+  "videoRecords": [
+    {
+      "bvid": "BV1q4Wa67EB2",
+      "label": "目标事件视频",
+      "listedAt": "2026-11-13T02:29:08+08:00",
+      "status": "退回 · 仅自见",
+      "triggerSource": "not_specified",
+      "triggerLabel": "当前详情未明确触发来源",
+      "reasonSummary": "最新详情为“封面或标题与视频内容不符”；此前录屏呈现网络暴力/引战理由，属于不同观察时点。",
+      "href": "https://www.bilibili.com/video/BV1q4Wa67EB2/"
+    },
+    {
+      "bvid": "BV1YG4K6kE6e",
+      "label": "相关视频",
+      "listedAt": "2026-11-03T01:26:41+08:00",
+      "status": "锁定",
+      "triggerSource": "rights_holder_complaint",
+      "triggerLabel": "明确权利人投诉",
+      "reasonSummary": "投诉方表述：“视频未打码，已经造成网暴，名誉权损害”。",
+      "href": "https://www.bilibili.com/video/BV1YG4K6kE6e/"
+    },
+    {
+      "bvid": "BV1h3x86qEyf",
+      "label": "第四次补档",
+      "listedAt": "2026-11-02T05:22:27+08:00",
+      "status": "退回",
+      "triggerSource": "rights_holder_complaint",
+      "triggerLabel": "明确权利人投诉",
+      "reasonSummary": "权利人投诉指向 04:28–05:31 与 07:27–12:22。",
+      "href": "https://www.bilibili.com/video/BV1h3x86qEyf/"
+    },
+    {
+      "bvid": "BV1qfxb61ENJ",
+      "label": "第三次补档",
+      "listedAt": "2026-11-02T04:48:33+08:00",
+      "status": "锁定",
+      "triggerSource": "rights_holder_complaint",
+      "triggerLabel": "明确权利人投诉",
+      "reasonSummary": "网络暴力/引战（P1 00:00:12）；权利人投诉指出 P1 的账号头像未打码。",
+      "href": "https://www.bilibili.com/video/BV1qfxb61ENJ/"
+    },
+    {
+      "bvid": "BV1o7xb6CEdB",
+      "label": "补档",
+      "listedAt": "2026-11-01T21:37:17+08:00",
+      "status": "退回",
+      "triggerSource": "not_specified",
+      "triggerLabel": "当前详情未明确触发来源",
+      "reasonSummary": "网络暴力/引战（P1 00:00:11）。",
+      "href": "https://www.bilibili.com/video/BV1o7xb6CEdB/"
+    },
+    {
+      "bvid": "BV1WExx6jE42",
+      "label": "相关视频",
+      "listedAt": "2026-11-01T20:54:01+08:00",
+      "status": "锁定",
+      "triggerSource": "user_report",
+      "triggerLabel": "明确用户举报",
+      "reasonSummary": "平台写明“经用户举报并经平台核实”，因低俗/引战违规内容锁定。",
+      "href": "https://www.bilibili.com/video/BV1WExx6jE42/"
+    },
+    {
+      "bvid": "BV1izxE6UESw",
+      "label": "私服离线功能",
+      "listedAt": "2026-10-28T18:11:01+08:00",
+      "status": "锁定",
+      "triggerSource": "not_specified",
+      "triggerLabel": "当前详情未明确触发来源",
+      "reasonSummary": "私服宣传销售教程，处理范围为整段及标题。",
+      "href": "https://www.bilibili.com/video/BV1izxE6UESw/"
+    },
+    {
+      "bvid": "BV18Up86hEZq",
+      "label": "相关视频",
+      "listedAt": "2026-10-10T02:08:11+08:00",
+      "status": "锁定",
+      "triggerSource": "user_report",
+      "triggerLabel": "明确用户举报",
+      "reasonSummary": "平台写明“经用户举报并经平台核实”，因低俗/引战违规内容锁定。",
+      "href": "https://www.bilibili.com/video/BV18Up86hEZq/"
+    },
+    {
+      "bvid": "BV1g8ph6YEYe",
+      "label": "相关视频",
+      "listedAt": "2026-10-09T23:00:47+08:00",
+      "status": "锁定 · 仅自见",
+      "triggerSource": "user_report",
+      "triggerLabel": "明确用户举报",
+      "reasonSummary": "平台写明“经用户举报并经平台核实”，因低俗/引战违规内容锁定。",
+      "href": "https://www.bilibili.com/video/BV1g8ph6YEYe/"
+    }
+  ],
+  "ownCommentNote": "系统通知与详情页已对应到目标视频 BV1q4Wa67EB2 下的 3 个评论 ID，均显示收到举报后被移除。这是可确认的下限，不是该视频全部评论的删除总数。",
+  "ownCommentRemovals": [
+    {
+      "rpid": "323775528832",
+      "bvid": "BV1q4Wa67EB2",
+      "noticeAt": "2026-11-16T14:15:00+08:00",
+      "reason": "引战、不友善言论"
+    },
+    {
+      "rpid": "323788244096",
+      "bvid": "BV1q4Wa67EB2",
+      "noticeAt": "2026-11-13T09:50:00+08:00",
+      "reason": "引战、不友善言论"
+    },
+    {
+      "rpid": "323776601216",
+      "bvid": "BV1q4Wa67EB2",
+      "noticeAt": "2026-11-13T06:57:00+08:00",
+      "reason": "引战、不友善言论"
+    }
+  ],
+  "recordSourceNote": "动态记录来自当事人账户内社区通知，并用录屏复核；同一通知跨画面重复出现不重复计数。重复动态 ID 1270137793608155143 分别有 11 月 14 日 11:15 与 11 月 15 日 09:40 两条通知。视频状态来自当事人创作中心详情，评论移除来自系统通知及处理详情。账户内页面需本人登录，本页保留必要编号、时间和理由；下方 2023 年历史自述则提供公开原楼与官方接口入口。",
+  "commentNote": "以下3条为 UID 647014264 在2023年的公开评论，经官方接口核对作者、时间与全文。它们记录历史自述，与本次投诉的归因分开；两条7月2日回复属于同一根楼，次数不相加。",
+  "commentLinkNote": "“原楼入口”进入讨论线程；当前原楼页面未显示目标回复，核验时官方接口仍可读取。“官方原文”打开接口返回，按评论ID查找即可核对。",
+  "comments": [
+    {
+      "id": "comment-159728551632",
+      "rpid": "159728551632",
+      "uid": "647014264",
+      "date": "2023-04-07T21:07:33+08:00",
+      "dateLabel": "2023年04月07日 21:07:33（北京时间）",
+      "message": "回复 @Comeon落幕 :一堆“反驳”我的，但我一举报就成功，一举报就成功，已经成功了二三十个了，哈哈",
+      "rootRpid": "157764372272",
+      "context": "根楼原本表达对视频 UP 主安全的担心，后续出现围绕该根楼的争论。此回复提及有人反驳自己，接着自述举报成功；没有说明具体举报对象或平台处理依据。",
+      "verifiedAt": "2026年11月16日 20:56:10（北京时间）",
+      "links": [
+        {
+          "label": "原楼入口",
+          "href": "https://www.bilibili.com/h5/comment/sub?oid=269017885&pageType=1&root=157764372272"
+        },
+        {
+          "label": "官方原文（按评论ID查找）",
+          "href": "https://api.bilibili.com/x/v2/reply/reply?type=1&oid=269017885&root=157764372272&pn=7&ps=20"
+        }
+      ]
+    },
+    {
+      "id": "comment-172761210528",
+      "rpid": "172761210528",
+      "uid": "647014264",
+      "date": "2023-07-02T08:35:53+08:00",
+      "dateLabel": "2023年07月02日 08:35:53（北京时间）",
+      "message": "回复 @思悟云 :有用，我这个评论里举报了几十个，个个都成功！",
+      "rootRpid": "172637689408",
+      "context": "同一根楼中，直接父回复提出尝试平台举报；该回复回答举报是否有用。它与当天另一条所列回复来自同一线程，不能视为两个独立事件或将自述次数相加。",
+      "verifiedAt": "2026年11月16日 20:56:02（北京时间）",
+      "links": [
+        {
+          "label": "原楼入口",
+          "href": "https://www.bilibili.com/h5/comment/sub?oid=785486607&pageType=1&root=172637689408"
+        },
+        {
+          "label": "官方原文（按评论ID查找）",
+          "href": "https://api.bilibili.com/x/v2/reply/reply?type=1&oid=785486607&root=172637689408&pn=3&ps=20"
+        }
+      ]
+    },
+    {
+      "id": "comment-172809228160",
+      "rpid": "172809228160",
+      "uid": "647014264",
+      "date": "2023-07-02T14:04:54+08:00",
+      "dateLabel": "2023年07月02日 14:04:54（北京时间）",
+      "message": "回复 @Lil_Donald :记得我之前举报一个视频，那个视频的评论从600多条我举报到100多条，每次举报都成功，全是引战言论[喜极而泣]而且我这个评论下面也在一直举报，也是一直成功（可以看我动态）",
+      "rootRpid": "172637689408",
+      "context": "根楼讨论网络争吵及歧视性言论，直接父回复建议向平台举报。该回复先回忆此前另一个视频的评论，再谈当时本根楼中的举报；摘录里的评论数不是本次事件视频的数据。",
+      "verifiedAt": "2026年11月16日 20:56:02（北京时间）",
+      "links": [
+        {
+          "label": "原楼入口",
+          "href": "https://www.bilibili.com/h5/comment/sub?oid=785486607&pageType=1&root=172637689408"
+        },
+        {
+          "label": "官方原文（按评论ID查找）",
+          "href": "https://api.bilibili.com/x/v2/reply/reply?type=1&oid=785486607&root=172637689408&pn=3&ps=20"
+        }
+      ]
+    }
+  ]
+}

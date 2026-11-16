@@ -22,6 +22,7 @@ export const PROGRAMS = {
     { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: '正式客户端 1.6.3' },
     { id: 'universal-adv-reader', label: '通用 ADV 阅读网站', note: 'Narcissu / KANA' },
     { id: 'programs', label: '资源比对与证据记录', note: '报告' },
+    { id: 'reporting-records', label: '事件截图与处理记录', note: '图集 / 来源' },
     { id: 'contact', label: 'CONTACT', note: '联系' }
   ]},
   bilibili: { subs: [
@@ -249,6 +250,11 @@ export function renderContent(programId, subId, data) {
       '<p>Narcissu 系列与 KANA 的中文／日文剧情阅读、原生章节导航、语音、全文检索与汉化修订。</p>' +
       '<article class="download-card"><h3>UNIVERSAL ADV READER</h3><p class="meta-line">universal-adv-reader.pages.dev</p>' +
       '<a class="download-button" href="https://universal-adv-reader.pages.dev/apps/web" target="_blank" rel="noopener noreferrer">打开通用阅读网站 ↗</a></article>';
+    if (subId === 'reporting-records') return '<p class="content-kicker">MAGIUS LINK / RECORDS</p><h2>事件截图与处理记录</h2>' +
+      '<p>浏览事件截图、平台处理通知和可核对的公开评论来源。</p>' +
+      '<article class="download-card"><h3>截图与来源</h3>' +
+      '<p>点击下方按钮打开完整记录；在记录页查看图片及对应来源链接。</p>' +
+      '<a class="download-button" href="./assets/reports/reporting-records-20261116.html" target="_blank" rel="noopener noreferrer">打开截图与处理记录 ↗</a></article>';
     if (subId === 'programs') {
       return '<p class="content-kicker">MAGIUS LINK / EVIDENCE</p><h2>资源比对与证据记录</h2>' +
         '<p>资源、客户端修改与已发布产出的比对报告。</p>' +

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN" data-mode="web">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#09130f">
+  <meta name="description" content="18项事件截图、动态及视频处理记录，以及可按评论ID核对的历史公开发言。">
+  <title>事件截图与处理记录 · MADE IN MAGIUS</title>
+  <link rel="stylesheet" href="reporting-records-20261116.css">
+  <script src="reporting-records-20261116.js" defer></script>
+</head>
+<body data-manifest="reporting-records-20261116/data.json">
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand"><span class="status-light" aria-hidden="true"></span><span>MADE IN MAGIUS</span><span class="brand-divider">/</span><span class="brand-section">事件记录</span></div>
+      <!-- WEB_ONLY_START -->
+      <a class="terminal-link" href="../../#home">返回终端 <span aria-hidden="true">↗</span></a>
+      <!-- WEB_ONLY_END -->
+    </div>
+  </header>
+
+  <main id="main" class="page-shell">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="eyebrow">SUBSYSTEM / EVENT RECORDS <span class="edition">2026.11.16</span></div>
+      <h1 id="page-title">事件截图与处理记录<span class="cursor" aria-hidden="true">_</span></h1>
+      <p class="hero-description">按图阅读事件经过，查看处理记录，再到原楼与官方接口核对历史发言。</p>
+      <div class="author-statement">
+        <div class="statement-label"><span aria-hidden="true">▎</span>当事人说明 <span>MadeInMagius</span></div>
+        <p>我公开这些材料，是为了说明项目争议、针对我的攻击性言论，以及视频、动态和评论被处理的经过。下方区分截图中的发言者、平台写明的处理理由和历史公开自述，读者可以逐项核对。</p>
+      </div>
+      <div id="summary-metrics" class="summary-metrics" aria-label="已核对的处理记录数量"></div>
+      <p id="summary-note" class="summary-note"></p>
+    </section>
+
+    <nav class="section-nav" aria-label="记录目录">
+      <a href="#gallery"><span class="nav-index">01</span>事件图集 <span class="nav-count" data-count="gallery">18</span></a>
+      <a href="#notices"><span class="nav-index">02</span>处理记录 <span class="nav-count" data-count="dynamicEvents">63</span></a>
+      <a href="#comments"><span class="nav-index">03</span>历史评论 <span class="nav-count" data-count="comments">3</span></a>
+    </nav>
+
+    <p id="load-status" class="load-status" role="status">正在读取记录…</p>
+
+    <section id="gallery" class="record-section" aria-labelledby="gallery-title">
+      <div class="section-heading"><div><div class="eyebrow">01 / EVENT GALLERY</div><h2 id="gallery-title">事件图集</h2></div><span class="section-hint">点击图片放大</span></div>
+      <p id="gallery-note" class="section-note"></p>
+      <div id="gallery-index" class="gallery-index" aria-label="图片编号导航"></div>
+      <div id="gallery-grid" class="gallery-grid"></div>
+      <aside id="quoted-attack" class="quoted-attack" aria-labelledby="attack-title">
+        <p class="eyebrow">图 05 / 具体言论</p>
+        <h3 id="attack-title">针对作者的攻击性发言</h3>
+        <blockquote id="attack-message"></blockquote>
+        <p id="attack-attribution"></p>
+        <a href="#source-05">查看图 05 与上下文 ↑</a>
+      </aside>
+      <!-- WEB_ONLY_START -->
+      <a class="report-link" href="resource-client-comparison-20261017.html" target="_blank" rel="noopener noreferrer"><span><small>相关技术材料</small><strong>资源与客户端比对报告</strong></span><span aria-hidden="true">↗</span></a>
+      <!-- WEB_ONLY_END -->
+    </section>
+
+    <section id="notices" class="record-section" aria-labelledby="notices-title">
+      <div class="section-heading"><div><div class="eyebrow">02 / PLATFORM RECORDS</div><h2 id="notices-title">平台处理记录</h2></div><span class="section-hint">动态 / 视频 / 本人评论</span></div>
+      <p id="notice-note" class="section-note"></p>
+      <div id="notice-grid" class="notice-grid"></div>
+      <details class="notice-details">
+        <summary>查看 <span id="notice-record-count">63</span> 条动态处理通知明细</summary>
+        <div class="table-tools"><label for="dynamic-reason-filter">处理理由</label><select id="dynamic-reason-filter"><option value="all">全部</option><option value="rights_holder_complaint">权利人侵权投诉</option><option value="provocation">引战</option><option value="personal_attack">人身攻击</option><option value="inappropriate">不适宜内容</option></select><span id="dynamic-visible-count" role="status"></span></div>
+        <p id="dynamic-record-note" class="detail-note"></p>
+        <div class="table-scroll"><table class="dynamic-table"><thead><tr><th scope="col">通知时间（北京时间）</th><th scope="col">动态ID</th><th scope="col">通知中的处理理由</th><th scope="col">示例图</th></tr></thead><tbody id="notice-table-body"></tbody></table></div>
+      </details>
+      <div class="record-subsection">
+        <h3>9 个视频的处理详情</h3>
+        <p id="video-record-note" class="section-note"></p>
+        <div class="table-scroll bordered-table"><table class="video-table"><thead><tr><th scope="col">视频 / 列表时间</th><th scope="col">当前状态</th><th scope="col">详情写明的来源</th><th scope="col">处理理由或投诉内容摘要</th></tr></thead><tbody id="video-table-body"></tbody></table></div>
+      </div>
+      <div class="record-subsection">
+        <h3>至少 3 条本人评论被移除</h3>
+        <p id="own-comment-note" class="section-note"></p>
+        <div class="table-scroll bordered-table"><table class="own-comment-table"><thead><tr><th scope="col">通知时间（北京时间）</th><th scope="col">评论ID</th><th scope="col">平台处理理由</th></tr></thead><tbody id="own-comment-table-body"></tbody></table></div>
+      </div>
+      <div class="source-note"><h3>这些数量如何核对</h3><p id="record-source-note"></p></div>
+    </section>
+
+    <section id="comments" class="record-section" aria-labelledby="comments-title">
+      <div class="section-heading"><div><div class="eyebrow">03 / PUBLIC COMMENTS</div><h2 id="comments-title">历史公开评论</h2></div><span class="section-hint">UID 647014264</span></div>
+      <p id="comment-note" class="section-note"></p>
+      <div class="link-guide"><span class="guide-symbol" aria-hidden="true">↗</span><p id="comment-link-note"></p></div>
+      <div id="comment-list" class="comment-list"></div>
+    </section>
+
+    <footer class="page-footer"><span>MADE IN MAGIUS / EVENT RECORDS</span><a href="#main">回到顶部 ↑</a></footer>
+    <noscript><p class="error-message">请开启 JavaScript 以浏览图集与评论记录。也可直接查看 <a href="reporting-records-20261116/data.json">记录数据</a>。</p></noscript>
+  </main>
+
+  <dialog id="image-viewer" class="image-viewer" aria-labelledby="viewer-title">
+    <div class="viewer-shell">
+      <div class="viewer-toolbar"><div class="viewer-heading"><span id="viewer-counter" class="eyebrow"></span><h2 id="viewer-title"></h2></div><button id="viewer-close" class="icon-button" type="button" aria-label="关闭图片">×</button></div>
+      <div id="viewer-viewport" class="viewer-viewport"><img id="viewer-image" alt=""></div>
+      <div class="viewer-controls"><div class="viewer-pages"><button id="viewer-previous" class="quiet-button" type="button" aria-label="上一张图片">← 上一张</button><button id="viewer-next" class="quiet-button" type="button" aria-label="下一张图片">下一张 →</button></div><div class="viewer-actions"><button id="viewer-zoom" class="quiet-button" type="button" aria-pressed="false">放大阅读</button><a id="viewer-original" class="action-link" target="_blank" rel="noopener noreferrer">打开大图 ↗</a></div></div>
+      <p id="viewer-caption" class="viewer-caption"></p>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

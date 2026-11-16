@@ -106,6 +106,12 @@ await writeFile('dist/_headers',`/*
   Cache-Control: no-store
 /assets/*
   Cache-Control: public, max-age=3600
+/assets/reports/reporting-records-20261116
+  ! Cache-Control
+  Cache-Control: no-cache
+/assets/reports/reporting-records-20261116.html
+  ! Cache-Control
+  Cache-Control: no-cache
 /data/*
   Cache-Control: public, max-age=300
 `);

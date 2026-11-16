@@ -104,11 +104,38 @@ for (const phrase of [
   'Bilibili 粉丝取关记录与查询工具等。',
 ]) assert.ok(profile.includes(phrase), phrase);
 assert.ok(!profile.includes('旧的独立工具站会逐步并入'));
-const css = await readFile(new URL('../assets/styles.css', import.meta.url));
-assert.equal(createHash('sha256').update(css).digest('hex'), '89b05c8471592e18b63549a6f2a6d80fdd25a294f63451cbbd062ae50b09dca2',
-  'Keep the exact pre-softness CSS during this content-only change');
+const css = await readFile(new URL('../assets/styles.css', import.meta.url), 'utf8');
+// The authorized hover fix is append-only. Keep the old optical/layout CSS
+// byte-exact, allowing only the blank lines separating it from the new section.
+const hoverMarker = '/* Stable hover feedback:';
+const cssParts = css.split(hoverMarker);
+assert.equal(cssParts.length, 2, 'Expected one append-only stable-hover section');
+const baseCss = cssParts[0].replace(/\n+$/, '\n');
+assert.equal(createHash('sha256').update(baseCss).digest('hex'), '89b05c8471592e18b63549a6f2a6d80fdd25a294f63451cbbd062ae50b09dca2',
+  'Keep the exact pre-softness base CSS; only local hover feedback may change');
+const hoverCss = (hoverMarker + cssParts[1]).replace(/\/\*[\s\S]*?\*\//g, '').trim();
+const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+const hoverRules = [...hoverCss.matchAll(rulePattern)];
+assert.ok(hoverRules.length > 0, 'Stable-hover section must contain CSS rules');
+assert.equal(hoverCss.replace(rulePattern, '').trim(), '', 'No unparsed or nested rules in stable-hover section');
+const allowedHoverSelectors = new Set([
+  '.menu-node', '.sub-node', '.menu-node::before', '.sub-node::before',
+  '.connector-path', '.connector-path.is-hot', '.connector-dot', '.connector-dot.is-hot'
+]);
+const allowedHoverDeclarations = new Set([
+  'transition:none', 'display:none', 'filter:none!important',
+  '-webkit-filter:none!important', 'stroke-width:2'
+]);
+for (const [, selectors, declarations] of hoverRules) {
+  for (const selector of selectors.split(',').map(value => value.trim())) {
+    assert.ok(allowedHoverSelectors.has(selector), 'Hover fix must stay local; forbidden selector: ' + selector);
+  }
+  for (const declaration of declarations.split(';').map(value => value.replace(/\s+/g, '')).filter(Boolean)) {
+    assert.ok(allowedHoverDeclarations.has(declaration), 'Unexpected hover declaration: ' + declaration);
+  }
+}
 console.log('HOME_HUB=PASS: 4 external sites, separate private-server menu, report slot, profile, old hashes preserved');
-console.log('IOS_ROLLBACK=PASS: stylesheet byte-identical to pre-softness version; no new optical changes');
+console.log('IOS_ROLLBACK=PASS: base stylesheet hash unchanged; appended hover rules cannot target signal/screen optics');
 
 const viewerPath = './assets/reports/forensic-report-20261017-image.html';
 assert.ok(future.indexOf('资源与客户端比对报告</h3>') < future.indexOf('原报告长图（匿名版）</h3>'));

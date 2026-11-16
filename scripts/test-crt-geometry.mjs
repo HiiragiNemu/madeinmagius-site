@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdtemp, mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { updateCrtFilterGeometry } from '../assets/effects.js';
 import { versionStaticAssets } from './version-static-assets.mjs';
 
@@ -26,11 +27,68 @@ test('every CRT primitive keeps fixed viewport bounds and repeated hover-size no
   assert.equal(updateCrtFilterGeometry(filter, curve, 0, 844, 37), false);
 });
 
-test('hover keeps local glow and connector feedback but never adds global signal energy', async () => {
+test('six-item menu hover preserves connector nodes and geometry while selection stays highlighted', async () => {
   const app = await readFile(new URL('../assets/app.js', import.meta.url), 'utf8');
-  assert.match(app, /setInteractiveGlow\(button, event\)/);
-  assert.match(app, /hoverSubId = item\.id/);
+  const ids = ['welcome', 'magireco-private-server', 'universal-adv-reader', 'programs', 'reporting-records', 'contact'];
+  const buttons = [];
+  const svg = {
+    children: [], writes: 0, geometryWrites: 0,
+    set innerHTML(html) {
+      this.writes++;
+      this.children = [...html.matchAll(/<(?:path|circle)\b([^>]*)\/>/g)].map(match => {
+        const attrs = Object.fromEntries([...match[1].matchAll(/([\w-]+)="([^"]*)"/g)].map(m => [m[1], m[2]]));
+        const classes = new Set(attrs.class.split(' '));
+        return { attrs, dataset: { connectorSub: attrs['data-connector-sub'] }, classList: {
+          toggle(name, on) { if (on) classes.add(name); else classes.delete(name); },
+          contains(name) { return classes.has(name); }
+        }};
+      });
+    },
+    setAttribute() { this.geometryWrites++; },
+    querySelectorAll(selector) {
+      assert.equal(selector, '[data-connector-sub]');
+      return this.children.filter(node => node.dataset.connectorSub);
+    }
+  };
+  const context = {
+    connectorSvg: svg, mobileMode: { matches: false }, programId: 'home', subId: 'reporting-records', hoverSubId: null,
+    PROGRAMS: { home: { subs: ids.map(id => ({ id, label: id })) } },
+    subMenu: { set innerHTML(value) { buttons.length = 0; }, append(button) { buttons.push(button); }, querySelectorAll() { return buttons; } },
+    document: { createElement() { return {
+      dataset: {}, handlers: {}, setAttribute() {}, addEventListener(type, fn) { this.handlers[type] = fn; },
+      getBoundingClientRect() { return { left: 300, top: 100 + buttons.indexOf(this) * 60, height: 50 }; }
+    }; } },
+    selectedProgramButton: () => ({ getBoundingClientRect: () => ({ right: 220, top: 100, height: 80 }) }),
+    stage: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1200, height: 700 }) },
+    restoreContentPanel() {}, placeContentPanel() {}, requestAnimationFrame(fn) { fn(); }, escapeHtml: String
+  };
+  const start = app.indexOf('function updateConnectorHighlights()');
+  const end = app.indexOf('function scrollSubsystemIntoView()');
+  assert.ok(start >= 0 && end > start);
+  runInNewContext(app.slice(start, end), context);
+  context.buildSubMenu();
+  assert.equal(buttons.length, 6);
+  assert.equal(svg.children.length, 14);
+  const nodes = [...svg.children];
+  const geometry = nodes.map(node => JSON.stringify(node.attrs));
+  const writes = [svg.writes, svg.geometryWrites];
+  const expectHot = hovered => svg.querySelectorAll('[data-connector-sub]').forEach(node => {
+    assert.equal(node.classList.contains('is-hot'), node.dataset.connectorSub === context.subId || node.dataset.connectorSub === hovered);
+  });
+  expectHot(null);
+  for (let round = 0; round < 20; round++) for (const button of buttons) {
+    assert.equal(button.handlers.pointermove, undefined);
+    button.handlers.pointerenter(); expectHot(button.dataset.sub);
+    button.handlers.pointerleave(); expectHot(null);
+  }
+  assert.deepEqual(svg.children, nodes);
+  assert.deepEqual(svg.children.map(node => JSON.stringify(node.attrs)), geometry);
+  assert.deepEqual([svg.writes, svg.geometryWrites], writes);
+  assert.ok(svg.children.at(-1).classList.contains('is-hot'), 'selected trunk stays highlighted');
+  context.subId = 'welcome'; context.drawConnectors(); expectHot(null);
+  assert.equal(svg.writes, writes[0] + 1, 'actual selection/layout changes may rebuild geometry');
   assert.doesNotMatch(app, /crt\.addEnergy\(/);
+  assert.doesNotMatch(app, /setInteractiveGlow\(button, event\)/);
   const optics = await readFile(new URL('../assets/effects.js', import.meta.url), 'utf8');
   assert.match(optics, /size = 384/); assert.match(optics, /nx \* radial \* 43/);
   assert.match(optics, /ios-static-css/);

@@ -1,5 +1,5 @@
 import { PROGRAMS, escapeHtml, renderContent, serviceUrl } from './content.js?v=20261017-report1';
-import { setupCrtEffects, setInteractiveGlow } from './effects.js?v=20260921-iosnative1';
+import { setupCrtEffects } from './effects.js?v=20260921-iosnative1';
 import { loadMagirecoReleaseData } from './magireco-loader.js';
 
 const body = document.body;
@@ -148,6 +148,15 @@ function renderCurrentContent() {
   placeContentPanel(false);
 }
 
+// Hover changes only existing branch paint. Rebuilding SVG geometry inside the
+// whole-screen optical filter can invalidate the entire filtered surface.
+function updateConnectorHighlights() {
+  connectorSvg.querySelectorAll('[data-connector-sub]').forEach(node => {
+    const hot = node.dataset.connectorSub === subId || node.dataset.connectorSub === hoverSubId;
+    node.classList.toggle('is-hot', hot);
+  });
+}
+
 function drawConnectors() {
   if (mobileMode.matches) {
     connectorSvg.innerHTML = '';
@@ -172,7 +181,6 @@ function drawConnectors() {
       button,
       endX: rect.left - stageRect.left - 12,
       endY: rect.top + rect.height / 2 - stageRect.top,
-      hot: button.dataset.sub === subId || button.dataset.sub === hoverSubId,
     };
   });
 
@@ -190,13 +198,13 @@ function drawConnectors() {
 
   for (const point of points) {
     lines.push(
-      '<path class="connector-path' + (point.hot ? ' is-hot' : '') +
+      '<path class="connector-path" data-connector-sub="' + escapeHtml(point.button.dataset.sub) +
       '" d="M ' + trunkX.toFixed(1) + ' ' + point.endY.toFixed(1) +
       ' H ' + point.endX.toFixed(1) + '"/>' +
-      '<circle class="connector-dot' + (point.hot ? ' is-hot' : '') +
+      '<circle class="connector-dot" data-connector-sub="' + escapeHtml(point.button.dataset.sub) +
       '" cx="' + point.endX.toFixed(1) +
       '" cy="' + point.endY.toFixed(1) +
-      '" r="' + (point.hot ? '3.2' : '2.1') + '"/>'
+      '" r="2.1"/>'
     );
   }
 
@@ -215,6 +223,7 @@ function drawConnectors() {
     '0 0 ' + Math.max(1, stageRect.width) + ' ' + Math.max(1, stageRect.height)
   );
   connectorSvg.innerHTML = lines.join('');
+  updateConnectorHighlights();
 }
 
 function buildSubMenu() {
@@ -236,16 +245,13 @@ function buildSubMenu() {
     button.innerHTML =
       '<b>&gt;' + escapeHtml(item.label) + '</b><small>' + escapeHtml(item.note || '') + '</small>';
 
-    button.addEventListener('pointermove', event => {
-      setInteractiveGlow(button, event);
-    });
     button.addEventListener('pointerenter', () => {
       hoverSubId = item.id;
-      drawConnectors();
+      updateConnectorHighlights();
     });
     button.addEventListener('pointerleave', () => {
       hoverSubId = null;
-      drawConnectors();
+      updateConnectorHighlights();
     });
     button.addEventListener('click', () => {
       selectSub(item.id, true);
@@ -339,9 +345,6 @@ function parseHash() {
 
 function setupProgramInteractions() {
   programButtons.forEach(button => {
-    button.addEventListener('pointermove', event => {
-      setInteractiveGlow(button, event);
-    });
     button.addEventListener('pointerenter', () => {
       statusLine.textContent = 'TARGET // ' + button.dataset.program.toUpperCase();
     });

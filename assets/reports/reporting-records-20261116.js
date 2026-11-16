@@ -90,17 +90,19 @@
     return value.slice(0, seconds ? 19 : 16).replace('T', ' ');
   }
 
-  function renderSummary(summary) {
+  function renderSummary(summary, videoRecords) {
+    const lockedVideos = videoRecords.filter(item => item.status.startsWith('锁定')).length;
+    const returnedVideos = videoRecords.filter(item => item.status.startsWith('退回')).length;
     const metrics = [
-      [summary.dynamicEvents, '动态处理通知', `${summary.dynamicObjects} 个不同动态`],
-      [summary.rightsHolderEvents, '明确权利人投诉', `${summary.rightsHolderObjects} 个不同动态 · 属于前项`],
-      [summary.videoObjects, '视频处理详情', '3 项权利人 / 3 项用户举报 / 3 项未写明'],
-      [`≥ ${summary.ownCommentRemovalsAtLeast}`, '本人评论被移除', '已对应评论 ID 的下限'],
+      [summary.dynamicEvents, '动态移除通知', `涉及 ${summary.dynamicObjects} 个不同动态`],
+      [summary.rightsHolderEvents, '权利人投诉动态通知', `涉及 ${summary.rightsHolderObjects} 个动态 · 已包含在前项`],
+      [summary.videoObjects, '已核对的视频当前状态', `${lockedVideos} 个锁定 · ${returnedVideos} 个退回 · 历史范围未完整覆盖`],
+      ['总量未完整恢复', '评论受影响总量', `${summary.ownCommentRemovalsAtLeast} 条已逐 ID 留证；来源仅覆盖已读的最近 30 项系统通知`, 'metric-value-text'],
     ];
     const container = document.getElementById('summary-metrics');
-    for (const [value, label, detail] of metrics) {
+    for (const [value, label, detail, valueClass = ''] of metrics) {
       const card = el('div', 'metric-card');
-      card.append(el('strong', 'metric-value', String(value)), el('span', 'metric-label', label), el('small', 'metric-detail', detail));
+      card.append(el('strong', `metric-value ${valueClass}`.trim(), String(value)), el('span', 'metric-label', label), el('small', 'metric-detail', detail));
       container.append(card);
     }
   }
@@ -300,7 +302,7 @@
     document.querySelector('[data-count="gallery"]').textContent = String(data.gallery.length);
     document.querySelector('[data-count="dynamicEvents"]').textContent = String(data.dynamicRecords.length);
     document.querySelector('[data-count="comments"]').textContent = String(data.comments.length);
-    renderSummary(data.summary);
+    renderSummary(data.summary, data.videoRecords);
     renderGalleryIndex(data.gallery);
     for (const item of data.gallery || []) document.getElementById('gallery-grid').append(imageCard(item, '作者说明图'));
     for (const item of data.notices || []) document.getElementById('notice-grid').append(imageCard(item, '平台处理通知'));

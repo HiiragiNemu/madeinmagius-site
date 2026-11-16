@@ -3207,3 +3207,21 @@ html[data-crt-platform="ios-webkit"] .sub-menu>.content-panel{
 html[data-crt-platform="ios-webkit"] .boot{
   transition:none!important;
 }
+
+
+/* Stable hover feedback: keep the CRT lens, but do not animate/reallocate
+   blended glow and nested SVG-filter layers when the pointer crosses menus. */
+.menu-node,.sub-node{
+  transition:none;
+}
+.menu-node::before,.sub-node::before{
+  display:none;
+}
+.connector-path,.connector-path.is-hot,
+.connector-dot,.connector-dot.is-hot{
+  filter:none!important;
+  -webkit-filter:none!important;
+}
+.connector-path.is-hot{
+  stroke-width:2;
+}

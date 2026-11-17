@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 export const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const stem = 'reporting-records-20261116';
 export const reports = join(repo, 'assets', 'reports');
-const approvedNumbers = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '09B', '09C', '10', '11', '12', '14', '15', '16', '17'];
-const originalNumbers = new Set(['03', '05', '09C']);
+const approvedNumbers = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '09B', '09C', '10', '11', '12', '13', '14', '15', '16', '17', '18'];
+const originalNumbers = new Set(approvedNumbers);
 const expectedRpids = ['159728551632', '172761210528', '172809228160'];
 const expectedBvids = ['BV1q4Wa67EB2', 'BV1YG4K6kE6e', 'BV1h3x86qEyf', 'BV1qfxb61ENJ', 'BV1o7xb6CEdB', 'BV1WExx6jE42', 'BV1izxE6UESw', 'BV18Up86hEZq', 'BV1g8ph6YEYe'];
 
@@ -37,12 +37,21 @@ function checkLinks(links = []) {
 }
 
 export function validateManifest(data) {
-  keys(data, ['schemaVersion', 'title', 'updatedAt', 'timeZone', 'relatedVideo', 'summary', 'summaryNote', 'galleryNote', 'gallery', 'attackQuote', 'noticeNote', 'notices', 'dynamicRecordNote', 'dynamicRecords', 'videoRecordNote', 'videoRecords', 'ownCommentNote', 'ownCommentRemovals', 'recordSourceNote', 'commentNote', 'commentLinkNote', 'comments'], 'manifest');
+  keys(data, ['schemaVersion', 'title', 'updatedAt', 'timeZone', 'relatedVideo', 'escalation20261118', 'summary', 'summaryNote', 'galleryNote', 'gallery', 'attackQuote', 'noticeNote', 'notices', 'dynamicRecordNote', 'dynamicRecords', 'videoRecordNote', 'videoRecords', 'ownCommentNote', 'ownCommentRemovals', 'recordSourceNote', 'commentNote', 'commentLinkNote', 'comments', 'archiveSummary'], 'manifest');
   assert.equal(data.schemaVersion, 2);
   assert.equal(data.timeZone, 'Asia/Shanghai');
   text(data.title, 'title');
   assert.equal(data.relatedVideo.href, 'https://www.bilibili.com/video/BV1q4Wa67EB2/');
   keys(data.relatedVideo, ['label', 'href'], 'relatedVideo');
+  if (data.escalation20261118) {
+    keys(data.escalation20261118, ['date', 'headline', 'items'], 'escalation20261118');
+    text(data.escalation20261118.headline, 'escalation20261118.headline');
+    assert(Array.isArray(data.escalation20261118.items) && data.escalation20261118.items.length >= 2);
+  }
+  if (data.archiveSummary) {
+    keys(data.archiveSummary, ['totalRecords', 'uid647014264', 'uid1703887112', 'previouslyDroppedRecovered', 'datasetPath'], 'archiveSummary');
+    assert.equal(data.archiveSummary.totalRecords, 4433);
+  }
   for (const key of ['summaryNote', 'galleryNote', 'noticeNote', 'dynamicRecordNote', 'videoRecordNote', 'ownCommentNote', 'recordSourceNote', 'commentNote', 'commentLinkNote']) text(data[key], key);
   assert.deepEqual(data.gallery.map(item => item.number), approvedNumbers);
   for (const item of data.gallery) {
@@ -122,10 +131,12 @@ export function validateManifest(data) {
     assert.equal(item.bvid, 'BV1q4Wa67EB2');
     text(item.reason, 'own comment reason');
   }
-  assert.deepEqual(data.comments.map(item => item.rpid), expectedRpids);
+  const commentRpids = new Set(data.comments.map(item => item.rpid));
+  for (const baseRpid of expectedRpids) assert(commentRpids.has(baseRpid), `Missing baseline verified RPID: ${baseRpid}`);
+  assert(data.comments.length >= 18, `Expected expanded featured comments, found ${data.comments.length}`);
   for (const item of data.comments) {
-    keys(item, ['id', 'rpid', 'uid', 'date', 'dateLabel', 'message', 'rootRpid', 'context', 'verifiedAt', 'links'], 'historical comment');
-    assert.equal(item.uid, '647014264');
+    keys(item, ['id', 'rpid', 'uid', 'badge', 'date', 'dateLabel', 'message', 'rootRpid', 'context', 'verifiedAt', 'links'], 'historical comment');
+    assert(['647014264', '1703887112'].includes(item.uid), `Unexpected comment UID: ${item.uid}`);
     assert.equal(item.id, `comment-${item.rpid}`);
     id(item.rootRpid, 'rootRpid');
     text(item.message, 'historical comment message');
@@ -145,7 +156,7 @@ export async function readManifest() {
 
 export async function checkAssets(data, { requireAll = false } = {}) {
   const items = [...data.gallery, ...data.notices];
-  const permitted = new Set(['data.json', ...items.map(item => item.src.slice(stem.length + 1))]);
+  const permitted = new Set(['data.json', 'comments-4433.json', ...items.map(item => item.src.slice(stem.length + 1))]);
   for (const entry of await readdir(join(reports, stem), { withFileTypes: true })) {
     assert(entry.isFile() && permitted.has(entry.name), `Unlisted public asset: ${entry.name}`);
   }
@@ -162,12 +173,25 @@ export async function checkAssets(data, { requireAll = false } = {}) {
     if (item.src.endsWith('.png')) assert(bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), `Not a PNG: ${item.src}`);
     else assert(bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255, `Not a JPEG: ${item.src}`);
     const sha256 = createHash('sha256').update(bytes).digest('hex');
+    if (item.id === 'source-00') assert.equal(sha256, 'b9287fc150dbcfdd15f683b8d9b7d883e61eab3c89dcf206ab23e5d5f6503a94', '00 must retain the verified original bytes');
     if (item.id === 'source-09c') assert.equal(sha256, '12403af94d10072410e2b8d6c295b687ac3cb33ff06914457e8008ec832196b0', '09C must retain the verified original bytes');
     if (item.id === 'source-03') assert.equal(bytes.length, 6509780, '03 original byte size changed');
     if (item.id === 'source-05') assert.equal(bytes.length, 3079082, '05 original byte size changed');
+    if (item.id === 'source-13') assert.equal(sha256, '454dce910fbd5838633df9a06f9eb2a4726a44fb28cd6e599531483dd8018fc5', '13 must retain the verified original bytes');
+    if (item.id === 'source-18') assert.equal(sha256, '34877299a87407a64fa2966a790d7b6d9126d24add30c10e8e0e24777cedb2ee', '18 must retain the verified original bytes');
     available.push({ src: item.src, bytes: bytes.length, sha256 });
   }
-  if (requireAll && missing.length) throw new Error(`Missing ${missing.length} approved images:\n${missing.join('\n')}`);
+  const archivePath = join(reports, stem, 'comments-4433.json');
+  try {
+    const rawArchive = await readFile(archivePath, 'utf8');
+    const parsedArchive = JSON.parse(rawArchive);
+    assert.equal(parsedArchive.total, 4433, 'comments-4433.json total must be 4433');
+    assert.equal(parsedArchive.rows.length, 4433, 'comments-4433.json rows.length must be 4433');
+  } catch (error) {
+    if (error.code === 'ENOENT') missing.push(`${stem}/comments-4433.json`);
+    else throw error;
+  }
+  if (requireAll && missing.length) throw new Error(`Missing ${missing.length} approved assets:\n${missing.join('\n')}`);
   return { available, missing, totalImageBytes: available.reduce((sum, item) => sum + item.bytes, 0) };
 }
 

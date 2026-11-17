@@ -90,20 +90,30 @@
     return value.slice(0, seconds ? 19 : 16).replace('T', ' ');
   }
 
-  function renderSummary(summary, videoRecords) {
+  function renderSummary(summary, videoRecords, data) {
     const lockedVideos = videoRecords.filter(item => item.status.startsWith('锁定')).length;
     const returnedVideos = videoRecords.filter(item => item.status.startsWith('退回')).length;
+    const totalArchive = data.archiveSummary?.totalRecords || 4433;
     const metrics = [
-      [summary.dynamicEvents, '动态移除通知', `涉及 ${summary.dynamicObjects} 个不同动态`],
-      [summary.rightsHolderEvents, '权利人投诉动态通知', `涉及 ${summary.rightsHolderObjects} 个动态 · 已包含在前项`],
-      [summary.videoObjects, '已核对的视频当前状态', `${lockedVideos} 个锁定 · ${returnedVideos} 个退回 · 历史范围未完整覆盖`],
-      ['总量未完整恢复', '评论受影响总量', `${summary.ownCommentRemovalsAtLeast} 条已逐 ID 留证；来源仅覆盖已读的最近 30 项系统通知`, 'metric-value-text'],
+      [data.gallery.length, '全部无删改事件原图', '00 至 18 完整原件（无黑框遮盖）'],
+      [summary.dynamicEvents, '动态移除通知（11-16）', `涉及 ${summary.dynamicObjects} 个动态 · 其中 ${summary.rightsHolderEvents} 条权利人投诉`],
+      ['351 → 240+', 'BV1q4Wa67EB2 评论消减', `11-16 录屏后台 351 条；11-18 已被举报至约 240+ 且 QQ 遭封禁`, 'metric-value-text'],
+      [totalArchive, '全量历史公开发言可检', `647014264 (4,329) + 1703887112 (104) · ${summary.videoObjects} 个核对视频（${lockedVideos} 锁/${returnedVideos} 退）`],
     ];
     const container = document.getElementById('summary-metrics');
     for (const [value, label, detail, valueClass = ''] of metrics) {
       const card = el('div', 'metric-card');
       card.append(el('strong', `metric-value ${valueClass}`.trim(), String(value)), el('span', 'metric-label', label), el('small', 'metric-detail', detail));
       container.append(card);
+    }
+    const esc = data.escalation20261118;
+    const escBox = document.getElementById('escalation-box');
+    if (esc && escBox) {
+      document.getElementById('escalation-title').textContent = esc.headline || '2026-11-18 最新进展';
+      const ul = document.getElementById('escalation-list');
+      ul.replaceChildren();
+      for (const text of esc.items || []) ul.append(el('li', '', text));
+      escBox.hidden = false;
     }
   }
 
@@ -197,7 +207,7 @@
     article.id = item.id || `comment-${item.rpid}`;
     article.setAttribute('aria-label', `${item.dateLabel}的公开评论`);
     const header = el('div', 'comment-header');
-    header.append(el('span', 'comment-number', `COMMENT / ${String(index + 1).padStart(2, '0')}`), el('span', 'source-badge', '官方接口原文'));
+    header.append(el('span', 'comment-number', `COMMENT / ${String(index + 1).padStart(2, '0')}`), el('span', 'source-badge', item.badge || '官方接口原文'));
     const time = el('time', 'comment-time', item.dateLabel);
     time.dateTime = item.date;
     const message = el('blockquote', 'comment-message', item.message);
@@ -302,7 +312,7 @@
     document.querySelector('[data-count="gallery"]').textContent = String(data.gallery.length);
     document.querySelector('[data-count="dynamicEvents"]').textContent = String(data.dynamicRecords.length);
     document.querySelector('[data-count="comments"]').textContent = String(data.comments.length);
-    renderSummary(data.summary, data.videoRecords);
+    renderSummary(data.summary, data.videoRecords, data);
     renderGalleryIndex(data.gallery);
     for (const item of data.gallery || []) document.getElementById('gallery-grid').append(imageCard(item, '作者说明图'));
     for (const item of data.notices || []) document.getElementById('notice-grid').append(imageCard(item, '平台处理通知'));
@@ -313,11 +323,114 @@
     renderVideos(data.videoRecords);
     renderOwnComments(data.ownCommentRemovals);
     (data.comments || []).forEach((item, index) => document.getElementById('comment-list').append(commentCard(item, index)));
+    initArchiveExplorer(data.archiveSummary?.datasetPath || 'reporting-records-20261116/comments-4433.json');
     document.getElementById('load-status').hidden = true;
     if (location.hash) {
       const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
       if (target) requestAnimationFrame(() => target.scrollIntoView());
     }
+  }
+
+  function initArchiveExplorer(datasetPath) {
+    const badge = document.getElementById('archive-load-badge');
+    const countEl = document.getElementById('archive-count');
+    const resultsEl = document.getElementById('archive-results');
+    const pageInfo = document.getElementById('archive-page-info');
+    const prevBtn = document.getElementById('archive-prev');
+    const nextBtn = document.getElementById('archive-next');
+    const qInput = document.getElementById('archive-query');
+    const uidSelect = document.getElementById('archive-uid');
+    const catSelect = document.getElementById('archive-cat');
+    const recCheck = document.getElementById('archive-recovered');
+    if (!badge || !resultsEl) return;
+
+    const CAT_NAMES = ['举报/客服/自残施压', '冲突/小号/双标/删评', '魔法纪录/Exedra', '普通讨论', '简短/表情'];
+    const ST_NAMES = ['AICU全量归档', '官方接口原文一致', '评论区关闭(12002)', '没有该评论(12006)'];
+    const TYPE_NAMES = { 1: '视频', 11: '图文动态', 12: '专栏', 17: '转发/文字动态' };
+    const fmtCst = ts => {
+      const d = new Date((ts + 8 * 3600) * 1000);
+      return d.toISOString().slice(0, 19).replace('T', ' ');
+    };
+
+    let rows = null;
+    let uids = ['647014264', '1703887112'];
+    let page = 1;
+    const size = 25;
+
+    function renderRows() {
+      if (!rows) return;
+      const q = qInput.value.trim().toLowerCase();
+      const uidVal = uidSelect.value;
+      const catVal = catSelect.value;
+      const recOnly = recCheck.checked;
+      const filtered = rows.filter(r => {
+        if (uidVal !== '' && String(r[1]) !== uidVal) return false;
+        if (catVal !== '' && String(r[6]) !== catVal) return false;
+        if (recOnly && r[8] !== 1) return false;
+        if (q && !(r[9].toLowerCase().includes(q) || r[0].includes(q) || String(r[2]).includes(q))) return false;
+        return true;
+      });
+      const pages = Math.max(1, Math.ceil(filtered.length / size));
+      if (page > pages) page = pages;
+      const start = (page - 1) * size;
+      const end = Math.min(start + size, filtered.length);
+      countEl.textContent = filtered.length ? `匹配 ${filtered.length.toLocaleString('zh-CN')} 条 · 显示 ${start + 1}–${end}` : '无匹配评论';
+      pageInfo.textContent = `${page} / ${pages}`;
+      prevBtn.disabled = page <= 1;
+      nextBtn.disabled = page >= pages;
+      resultsEl.replaceChildren();
+      if (!filtered.length) {
+        resultsEl.append(el('div', 'archive-empty', '未找到匹配记录，请清空或调整关键词/筛选条件。'));
+        return;
+      }
+      const frag = document.createDocumentFragment();
+      for (const r of filtered.slice(start, end)) {
+        const [rpid, uIdx, oid, type, rootRaw, ts, catIdx, stCode, recovered, msg] = r;
+        const rootId = rootRaw || rpid;
+        const card = el('article', 'archive-card');
+        const head = el('div', 'archive-card-head');
+        const left = el('div', '');
+        left.append(el('span', 'source-badge', CAT_NAMES[catIdx] || '评论'));
+        if (recovered === 1) left.append(el('span', 'archive-badge-recovered', '原被AI屏蔽 · 现已恢复'));
+        head.append(left, el('span', 'comment-time', `${fmtCst(ts)} · ${ST_NAMES[stCode] || '归档'}`));
+        const meta = el('div', 'comment-meta');
+        meta.append(el('span', '', `UID ${uids[uIdx]}`), el('span', '', `RPID ${rpid}`), el('span', '', `${TYPE_NAMES[type] || '类型' + type} OID ${oid}`));
+        const cp = el('button', 'copy-button', '复制RPID');
+        cp.type = 'button';
+        cp.addEventListener('click', () => copyId(rpid));
+        meta.append(cp);
+        const links = el('div', 'card-links');
+        const tLink = link('原楼入口 ↗', `https://www.bilibili.com/h5/comment/sub?oid=${encodeURIComponent(oid)}&pageType=${encodeURIComponent(type)}&root=${encodeURIComponent(rootId)}`);
+        if (tLink) links.append(tLink);
+        if (type === 1) {
+          const vLink = link('所在视频 ↗', `https://www.bilibili.com/video/av${oid}`);
+          if (vLink) links.append(vLink);
+        }
+        const aLink = link('官方接口原文 ↗', `https://api.bilibili.com/x/v2/reply/reply?type=${encodeURIComponent(type)}&oid=${encodeURIComponent(oid)}&root=${encodeURIComponent(rootId)}&pn=1&ps=20`);
+        if (aLink) links.append(aLink);
+        card.append(head, el('p', 'archive-msg', msg), meta, links);
+        frag.append(card);
+      }
+      resultsEl.append(frag);
+    }
+
+    for (const ctrl of [uidSelect, catSelect, recCheck]) ctrl.addEventListener('change', () => { page = 1; renderRows(); });
+    qInput.addEventListener('input', () => { page = 1; renderRows(); });
+    prevBtn.addEventListener('click', () => { if (page > 1) { page--; renderRows(); } });
+    nextBtn.addEventListener('click', () => { page++; renderRows(); });
+
+    fetch(datasetPath, { cache: 'default' })
+      .then(res => { if (!res.ok) throw new Error(`archive ${res.status}`); return res.json(); })
+      .then(payload => {
+        uids = payload.uids || uids;
+        rows = payload.rows || [];
+        badge.textContent = `已加载 ${rows.length.toLocaleString('zh-CN')} 条`;
+        renderRows();
+      })
+      .catch(() => {
+        badge.textContent = '离线 file:// 提示';
+        countEl.textContent = '本地 file:// 直接打开时浏览器限制 fetch 读取同目录 JSON；请通过网站在线访问或本地 HTTP 服务 / B站 Toy 界面查看全量 4,433 条检索（上方 21 张原图与 18 条核心精选均可离线查看）。';
+      });
   }
 
   init().catch(error => {

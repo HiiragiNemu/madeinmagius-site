@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#09130f">
-  <meta name="description" content="18项事件截图、动态及视频处理记录，以及可按评论ID核对的历史公开发言。">
-  <title>事件截图与处理记录 · MADE IN MAGIUS</title>
+  <meta name="description" content="21张完整未删改事件原图、平台处理记录、2026-11-18最新迫害进展及全量4,433条历史公开发言检索引擎。">
+  <title>事件原图与处理、全量评论行为记录 · MADE IN MAGIUS</title>
   <link rel="stylesheet" href="reporting-records-20261116.css">
   <script src="reporting-records-20261116.js" defer></script>
 </head>
@@ -22,21 +22,25 @@
 
   <main id="main" class="page-shell">
     <section class="hero" aria-labelledby="page-title">
-      <div class="eyebrow">SUBSYSTEM / EVENT RECORDS <span class="edition">2026.11.17</span></div>
-      <h1 id="page-title">事件截图与处理记录<span class="cursor" aria-hidden="true">_</span></h1>
-      <p class="hero-description">按图阅读事件经过，查看处理记录，再到原楼与官方接口核对历史发言。</p>
+      <div class="eyebrow">SUBSYSTEM / EVENT RECORDS <span class="edition">2026.11.18</span></div>
+      <h1 id="page-title">事件原图与处理、行为记录<span class="cursor" aria-hidden="true">_</span></h1>
+      <p class="hero-description">完整交付 21 张无任何删改的黑框原图（00 至 18），汇集平台处理通知与 4,433 条关联账号历史公开发言全量检索。</p>
       <div class="author-statement">
         <div class="statement-label"><span aria-hidden="true">▎</span>当事人说明 <span>MadeInMagius</span></div>
-        <p>我公开这些材料，是为了说明项目争议、针对我的攻击性言论，以及视频、动态和评论被处理的经过。下方区分截图中的发言者、平台写明的处理理由和历史公开自述，读者可以逐项核对。</p>
+        <p>我公开全部 21 张完整原图与 4,433 条关联账号历史公开评论记录，不做任何局部遮盖删减。页面严格区分 2026-11-16 录屏存证基准、2026-11-18 最新持续举报封号动态及官方接口/公开索引核对来源，供所有关注者逐项核实。</p>
       </div>
+      <aside id="escalation-box" class="escalation-box" hidden aria-labelledby="escalation-title">
+        <div class="escalation-label"><span aria-hidden="true">!</span> <strong id="escalation-title"></strong></div>
+        <ul id="escalation-list" class="escalation-list"></ul>
+      </aside>
       <div id="summary-metrics" class="summary-metrics" aria-label="已保存的处理记录与统计范围"></div>
       <p id="summary-note" class="summary-note"></p>
     </section>
 
     <nav class="section-nav" aria-label="记录目录">
-      <a href="#gallery"><span class="nav-index">01</span>事件图集 <span class="nav-count" data-count="gallery">18</span></a>
+      <a href="#gallery"><span class="nav-index">01</span>完整原图集 <span class="nav-count" data-count="gallery">21</span></a>
       <a href="#notices"><span class="nav-index">02</span>处理记录 <span class="nav-count" data-count="dynamicEvents">63</span></a>
-      <a href="#comments"><span class="nav-index">03</span>历史评论 <span class="nav-count" data-count="comments">3</span></a>
+      <a href="#comments"><span class="nav-index">03</span>精选与4433全量评论 <span class="nav-count" data-count="comments">18</span></a>
     </nav>
 
     <p id="load-status" class="load-status" role="status">正在读取记录…</p>
@@ -87,10 +91,46 @@
     </section>
 
     <section id="comments" class="record-section" aria-labelledby="comments-title">
-      <div class="section-heading"><div><div class="eyebrow">03 / PUBLIC COMMENTS</div><h2 id="comments-title">历史公开评论</h2></div><span class="section-hint">UID 647014264</span></div>
+      <div class="section-heading"><div><div class="eyebrow">03 / PUBLIC COMMENTS</div><h2 id="comments-title">历史公开评论与 4,433 条全量检索</h2></div><span class="section-hint">UID 647014264 / 1703887112</span></div>
       <p id="comment-note" class="section-note"></p>
       <div class="link-guide"><span class="guide-symbol" aria-hidden="true">↗</span><p id="comment-link-note"></p></div>
       <div id="comment-list" class="comment-list"></div>
+      <section id="full-archive" class="archive-explorer" aria-labelledby="archive-explorer-title">
+        <div class="archive-head">
+          <div>
+            <div class="eyebrow">FULL CORPUS / 4,433 RECORDS</div>
+            <h3 id="archive-explorer-title">全部 4,433 条历史公开发言实时检索（含原被屏蔽 1,347 条）</h3>
+          </div>
+          <span class="section-hint" id="archive-load-badge">载入中…</span>
+        </div>
+        <p id="archive-status" class="section-note">包含 UID 647014264（4,329 条）与关联小号 UID 1703887112（104 条）的全部公开发言全文，不截断、不过滤、可按关键词/RPID/OID 检索并直达原楼与官方接口。</p>
+        <div class="archive-toolbar">
+          <input id="archive-query" class="archive-input" type="search" placeholder="输入关键词、RPID 或 OID（如：600多条 / 卧底 / 抄袭 / 821865774 / 注销 / 魔法纪录）" autocomplete="off">
+          <select id="archive-uid" class="archive-select" aria-label="按 UID 筛选">
+            <option value="">全部账号 (4,433)</option>
+            <option value="0">647014264 (4,329)</option>
+            <option value="1">1703887112 (104)</option>
+          </select>
+          <select id="archive-cat" class="archive-select" aria-label="按行为分类筛选">
+            <option value="">全部分类</option>
+            <option value="0">举报 / 客服 / 自残施压</option>
+            <option value="1">群冲突 / 小号 / 双标 / 删评</option>
+            <option value="2">魔法纪录 / Exedra 历史</option>
+            <option value="3">普通讨论</option>
+            <option value="4">简短回复与纯表情</option>
+          </select>
+          <label class="archive-check"><input id="archive-recovered" type="checkbox"> 仅看原被屏蔽 1,347 条</label>
+        </div>
+        <div class="archive-meta-row">
+          <span id="archive-count" role="status"></span>
+          <div class="archive-pager">
+            <button id="archive-prev" class="quiet-button" type="button">← 上一页</button>
+            <span id="archive-page-info">1 / 1</span>
+            <button id="archive-next" class="quiet-button" type="button">下一页 →</button>
+          </div>
+        </div>
+        <div id="archive-results" class="archive-results"></div>
+      </section>
     </section>
 
     <footer class="page-footer"><span>MADE IN MAGIUS / EVENT RECORDS</span><a href="#main">回到顶部 ↑</a></footer>

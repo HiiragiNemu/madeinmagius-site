@@ -33,10 +33,10 @@ if (losslessImageDir) {
     catch (error) { throw new Error(`Cannot read required lossless image ${filename}: ${error.message}`); }
     assertLosslessWebp(bytes, filename);
     item.src = `${stem}/${filename}`;
-    item.versionLabel += ' · 无损 WebP';
+    item.versionLabel += ' · 4K无损 WebP';
     mediaOverrides.set(item.src, bytes);
   }
-  data.galleryNote += ' 此 Toy 图集使用无损 WebP 文件，原图或遮盖副本的标识与网站对应。';
+  data.galleryNote += ' 此 Toy 图集使用全部 21 张 4K (3840×2160) 无损 WebP 原图，无任何黑框遮盖，并内置全部 4,433 条历史公开发言索引。';
 }
 let html = await readFile(join(reports, `${stem}.html`), 'utf8');
 html = html.replace('data-mode="web"', 'data-mode="toy"');
@@ -51,6 +51,11 @@ const files = new Map([
   [`${stem}.js`, await readFile(join(reports, `${stem}.js`))],
   [`${stem}/data.json`, Buffer.from(JSON.stringify(data, null, 2) + '\n')],
 ]);
+try {
+  files.set(`${stem}/comments-4433.json`, await readFile(join(reports, stem, 'comments-4433.json')));
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+}
 for (const item of [...data.gallery, ...data.notices]) {
   if (mediaOverrides.has(item.src)) {
     files.set(item.src, mediaOverrides.get(item.src));

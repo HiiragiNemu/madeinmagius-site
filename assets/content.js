@@ -250,11 +250,11 @@ export function renderContent(programId, subId, data) {
       '<p>Narcissu 系列与 KANA 的中文／日文剧情阅读、原生章节导航、语音、全文检索与汉化修订。</p>' +
       '<article class="download-card"><h3>UNIVERSAL ADV READER</h3><p class="meta-line">universal-adv-reader.pages.dev</p>' +
       '<a class="download-button" href="https://universal-adv-reader.pages.dev/apps/web" target="_blank" rel="noopener noreferrer">打开通用阅读网站 ↗</a></article>';
-    if (subId === 'reporting-records') return '<p class="content-kicker">MAGIUS LINK / RECORDS</p><h2>事件原图与处理、行为记录</h2>' +
-      '<p>完整查看 21 张未删改事件原图、2026-11-18 最新举报封号动态、平台通知及 4,433 条关联账号历史公开发言全量检索。</p>' +
-      '<article class="download-card"><h3>21 张完整原图与 4,433 条历史评论档案</h3>' +
-      '<p>已恢复全部 21 张高清原图（含 00–18 无遮盖原件）及被此前筛除的 1,347 条评论全文，支持实时检索与官方接口核验。</p>' +
-      '<a class="download-button" href="./assets/reports/reporting-records-20261116.html" target="_blank" rel="noopener noreferrer">打开原图与全量记录 ↗</a></article>';
+    if (subId === 'reporting-records') return '<p class="content-kicker">MAGIUS LINK / RECORDS</p><h2>事件原图与全量记录</h2>' +
+      '<p>查看《魔法纪录》中文版事件全套 21 张无删改原图、2026-11-18 B站多页面实查截图（评论落差 348/249 与 8 个受限视频），以及 4,433 条关联账号历史公开评论全量检索与画像。</p>' +
+      '<article class="download-card"><h3>21 张事件原图、B站实拍截图与 4,433 条历史评论</h3>' +
+      '<p>含 00 至 18 无黑框原图、B站原评论楼及官方接口实拍截图，全部 4,433 条发言按 12 类整理开放实时检索。</p>' +
+      '<a class="download-button" href="./assets/reports/reporting-records-20261116.html" target="_blank" rel="noopener noreferrer">打开事件记录专页 ↗</a></article>';
     if (subId === 'programs') {
       return '<p class="content-kicker">MAGIUS LINK / EVIDENCE</p><h2>资源比对与证据记录</h2>' +
         '<p>资源、客户端修改与已发布产出的比对报告。</p>' +

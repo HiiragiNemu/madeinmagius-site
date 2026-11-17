@@ -36,7 +36,7 @@ if (losslessImageDir) {
     item.versionLabel += ' · 4K无损 WebP';
     mediaOverrides.set(item.src, bytes);
   }
-  data.galleryNote += ' 此 Toy 图集使用全部 21 张 4K (3840×2160) 无损 WebP 原图，无任何黑框遮盖，并内置全部 4,433 条历史公开发言索引。';
+  data.galleryNote += '（B站 Toy 版本内嵌全套 21 张 3840×2160 无损 WebP、13 张平台实拍截图及 4,433 条历史发言检索。）';
 }
 let html = await readFile(join(reports, `${stem}.html`), 'utf8');
 html = html.replace('data-mode="web"', 'data-mode="toy"');
@@ -56,17 +56,23 @@ try {
 } catch (error) {
   if (error.code !== 'ENOENT') throw error;
 }
-for (const item of [...data.gallery, ...data.notices]) {
-  if (mediaOverrides.has(item.src)) {
-    files.set(item.src, mediaOverrides.get(item.src));
+const extraMedia = [
+  ...data.gallery.map(item => item.src),
+  ...data.notices.map(item => item.src),
+  ...(data.profileCard ? [data.profileCard.src] : []),
+  ...(data.comments || []).filter(c => c.screenshot).map(c => c.screenshot),
+];
+for (const src of extraMedia) {
+  if (mediaOverrides.has(src)) {
+    files.set(src, mediaOverrides.get(src));
     continue;
   }
-  const source = resolve(reports, item.src);
+  const source = resolve(reports, src);
   const rel = relative(reports, source);
-  if (rel.startsWith('..') || rel.startsWith(sep) || !rel.startsWith(`${stem}${sep}`)) throw new Error(`Media path is outside the event directory: ${item.src}`);
+  if (rel.startsWith('..') || rel.startsWith(sep) || !rel.startsWith(`${stem}${sep}`)) throw new Error(`Media path is outside the event directory: ${src}`);
   const metadata = await stat(source);
   if (!metadata.isFile()) throw new Error(`Not a regular image: ${source}`);
-  files.set(item.src.replaceAll('\\', '/'), await readFile(source));
+  files.set(src.replaceAll('\\', '/'), await readFile(source));
 }
 
 function assertLosslessWebp(bytes, filename) {

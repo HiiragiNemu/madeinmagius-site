@@ -37,12 +37,21 @@ function checkLinks(links = []) {
 }
 
 export function validateManifest(data) {
-  keys(data, ['schemaVersion', 'title', 'updatedAt', 'timeZone', 'relatedVideo', 'escalation20261118', 'summary', 'summaryNote', 'galleryNote', 'gallery', 'attackQuote', 'noticeNote', 'notices', 'dynamicRecordNote', 'dynamicRecords', 'videoRecordNote', 'videoRecords', 'ownCommentNote', 'ownCommentRemovals', 'recordSourceNote', 'commentNote', 'commentLinkNote', 'comments', 'archiveSummary'], 'manifest');
-  assert.equal(data.schemaVersion, 2);
+  keys(data, ['schemaVersion', 'title', 'updatedAt', 'timeZone', 'authorStatement', 'relatedVideo', 'escalation20261118', 'summary', 'summaryNote', 'crossPageAudit', 'profileCard', 'galleryNote', 'gallery', 'attackQuote', 'noticeNote', 'notices', 'dynamicRecordNote', 'dynamicRecords', 'videoRecordNote', 'videoRecords', 'ownCommentNote', 'ownCommentRemovals', 'recordSourceNote', 'commentNote', 'commentLinkNote', 'comments', 'archiveSummary'], 'manifest');
+  assert.equal(data.schemaVersion, 3);
   assert.equal(data.timeZone, 'Asia/Shanghai');
   text(data.title, 'title');
   assert.equal(data.relatedVideo.href, 'https://www.bilibili.com/video/BV1q4Wa67EB2/');
   keys(data.relatedVideo, ['label', 'href'], 'relatedVideo');
+  text(data.authorStatement, 'authorStatement');
+  if (data.crossPageAudit) {
+    keys(data.crossPageAudit, ['checkedAt', 'bv1q4CommentsBackend', 'bv1q4CommentsBackendPages', 'bv1q4CommentsBaseline', 'bv1q4CommentsPublicVisible', 'bv1q4CommentsDiscrepancy', 'uploadTotalVideos', 'uploadPublishedVideos', 'uploadNotPassedTotal', 'uploadLocked', 'uploadReturnedSelfOnly', 'communityVisibleNov18', 'communityCumulativeNov16', 'deniedDynamicAppeals', 'deniedAppealDynamicIds', 'accountMutes', 'outgoingReportFeedback647'], 'crossPageAudit');
+  }
+  if (data.profileCard) {
+    keys(data.profileCard, ['src', 'alt', 'title', 'caption'], 'profileCard');
+    assert.match(data.profileCard.src, /^reporting-records-20261116\/comment-proof-\d{2}\.jpg$/);
+    for (const key of ['alt', 'title', 'caption']) text(data.profileCard[key], `profileCard.${key}`);
+  }
   if (data.escalation20261118) {
     keys(data.escalation20261118, ['date', 'headline', 'items'], 'escalation20261118');
     text(data.escalation20261118.headline, 'escalation20261118.headline');
@@ -60,25 +69,28 @@ export function validateManifest(data) {
     assert.equal(item.src, `${stem}/${item.id}.png`);
     const original = originalNumbers.has(item.number);
     assert.equal(item.version, original ? 'original' : 'redacted');
-    assert.equal(item.versionLabel, original ? '原图' : '遮盖副本');
+    assert(original ? ['原图', '无删改原图'].includes(item.versionLabel) : item.versionLabel === '遮盖副本', `${item.id}: unexpected versionLabel ${item.versionLabel}`);
     if (!original) text(item.redactionNote, `${item.id}.redactionNote`);
     else assert.equal(item.redactionNote, undefined, `${item.id}: original must not be labeled as redacted`);
     for (const key of ['title', 'label', 'alt', 'caption']) text(item[key], `${item.id}.${key}`);
     checkLinks(item.links);
   }
-  assert.deepEqual(data.notices.map(item => item.id), ['notice-01', 'notice-02', 'notice-03']);
+  assert.deepEqual(data.notices.map(item => item.id), ['notice-04', 'notice-05', 'notice-13', 'notice-06', 'notice-07', 'notice-08', 'notice-09', 'notice-10', 'notice-11', 'notice-12', 'notice-01', 'notice-02', 'notice-03']);
   for (const item of data.notices) {
     keys(item, ['id', 'title', 'label', 'src', 'alt', 'caption', 'version', 'versionLabel'], 'notice image');
     assert.equal(item.src, `${stem}/${item.id}.jpg`);
     assert.equal(item.version, 'original');
-    assert.equal(item.versionLabel, '原图');
+    assert(['原图', '现场截图', '现场留存'].includes(item.versionLabel), `${item.id}: unexpected notice versionLabel ${item.versionLabel}`);
   }
   keys(data.attackQuote, ['imageId', 'speaker', 'text', 'attribution'], 'attackQuote');
   assert.equal(data.attackQuote.imageId, 'source-05');
   assert.equal(data.attackQuote.speaker, '沉恋古川');
   text(data.attackQuote.text, 'attackQuote.text');
   text(data.attackQuote.attribution, 'attackQuote.attribution');
-  for (const number of ['15', '16']) assert(data.gallery.find(item => item.number === number).caption.includes('DD魔女'));
+  for (const number of ['15', '16']) {
+    const item = data.gallery.find(entry => entry.number === number);
+    assert((item.title + item.caption).includes('DD魔女'), `Slide ${number} must reference DD魔女`);
+  }
 
   const noticeIds = new Set(data.notices.map(item => item.id));
   const dynamicIds = new Set();
@@ -135,11 +147,15 @@ export function validateManifest(data) {
   for (const baseRpid of expectedRpids) assert(commentRpids.has(baseRpid), `Missing baseline verified RPID: ${baseRpid}`);
   assert(data.comments.length >= 18, `Expected expanded featured comments, found ${data.comments.length}`);
   for (const item of data.comments) {
-    keys(item, ['id', 'rpid', 'uid', 'badge', 'date', 'dateLabel', 'message', 'rootRpid', 'context', 'verifiedAt', 'links'], 'historical comment');
+    keys(item, ['id', 'rpid', 'uid', 'badge', 'date', 'dateLabel', 'message', 'rootRpid', 'context', 'verifiedAt', 'links', 'screenshot', 'screenshotAlt'], 'historical comment');
     assert(['647014264', '1703887112'].includes(item.uid), `Unexpected comment UID: ${item.uid}`);
     assert.equal(item.id, `comment-${item.rpid}`);
     id(item.rootRpid, 'rootRpid');
     text(item.message, 'historical comment message');
+    if (item.screenshot) {
+      assert.match(item.screenshot, /^reporting-records-20261116\/comment-proof-\d{2}\.jpg$/);
+      text(item.screenshotAlt, `${item.id}.screenshotAlt`);
+    }
     checkLinks(item.links);
     assert.equal(item.links.length, 2);
   }
@@ -155,7 +171,19 @@ export async function readManifest() {
 }
 
 export async function checkAssets(data, { requireAll = false } = {}) {
-  const items = [...data.gallery, ...data.notices];
+  const seenSrc = new Set();
+  const items = [];
+  for (const item of [
+    ...data.gallery,
+    ...data.notices,
+    ...(data.profileCard ? [{ id: 'profile-card', src: data.profileCard.src }] : []),
+    ...data.comments.filter(c => c.screenshot).map(c => ({ id: `${c.id}-proof`, src: c.screenshot })),
+  ]) {
+    if (!seenSrc.has(item.src)) {
+      seenSrc.add(item.src);
+      items.push(item);
+    }
+  }
   const permitted = new Set(['data.json', 'comments-4433.json', ...items.map(item => item.src.slice(stem.length + 1))]);
   for (const entry of await readdir(join(reports, stem), { withFileTypes: true })) {
     assert(entry.isFile() && permitted.has(entry.name), `Unlisted public asset: ${entry.name}`);
@@ -173,12 +201,12 @@ export async function checkAssets(data, { requireAll = false } = {}) {
     if (item.src.endsWith('.png')) assert(bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), `Not a PNG: ${item.src}`);
     else assert(bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255, `Not a JPEG: ${item.src}`);
     const sha256 = createHash('sha256').update(bytes).digest('hex');
-    if (item.id === 'source-00') assert.equal(sha256, 'b9287fc150dbcfdd15f683b8d9b7d883e61eab3c89dcf206ab23e5d5f6503a94', '00 must retain the verified original bytes');
-    if (item.id === 'source-09c') assert.equal(sha256, '12403af94d10072410e2b8d6c295b687ac3cb33ff06914457e8008ec832196b0', '09C must retain the verified original bytes');
-    if (item.id === 'source-03') assert.equal(bytes.length, 6509780, '03 original byte size changed');
-    if (item.id === 'source-05') assert.equal(bytes.length, 3079082, '05 original byte size changed');
-    if (item.id === 'source-13') assert.equal(sha256, '454dce910fbd5838633df9a06f9eb2a4726a44fb28cd6e599531483dd8018fc5', '13 must retain the verified original bytes');
-    if (item.id === 'source-18') assert.equal(sha256, '34877299a87407a64fa2966a790d7b6d9126d24add30c10e8e0e24777cedb2ee', '18 must retain the verified original bytes');
+    if (item.id === 'source-00') assert.equal(sha256, 'e13c33a503646b8ccc558054ba4d81ac1de7832d6b47a34e2a185570c2fb5fd9', '00 must retain the verified regenerated bytes');
+    if (item.id === 'source-09c') assert.equal(sha256, '9a5a5f3d4caee3cc8c3e8e2b81dafc4d975d25a892142ee13b9b4a7cee8673ce', '09C must retain the verified regenerated bytes');
+    if (item.id === 'source-03') assert.equal(bytes.length, 6511741, '03 regenerated byte size changed');
+    if (item.id === 'source-05') assert.equal(bytes.length, 3127712, '05 regenerated byte size changed');
+    if (item.id === 'source-13') assert.equal(sha256, 'f0fb7e1f1d5172f050e9090c885eeabd64694263da233eed377aa5888bd4f8a6', '13 must retain the verified regenerated bytes');
+    if (item.id === 'source-18') assert.equal(sha256, 'ff5ed1de8eccbca33dfe072ed37a9b021eec52747c8878df27e9d365aa61fdfd', '18 must retain the verified regenerated bytes');
     available.push({ src: item.src, bytes: bytes.length, sha256 });
   }
   const archivePath = join(reports, stem, 'comments-4433.json');

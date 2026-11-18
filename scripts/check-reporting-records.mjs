@@ -48,9 +48,13 @@ export function validateManifest(data) {
     keys(data.crossPageAudit, ['checkedAt', 'bv1q4CommentsBackend', 'bv1q4CommentsBackendPages', 'bv1q4CommentsBaseline', 'bv1q4CommentsPublicVisible', 'bv1q4CommentsDiscrepancy', 'uploadTotalVideos', 'uploadPublishedVideos', 'uploadNotPassedTotal', 'uploadLocked', 'uploadReturnedSelfOnly', 'communityVisibleNov18', 'communityCumulativeNov16', 'deniedDynamicAppeals', 'deniedAppealDynamicIds', 'accountMutes', 'outgoingReportFeedback647'], 'crossPageAudit');
   }
   if (data.profileCard) {
-    keys(data.profileCard, ['src', 'alt', 'title', 'caption'], 'profileCard');
+    keys(data.profileCard, ['src', 'alt', 'title', 'caption', 'secondarySrc', 'secondaryAlt', 'secondaryTitle'], 'profileCard');
     assert.match(data.profileCard.src, /^reporting-records-20261116\/comment-proof-\d{2}\.jpg$/);
     for (const key of ['alt', 'title', 'caption']) text(data.profileCard[key], `profileCard.${key}`);
+    if (data.profileCard.secondarySrc) {
+      assert.match(data.profileCard.secondarySrc, /^reporting-records-20261116\/comment-proof-\d{2}\.jpg$/);
+      text(data.profileCard.secondaryAlt, 'profileCard.secondaryAlt');
+    }
   }
   if (data.escalation20261118) {
     keys(data.escalation20261118, ['date', 'headline', 'items'], 'escalation20261118');
@@ -176,7 +180,7 @@ export async function checkAssets(data, { requireAll = false } = {}) {
   for (const item of [
     ...data.gallery,
     ...data.notices,
-    ...(data.profileCard ? [{ id: 'profile-card', src: data.profileCard.src }] : []),
+    ...(data.profileCard ? [{ id: 'profile-card', src: data.profileCard.src }, ...(data.profileCard.secondarySrc ? [{ id: 'profile-card-2', src: data.profileCard.secondarySrc }] : [])] : []),
     ...data.comments.filter(c => c.screenshot).map(c => ({ id: `${c.id}-proof`, src: c.screenshot })),
   ]) {
     if (!seenSrc.has(item.src)) {

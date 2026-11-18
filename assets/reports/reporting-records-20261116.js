@@ -256,28 +256,36 @@
     const host = document.getElementById('profile-banner');
     if (!host || !profileCard) return;
     host.replaceChildren();
-    const record = registerImage({
-      id: 'profile-647014264',
-      title: profileCard.title,
-      groupLabel: '关联账号主页',
-      versionLabel: 'B站主页实拍',
-      src: profileCard.src,
-      alt: profileCard.alt,
-      caption: profileCard.caption,
-    }, '关联账号主页');
-    const thumbBtn = el('button', 'profile-banner-thumb');
-    thumbBtn.type = 'button';
-    thumbBtn.setAttribute('aria-label', `放大查看：${profileCard.title}`);
-    const img = el('img');
-    img.src = profileCard.src;
-    img.alt = profileCard.alt;
-    img.loading = 'lazy';
-    thumbBtn.append(img);
-    thumbBtn.addEventListener('click', () => openImage(record.index, thumbBtn));
+    const thumbs = el('div', 'profile-thumbs');
+    const addThumb = (id, src, alt, title) => {
+      const record = registerImage({
+        id,
+        title,
+        groupLabel: '关联账号主页',
+        versionLabel: 'B站主页实拍',
+        src,
+        alt,
+        caption: profileCard.caption,
+      }, '关联账号主页');
+      const thumbBtn = el('button', 'profile-banner-thumb');
+      thumbBtn.type = 'button';
+      thumbBtn.setAttribute('aria-label', `放大查看：${title}`);
+      const img = el('img');
+      img.src = src;
+      img.alt = alt;
+      img.loading = 'lazy';
+      thumbBtn.append(img);
+      thumbBtn.addEventListener('click', () => openImage(record.index, thumbBtn));
+      thumbs.append(thumbBtn);
+    };
+    addThumb('profile-647014264', profileCard.src, profileCard.alt, profileCard.title);
+    if (profileCard.secondarySrc) {
+      addThumb('profile-3546599567395767', profileCard.secondarySrc, profileCard.secondaryAlt || profileCard.alt, profileCard.secondaryTitle || profileCard.title);
+    }
 
     const txt = el('div');
     txt.append(el('h3', '', profileCard.title), el('p', '', profileCard.caption));
-    host.append(thumbBtn, txt);
+    host.append(thumbs, txt);
   }
 
   function showToast(message) {
@@ -518,8 +526,12 @@
 
     let rows = null;
     let uids = ['647014264', '1703887112'];
+    const UID_LABELS = {
+      0: '主号 647014264（圆周率/帐号己㴤銷）',
+      1: '小号一 1703887112',
+    };
     let page = 1;
-    const size = 25;
+    const size = 200;
 
     function buildPortraitStats(allRows) {
       if (!chipsHost || !insightsHost) return;
@@ -533,12 +545,12 @@
         if (r[9].includes('b23.tv/') || r[9].includes('http')) links++;
       }
       chipsHost.replaceChildren();
-      const allBtn = el('button', 'portrait-chip is-active', `全部分类 (${allRows.length})`);
+      const allBtn = el('button', 'portrait-chip', `全部分类 (${allRows.length})`);
       allBtn.type = 'button';
       allBtn.dataset.cat = '';
       chipsHost.append(allBtn);
       CAT_NAMES.forEach((name, idx) => {
-        const b = el('button', 'portrait-chip', `${name} (${counts[idx]})`);
+        const b = el('button', 'portrait-chip', `${String(idx + 1).padStart(2, '0')} · ${name} (${counts[idx]})`);
         b.type = 'button';
         b.dataset.cat = String(idx);
         chipsHost.append(b);
@@ -549,13 +561,14 @@
         catSelect.value = btn.dataset.cat;
         page = 1;
         renderRows();
+        resultsEl.scrollTop = 0;
       });
 
       insightsHost.replaceChildren();
       [
         `● 作息与高频输出：全库 4,433 条中 ${(night / allRows.length * 100).toFixed(1)}%（${night} 条）发在凌晨 00:00–05:59；含短链复制传播 ${links} 条，遇到争议或抢票常在同一楼内连发 50～100+ 条同质发言。`,
-        '● 把举报与客服施压当作习惯工具：从 2022 提倡“在评论区举报升等级”，到 2023 多次炫耀把单个视频评论“从600多条举报到100多条”“成功二三十个”“反手举报致人永久封号”，还具体教人“长按私信点举报-引战”，不通过就连续缠诉人工客服，并在 2023-07 抢票时连刷 85 条“当场割腕自杀”。',
-        '● 大小号配合、小号卧底与鲜明双标：公开自述“用小号卧底进他们的一群”“找网图骗自拍”，1703887112 小号与大号在 4 个相同视频重合互动；2023 曾主张群聊天记录随便传 B站，2026-04-21 同日大小号齐斥抄袭，到了《魔法纪录》窃码事件却彻底反站窃码方并改名「帐号己㴤銷」威胁起诉。',
+        '● 把举报与客服施压当作习惯工具：从 2022 提倡“在评论区举报升等级”，到 2023 多次炫耀把单个视频评论“从600多条举报到100多条”“成功二三十个”“反手举报致人永久封号”，还具体教人“长按私信点举报-引战”，不通过就连续缠诉人工客服。',
+        '● 多小号配合、潜入群聊与鲜明双标：公开自述“用小号卧底进他们的一群”“找网图骗自拍”，除主号 647014264（改名「帐号己㴤銷」）外，还有关联小号 1703887112（同日同议题配合发声并录假自证视频）及小号 3546599567395767（「干石头」）。',
         '● 深度圈内玩家（并非无关路人）：发言长期涉足《蔚蓝档案》《原神》及偶像/漫展圈，并在 2024–2026 明确记录从《魔法纪录》国服游玩到自学转战日服至 2024 年 7 月关服，跟团购买双子月夜/月咲吧唧谷子。',
       ].forEach(line => insightsHost.append(el('p', '', line)));
     }
@@ -564,6 +577,28 @@
       if (!chipsHost) return;
       const cur = catSelect.value;
       chipsHost.querySelectorAll('.portrait-chip').forEach(b => b.classList.toggle('is-active', b.dataset.cat === cur));
+    }
+
+    function highlightText(container, text, query) {
+      if (!query) {
+        container.textContent = text;
+        return;
+      }
+      const lower = text.toLowerCase();
+      let pos = 0;
+      let idx = lower.indexOf(query, pos);
+      if (idx === -1) {
+        container.textContent = text;
+        return;
+      }
+      while (idx !== -1) {
+        if (idx > pos) container.append(document.createTextNode(text.slice(pos, idx)));
+        const m = el('mark', '', text.slice(idx, idx + query.length));
+        container.append(m);
+        pos = idx + query.length;
+        idx = lower.indexOf(query, pos);
+      }
+      if (pos < text.length) container.append(document.createTextNode(text.slice(pos)));
     }
 
     function renderRows() {
@@ -580,17 +615,23 @@
         if (q && !(r[9].toLowerCase().includes(q) || r[0].includes(q) || String(r[2]).includes(q))) return false;
         return true;
       });
-      const pages = Math.max(1, Math.ceil(filtered.length / size));
+      // Whenever a specific category, account, recovered flag, or search keyword is selected, show ALL matching items in full!
+      const showAllInCategory = catVal !== '' || q !== '' || uidVal !== '' || recOnly;
+      const pageSize = showAllInCategory ? Math.max(1, filtered.length) : size;
+      const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
       if (page > pages) page = pages;
-      const start = (page - 1) * size;
-      const end = Math.min(start + size, filtered.length);
-      countEl.textContent = filtered.length ? `匹配 ${filtered.length.toLocaleString('zh-CN')} 条 · 第 ${start + 1}–${end} 条` : '无匹配评论';
-      pageInfo.textContent = `${page} / ${pages}`;
+      const start = (page - 1) * pageSize;
+      const end = Math.min(start + pageSize, filtered.length);
+      const catTitle = catVal !== '' ? `分类「${CAT_NAMES[Number(catVal)]}」全量展示 ` : '';
+      countEl.textContent = filtered.length
+        ? `${catTitle}共 ${filtered.length.toLocaleString('zh-CN')} 条（当前显示第 ${start + 1}–${end} 条）`
+        : '无匹配评论';
+      pageInfo.textContent = showAllInCategory ? `本类全量 (${filtered.length})` : `${page} / ${pages}`;
       prevBtn.disabled = page <= 1;
       nextBtn.disabled = page >= pages;
       resultsEl.replaceChildren();
       if (!filtered.length) {
-        resultsEl.append(el('div', 'archive-empty', '未找到匹配记录，请尝试切换分类或更换关键词。'));
+        resultsEl.append(el('div', 'archive-empty', '未找到匹配记录，请尝试切换分类或更换搜索关键词。'));
         return;
       }
       const frag = document.createDocumentFragment();
@@ -599,35 +640,43 @@
         const rootId = rootRaw || rpid;
         const card = el('article', 'archive-card');
         const head = el('div', 'archive-card-head');
-        const left = el('div', '');
-        left.append(el('span', 'source-badge', CAT_NAMES[catIdx] || '评论'));
-        if (recovered === 1) left.append(el('span', 'archive-badge-recovered', '原被AI屏蔽 · 现已恢复'));
-        head.append(left, el('span', 'comment-time', `${fmtCst(ts)} · ${ST_NAMES[stCode] || '归档'}`));
-        const meta = el('div', 'comment-meta');
-        meta.append(el('span', '', `UID ${uids[uIdx]}`), el('span', '', `RPID ${rpid}`), el('span', '', `${TYPE_NAMES[type] || '类型' + type} OID ${oid}`));
-        const cp = el('button', 'copy-button', '复制 RPID');
-        cp.type = 'button';
-        cp.addEventListener('click', () => copyId(rpid));
-        meta.append(cp);
-        const links = el('div', 'card-links');
-        const tLink = link('原楼入口 ↗', `https://www.bilibili.com/h5/comment/sub?oid=${encodeURIComponent(oid)}&pageType=${encodeURIComponent(type)}&root=${encodeURIComponent(rootId)}`);
+        const left = el('div', 'archive-head-left');
+        const uidBadge = el('span', uIdx === 1 ? 'archive-uid-badge is-alt' : 'archive-uid-badge', UID_LABELS[uIdx] || `UID ${uids[uIdx]}`);
+        left.append(
+          uidBadge,
+          el('span', 'source-badge', `${String(catIdx + 1).padStart(2, '0')} · ${CAT_NAMES[catIdx] || '评论'}`),
+          el('span', 'comment-time', `${fmtCst(ts)} · ${TYPE_NAMES[type] || '内容'}${oid} · ${ST_NAMES[stCode] || '归档'}`)
+        );
+        if (recovered === 1) left.append(el('span', 'archive-badge-recovered', '原被隐藏已恢复'));
+
+        const links = el('div', 'archive-head-links');
+        const tLink = link('原楼入口 ↗', `https://www.bilibili.com/h5/comment/sub?oid=${encodeURIComponent(oid)}&pageType=${encodeURIComponent(type)}&root=${encodeURIComponent(rootId)}`, 'archive-inline-link');
         if (tLink) links.append(tLink);
         if (type === 1) {
-          const vLink = link('所在视频 ↗', `https://www.bilibili.com/video/av${oid}`);
+          const vLink = link('所在视频 ↗', `https://www.bilibili.com/video/av${oid}`, 'archive-inline-link');
           if (vLink) links.append(vLink);
         }
-        const aLink = link('官方接口原文 ↗', `https://api.bilibili.com/x/v2/reply/reply?type=${encodeURIComponent(type)}&oid=${encodeURIComponent(oid)}&root=${encodeURIComponent(rootId)}&pn=1&ps=20`);
+        const aLink = link('官方接口 ↗', `https://api.bilibili.com/x/v2/reply/reply?type=${encodeURIComponent(type)}&oid=${encodeURIComponent(oid)}&root=${encodeURIComponent(rootId)}&pn=1&ps=20`, 'archive-inline-link');
         if (aLink) links.append(aLink);
-        card.append(head, el('p', 'archive-msg', msg), meta, links);
+        const cp = el('button', 'copy-button', `RPID ${rpid}`);
+        cp.type = 'button';
+        cp.title = '点击复制评论 RPID';
+        cp.addEventListener('click', () => copyId(rpid));
+        links.append(cp);
+
+        head.append(left, links);
+        const pMsg = el('p', 'archive-msg');
+        highlightText(pMsg, msg, q);
+        card.append(head, pMsg);
         frag.append(card);
       }
       resultsEl.append(frag);
     }
 
-    for (const ctrl of [uidSelect, catSelect, recCheck]) ctrl.addEventListener('change', () => { page = 1; renderRows(); });
-    qInput.addEventListener('input', () => { page = 1; renderRows(); });
-    prevBtn.addEventListener('click', () => { if (page > 1) { page--; renderRows(); } });
-    nextBtn.addEventListener('click', () => { page++; renderRows(); });
+    for (const ctrl of [uidSelect, catSelect, recCheck]) ctrl.addEventListener('change', () => { page = 1; renderRows(); resultsEl.scrollTop = 0; });
+    qInput.addEventListener('input', () => { page = 1; renderRows(); resultsEl.scrollTop = 0; });
+    prevBtn.addEventListener('click', () => { if (page > 1) { page--; renderRows(); resultsEl.scrollTop = 0; } });
+    nextBtn.addEventListener('click', () => { page++; renderRows(); resultsEl.scrollTop = 0; });
 
     fetch(datasetPath, { cache: 'default' })
       .then(res => { if (!res.ok) throw new Error(`archive ${res.status}`); return res.json(); })
@@ -636,6 +685,8 @@
         rows = payload.rows || [];
         badge.textContent = `已加载 ${rows.length.toLocaleString('zh-CN')} 条`;
         buildPortraitStats(rows);
+        // Default to Category 0 (01 · 举报机制/客服对抗...) displayed in full so user immediately sees full category items
+        catSelect.value = '0';
         renderRows();
       })
       .catch(() => {

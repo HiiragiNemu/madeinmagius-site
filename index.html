@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-pixel-font="true">
+<html lang="zh-CN" data-pixel-font="true" data-fx-sequence="softness lens raster phosphor grain fringe glass">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -15,10 +15,21 @@
          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
       document.documentElement.dataset.crtPlatform = ios ? 'ios-webkit' : 'standard';
       if (ios) document.documentElement.dataset.crtEngine = 'ios-static-css';
+      const root = document.documentElement;
+      const stages = root.dataset.fxSequence.split(' ');
+      const first = ios ? 2 : 0;
+      let step = first;
+      try {
+        const saved = Number(localStorage.getItem('magius-fx-v1-' + root.dataset.crtPlatform));
+        if (Number.isInteger(saved) && saved >= first && saved <= stages.length) step = saved;
+      } catch {}
+      root.dataset.fxStep = String(step);
+      root.dataset.fxOff = stages.slice(0, step).join(' ');
     })();
   </script>
   <link rel="icon" href="./assets/magius-mark.svg?v=20260920-boot2" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/styles.css?v=20260922-ios-clear2">
+  <link rel="stylesheet" href="./assets/crt-controls.css?v=039796d3e0176ea4">
   <link rel="stylesheet" href="./assets/evidence.css?v=20261014-reportimage1">
 </head>
 <body>
@@ -66,6 +77,7 @@
         <header class="masthead">
           <div class="masthead__bar">
             <button id="pixel-toggle" class="pixel-toggle" type="button" aria-pressed="true" title="全局像素字体">PIXEL ON</button>
+            <button id="crt-mode" class="pixel-toggle fx-control" type="button" title="逐项关闭 CRT 特效">FX · 特效</button>
             <span></span>
             <a id="home-jump" class="home-jump" href="#home/welcome" aria-label="返回 MAGIUS LINK 主页" title="HOME">▣</a>
           </div>

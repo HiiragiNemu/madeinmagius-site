@@ -529,8 +529,8 @@ homeJump.addEventListener('click', event => {
 /* The CRT displacement bends pixels but DOM hit boxes stay rectangular.
    Let the green hardware bar accept taps in a slightly expanded visual zone. */
 document.querySelector('.masthead__bar')?.addEventListener('pointerup', event => {
-  if (event.target.closest('#pixel-toggle,#home-jump')) return;
-  for (const control of [pixelToggle, homeJump]) {
+  if (event.target.closest('button,a')) return;
+  for (const control of [pixelToggle, document.getElementById('crt-mode'), homeJump]) {
     if (!control) continue;
     const rect = control.getBoundingClientRect();
     const pad = 16;

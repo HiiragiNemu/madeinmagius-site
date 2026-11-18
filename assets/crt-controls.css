@@ -1,0 +1,37 @@
+/* Keep the changing reader on its own paint layer inside the static tube.
+   Reserving a gutter fixes its text width, but by itself does not isolate
+   Chromium's repaint of the full-screen displacement when a scrollbar appears. */
+@media (min-width:761px) {
+  #content-panel { scrollbar-gutter:stable; overscroll-behavior:contain; }
+  html[data-crt-platform="standard"] #content-panel { will-change:transform; }
+}
+.masthead__bar { grid-template-columns:auto auto minmax(0,1fr) auto!important; }
+.masthead__bar .fx-control { min-width:0; justify-self:start; }
+.masthead__bar .pixel-toggle::before { inset-inline:-2px; }
+.masthead__bar .fx-control:focus-visible { outline:2px solid currentColor; outline-offset:1px; }
+
+/* Disabling the lens bypasses the SVG, rather than using a transparent
+   displacement image. iOS keeps its existing CSS-only path at every step. */
+html[data-crt-platform="standard"][data-fx-off~="lens"] .signal {
+  filter:brightness(1.035) contrast(1.035) saturate(.84)!important;
+  -webkit-filter:brightness(1.035) contrast(1.035) saturate(.84)!important;
+}
+html[data-fx-off~="raster"] :is(.scanlines,.boot__raster),
+html[data-fx-off~="phosphor"] .phosphor-grid,
+html[data-fx-off~="grain"] :is(.tube-grain,.boot__grain,.noise) { display:none!important; }
+html[data-fx-off~="fringe"] .signal,
+html[data-fx-off~="fringe"] .signal *,
+html[data-fx-off~="fringe"] .signal ::before,
+html[data-fx-off~="fringe"] .signal ::after { text-shadow:none!important; }
+html[data-fx-off~="fringe"] :is(.menu-node,.sub-node,.download-button,.masthead__bar,.content-panel,.boot__emblem,.boot__wordmark) {
+  box-shadow:none!important;
+  filter:none!important;
+}
+html[data-fx-off~="glass"] .screen::before,
+html[data-fx-off~="glass"] .screen::after { display:none!important; }
+html[data-fx-off~="glass"] .screen { border-radius:0!important; box-shadow:none!important; }
+html[data-crt-platform][data-fx-off~="glass"] .signal {
+  background:#102417!important;
+  filter:none!important; -webkit-filter:none!important;
+}
+html[data-fx-off~="glass"] .content-inner.is-redrawing { animation:none!important; }

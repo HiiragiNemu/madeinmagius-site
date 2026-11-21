@@ -8,7 +8,7 @@ import * as android from '../functions/downloads/magireco/android.js';
 import * as pinned from '../functions/downloads/pinned/[project]/[version].js';
 import * as legacy from '../functions/downloads/legacy/[[path]].js';
 import pinnedAssets from '../data/pinned-assets.js';
-import release163 from '../assets/magireco-release163.js';
+import release164 from '../assets/magireco-release164.js';
 import {createMagirecoSnapshot} from './update-magireco-snapshot.mjs';
 import {readPublishedBundle,prepareSnapshotUpdate} from './sync-magireco-release.mjs';
 let checks=0,networkRequests=0;
@@ -36,9 +36,9 @@ for(const [key,asset] of Object.entries(pinnedAssets)){
  eq(r.status,200,key);eq(r.headers.get('content-length'),String(asset.size));eq(r.headers.get('x-release-digest'),asset.digest);
 }
 for(const value of [null,{state:'loading'},{state:'error'},{state:'ready',version:'1.4.4',download:'https://old.invalid/current.apk'}]){
- const html=renderContent('home','magireco-private-server',{magireco:value});ok(html.includes('正式客户端 1.6.3'));ok(!html.includes('本项目停止公开分发'));ok(!html.includes('old.invalid'));ok(html.includes(release163.download));ok(html.includes(release163.corresponding_source.url));eq((html.match(/<a\b/g)||[]).length,2);ok(!html.includes('magireco-direct-downloads-20261029.html'));
+ const html=renderContent('home','magireco-private-server',{magireco:value});ok(html.includes('正式客户端 1.6.4'));ok(!html.includes('本项目停止公开分发'));ok(!html.includes('old.invalid'));ok(html.includes(release164.download));ok(html.includes(release164.corresponding_source.url));eq((html.match(/<a\b/g)||[]).length,2);ok(!html.includes('magireco-direct-downloads-20261029.html'));
 }
-let offers=[];eq(await loadMagirecoReleaseData({fetcher:globalThis.fetch,onUpdate:v=>offers.push(v)}),{...release163,state:'ready'});eq(offers,[{...release163,state:'ready'}]);
+let offers=[];eq(await loadMagirecoReleaseData({fetcher:globalThis.fetch,onUpdate:v=>offers.push(v)}),{...release164,state:'ready'});eq(offers,[{...release164,state:'ready'}]);
 for(const name of ['magireco-release.json','magireco-release.signed.json']){await access(new URL('../data/'+name,import.meta.url));checks++;}
 eq((await readdir(new URL('../assets/',import.meta.url))).filter(x=>x.startsWith('magireco-source')&&x.endsWith('.html')),[]);
 const direct=await readFile(new URL('../assets/magireco-direct-downloads-20261029.html',import.meta.url),'utf8');
@@ -47,4 +47,4 @@ for(const name of ['cn_offline_update.zip','cn_js_delta_v2.zip','cn_base_00_db.z
 const evidence=renderContent('home','programs',{});ok(!evidence.includes('/downloads/pinned/magireco/'));ok(evidence.includes('资源与客户端比对报告'));
 for(const fn of [()=>createMagirecoSnapshot({}),()=>readPublishedBundle({fetcher:globalThis.fetch}),()=>prepareSnapshotUpdate({}, {})]){await assert.rejects(fn,/MAGIRECO_WITHDRAWN/);checks++;}
 eq(networkRequests,0);
-console.log(JSON.stringify({status:'MAGIRECO_WITHDRAWAL_PASS',checks,networkRequests,withdrawnHTTPStatus:410,resourceZipArticles:0,historicalDistributionStopped:true,exactRevision3Public:true,otherProjectRoutesPreserved:true,genericRegenerationBlocked:true}));
+console.log(JSON.stringify({status:'MAGIRECO_WITHDRAWAL_PASS',checks,networkRequests,withdrawnHTTPStatus:410,resourceZipArticles:0,historicalDistributionStopped:true,exactRevision4Public:true,otherProjectRoutesPreserved:true,genericRegenerationBlocked:true}));

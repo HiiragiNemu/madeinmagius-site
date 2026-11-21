@@ -1,5 +1,5 @@
-// Only the exact signature-checked revision3 build snapshot is public.
-import release from './magireco-release163.js';
+// Only the exact signature-checked 1.6.4 build snapshot is public.
+import release from './magireco-release164.js';
 const versionParts = value => {
   if (typeof value !== 'string' || !/^[1-9]\d*\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(value)) return null;
   const parts = value.split('.').map(Number);

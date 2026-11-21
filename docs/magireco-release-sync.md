@@ -44,3 +44,6 @@ signature checks, redirecting to the 1.1.11 bridge, or rolling back client data.
 The owner-approved public card exposes only APK 1.6.3 / code 1713001030 and its exact four-profile corresponding-source ZIP. The immutable GitHub asset names, APK/source SHA-256 and source commit are shown together. Earlier withdrawn MAGIRECO APIs, proxy downloads, pinned assets, legacy downloads and resource bundles stay withdrawn. Generic release synchronization stays paused.
 
 `node scripts/update-magireco-snapshot.mjs --metadata data/magireco-release.signed.json --check` verifies the unchanged RSA publisher envelope and exact revision3 contract before accepting both the JSON and browser-module snapshots. `npm run check` also exercises metadata/APK/source/commit tampering, source-asset pairing, historical route withdrawal and unrelated project routes. `npm run build` repeats the signed snapshot check. This snapshot does not re-sign or modify the publisher metadata. Real provider bodies and paired release activation remain the publisher's publication step.
+
+## 1.6.4 (1713001033)
+Only this signed snapshot is displayed on the current installation card. The APK and source are separate immutable artifacts; the build verifies the real publisher signature and bound digests. Retired download endpoints remain withdrawn.

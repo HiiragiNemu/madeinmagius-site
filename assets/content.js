@@ -1,4 +1,4 @@
-import magirecoRelease163 from './magireco-release163.js';
+import magirecoRelease164 from './magireco-release164.js';
 // Static GitHub Pages has no Functions. Keep static files local, but route
 // release metadata and files to the existing Cloudflare download service.
 export function serviceUrl(path, page = typeof location === 'undefined' ? null : location) {
@@ -19,7 +19,7 @@ export const HOME_WEBSITES = [
 export const PROGRAMS = {
   home: { subs: [
     { id: 'welcome', label: '魔法纪录相关网站', note: '作品导航' },
-    { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: '正式客户端 1.6.3' },
+    { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: '正式客户端 1.6.4' },
     { id: 'universal-adv-reader', label: '通用 ADV 阅读网站', note: 'Narcissu / KANA' },
     { id: 'programs', label: '资源比对与证据记录', note: '报告' },
     { id: 'reporting-records', label: '事件截图与处理记录', note: '图集 / 来源' },
@@ -202,14 +202,14 @@ function contactHtml() {
 }
 
 function magirecoClientHtml() {
-  const release=magirecoRelease163, source=release.corresponding_source;
+  const release=magirecoRelease164, source=release.corresponding_source;
   return '<p class="content-kicker">MAGIRECO / ANDROID</p><h2>魔法纪录中文化私服</h2>' +
     '<article class="download-card"><h3>正式客户端 '+release.version+'</h3>' +
     '<p>覆盖安装保留现有存档与资源；无需卸载。</p>' +
     '<p class="meta-line">版本代码：'+release.version_code+' · APK：'+release.size+' 字节</p>' +
     '<a class="download-button" href="'+release.download+'" target="_blank" rel="noopener noreferrer">下载正式 APK ↗</a>' +
     '<p>APK SHA-256：<code>'+release.sha256+'</code></p>' +
-    '<p>对应源码 ZIP 精确绑定此正式 APK，包含当前 1.6.3 与三个历史恢复配置的对应源码。</p>' +
+    '<p>对应源码 ZIP 精确绑定此正式 APK，包含 1.6.4 的对应源码、构建材料和许可证。</p>' +
     '<a class="download-button" href="'+source.url+'" target="_blank" rel="noopener noreferrer">下载对应源码 ZIP ↗</a>' +
     '<p class="meta-line">源码：'+source.size+' 字节 · 源码提交：<code>'+source.source_commit+'</code></p>' +
     '<p>源码 SHA-256：<code>'+source.sha256+'</code></p>' +

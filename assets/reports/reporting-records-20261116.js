@@ -95,11 +95,16 @@
 
   function renderSummary(summary, data) {
     const cp = data.crossPageAudit || {};
+    const editionEl = document.getElementById('hero-edition');
+    if (editionEl && data.updatedAt) editionEl.textContent = `${data.updatedAt.replaceAll('-', '.')} 更新`;
+    const auditDateEl = document.getElementById('notices-audit-date');
+    if (auditDateEl && (cp.checkedAt || data.updatedAt)) auditDateEl.textContent = `跨页面实查 · ${cp.checkedAt || data.updatedAt}`;
+
     const metrics = [
       [data.gallery.length, '完整事件原图 (00–18)', '全套高清原图 · 无黑框遮盖'],
-      [`${cp.bv1q4CommentsBackend || 348} / ${cp.bv1q4CommentsPublicVisible || 249}`, 'BV1q4Wa67EB2 评论落差', `后台 ${cp.bv1q4CommentsBackend || 348} 条（11-16 为 ${cp.bv1q4CommentsBaseline || 351}）· 前台仅显 ${cp.bv1q4CommentsPublicVisible || 249}（差 ${cp.bv1q4CommentsDiscrepancy || 99} 条）`, 'metric-value-text'],
-      [`${cp.uploadNotPassedTotal || 8} 稿件 / ${summary.dynamicEvents} 动态`, '全站受限与禁言记录', `${cp.uploadLocked || 6} 锁定 + ${cp.uploadReturnedSelfOnly || 2} 退回仅自见 · 2×7天禁言 · 个人QQ封禁`, 'metric-value-text'],
-      [data.archiveSummary?.totalRecords || 4433, '4,433 条历史公开发言', 'UID 647014264 (4,329) + 1703887112 (104) · 12类精细归类'],
+      [`${cp.bv1q4CommentsBackend ?? 348} / ${cp.bv1q4CommentsPublicVisible ?? 249}`, 'BV1q4Wa67EB2 评论落差', `后台 ${cp.bv1q4CommentsBackend ?? 348} 条（11-16 为 ${cp.bv1q4CommentsBaseline ?? 351}）· 前台仅显 ${cp.bv1q4CommentsPublicVisible ?? 249}（差 ${cp.bv1q4CommentsDiscrepancy ?? 99} 条）`, 'metric-value-text'],
+      [`${cp.uploadNotPassedTotal ?? 8} 稿件 / ${summary.dynamicEvents} 动态`, '全站受限与禁言记录', cp.heroRestrictionDetail || `${cp.uploadLocked ?? 6} 锁定 + ${cp.uploadReturnedSelfOnly ?? 2} 退回仅自见 · 2×7天禁言 · 个人QQ封禁`, 'metric-value-text'],
+      [data.archiveSummary?.totalRecords || 4433, '4,433 条历史公开发言', `UID 647014264 (4,329) + 1703887112 (104) · 另附 ${(data.opponentUpdates || []).length} 条近期动态/非归档实录`],
     ];
     const container = document.getElementById('summary-metrics');
     container.replaceChildren();
@@ -112,7 +117,7 @@
     const esc = data.escalation20261118;
     const escBox = document.getElementById('escalation-box');
     if (esc && escBox) {
-      document.getElementById('escalation-title').textContent = esc.headline || '2026-11-18 最新核查进展';
+      document.getElementById('escalation-title').textContent = esc.headline || '跨页面最新核查进展';
       const ul = document.getElementById('escalation-list');
       ul.replaceChildren();
       for (const item of esc.items || []) ul.append(el('li', '', item));
@@ -123,10 +128,10 @@
     if (cpStrip && data.crossPageAudit) {
       cpStrip.replaceChildren();
       const cards = [
-        [`${cp.bv1q4CommentsDiscrepancy || 99} 条隐藏/过滤`, 'BV1q4Wa67EB2 评论前后台差额', `系统通知只推送过 3 条违规，实际后台 348 条中有 99 条无法在前台展示`],
-        [`${cp.uploadNotPassedTotal || 8} / ${cp.uploadTotalVideos || 92} 受限`, '创作中心「未通过」视频', `${cp.uploadLocked || 6} 个锁定 + ${cp.uploadReturnedSelfOnly || 2} 个退回仅自见；BV1q4Wa67EB2 历 18 次审改才过审`],
-        [`${cp.deniedDynamicAppeals || 7} 条「无法恢复」`, '系统通知申诉与账号禁言', `10月10日与11月1日两次 7 天禁言 · 账号禁言申诉未通过 · 侵权/限流警告`],
-        [`${(cp.outgoingReportFeedback647 || []).length} 条重点关注`, '对 647014264 举报进展反馈', `社区中心回复「我们已收到您对账号的举报，将会重点关注该账号」`],
+        [`${cp.bv1q4CommentsDiscrepancy ?? 99} 条隐藏/过滤`, 'BV1q4Wa67EB2 评论前后台差额', cp.commentDiscrepancyNote || `系统通知只推送过 ${summary.ownCommentRemovalsAtLeast} 条违规，实际后台 ${cp.bv1q4CommentsBackend ?? 348} 条中有 ${cp.bv1q4CommentsDiscrepancy ?? 99} 条无法在前台展示`],
+        [`${cp.uploadNotPassedTotal ?? 8} / ${cp.uploadTotalVideos ?? 92} 受限`, '创作中心「未通过」视频', cp.uploadStatusNote || `${cp.uploadLocked ?? 6} 个锁定 + ${cp.uploadReturnedSelfOnly ?? 2} 个退回仅自见；BV1q4Wa67EB2 历 18 次审改才过审`],
+        [`${cp.deniedDynamicAppeals ?? 7} 条「无法恢复」`, '系统通知申诉与账号禁言', cp.systemStatusNote || '10月10日与11月1日两次 7 天禁言 · 账号禁言申诉未通过 · 侵权/限流警告'],
+        [cp.fourthCardValue || `${(cp.outgoingReportFeedback647 || []).length} 条重点关注`, cp.fourthCardLabel || 'Toy 状态与对 647014264 反馈', cp.fourthCardNote || '社区中心回复「我们已收到您对账号的举报，将会重点关注该账号」'],
       ];
       for (const [val, lbl, sub] of cards) {
         const c = el('div', 'cp-card');
@@ -159,6 +164,60 @@
     );
   }
 
+  function setSectionCollapsed(section, collapsed) {
+    if (!section) return;
+    section.classList.toggle('is-collapsed', collapsed);
+    const btn = section.querySelector(`.collapse-btn[data-collapse-target="${section.id}"]`);
+    if (btn) {
+      btn.setAttribute('aria-expanded', String(!collapsed));
+      btn.textContent = collapsed ? '展开本区 ▾' : '收起本区 ▴';
+    }
+  }
+
+  function expandForTarget(targetEl) {
+    if (!targetEl) return;
+    const section = targetEl.classList.contains('collapsible-section') ? targetEl : targetEl.closest('.collapsible-section');
+    if (section && section.classList.contains('is-collapsed')) {
+      setSectionCollapsed(section, false);
+    }
+  }
+
+  function initCollapsibleSections() {
+    document.querySelectorAll('.collapse-btn[data-collapse-target]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sec = document.getElementById(btn.dataset.collapseTarget);
+        if (!sec) return;
+        setSectionCollapsed(sec, !sec.classList.contains('is-collapsed'));
+      });
+    });
+    const expandAll = document.getElementById('expand-all-btn');
+    const collapseAll = document.getElementById('collapse-all-btn');
+    if (expandAll) {
+      expandAll.addEventListener('click', () => {
+        document.querySelectorAll('.collapsible-section').forEach(sec => setSectionCollapsed(sec, false));
+      });
+    }
+    if (collapseAll) {
+      collapseAll.addEventListener('click', () => {
+        document.querySelectorAll('.collapsible-section').forEach(sec => setSectionCollapsed(sec, true));
+      });
+    }
+    // Auto-expand target section whenever an in-page hash anchor is clicked
+    document.addEventListener('click', event => {
+      const a = event.target.closest('a[href^="#"]');
+      if (!a) return;
+      const hash = a.getAttribute('href').slice(1);
+      if (!hash) return;
+      const target = document.getElementById(hash);
+      if (!target) return;
+      expandForTarget(target);
+      if (target.classList.contains('image-card') && target.hidden) {
+        const allBtn = document.querySelector('#stage-filter .stage-chip[data-stage=""]');
+        if (allBtn) allBtn.click();
+      }
+    });
+  }
+
   function renderGalleryIndex(gallery) {
     const container = document.getElementById('gallery-index');
     container.replaceChildren();
@@ -166,6 +225,7 @@
       const a = el('a', '', item.number);
       a.href = `#${item.id}`;
       a.title = item.title;
+      a.dataset.stage = item.label || '';
       container.append(a);
     }
   }
@@ -173,16 +233,104 @@
   function initGalleryFilter() {
     const filterHost = document.getElementById('stage-filter');
     const grid = document.getElementById('gallery-grid');
+    const indexHost = document.getElementById('gallery-index');
+    const statusEl = document.getElementById('gallery-filter-status');
     if (!filterHost || !grid) return;
+
+    function applyStage(stage, labelText, scrollToGrid = false) {
+      const cards = [...grid.querySelectorAll('.image-card')];
+      let visibleCount = 0;
+      let firstVisible = null;
+      cards.forEach(card => {
+        const hide = Boolean(stage && card.dataset.stage !== stage);
+        card.hidden = hide;
+        if (!hide) {
+          visibleCount++;
+          if (!firstVisible) firstVisible = card;
+        }
+      });
+      if (indexHost) {
+        indexHost.querySelectorAll('a').forEach(a => {
+          a.hidden = Boolean(stage && a.dataset.stage !== stage);
+        });
+      }
+      if (statusEl) {
+        statusEl.textContent = stage
+          ? `当前筛选：${labelText} · 已展示 ${visibleCount} / ${cards.length} 张`
+          : `当前显示全部 ${cards.length} 张无删改原图（点击上方按钮可按阶段筛选）`;
+      }
+      if (scrollToGrid && firstVisible) {
+        firstVisible.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
     filterHost.addEventListener('click', event => {
       const btn = event.target.closest('.stage-chip');
       if (!btn) return;
       const stage = btn.dataset.stage || '';
       filterHost.querySelectorAll('.stage-chip').forEach(b => b.classList.toggle('is-active', b === btn));
-      grid.querySelectorAll('.image-card').forEach(card => {
-        card.hidden = Boolean(stage && card.dataset.stage !== stage);
-      });
+      applyStage(stage, btn.textContent.trim(), Boolean(stage));
     });
+
+    applyStage('', '全部', false);
+  }
+
+  function renderOpponentUpdates(updates = []) {
+    const host = document.getElementById('opponent-updates-list');
+    if (!host) return;
+    host.replaceChildren();
+    for (const item of updates) {
+      const card = el('article', item.isNew ? 'update-card is-new' : 'update-card');
+      card.id = item.id;
+      const head = el('div', 'update-card-head');
+      const meta = el('div', 'update-card-meta');
+      meta.append(
+        el('span', item.isNew ? 'update-tag is-hot' : 'update-tag', item.typeLabel || '公开动态/言论'),
+        el('span', '', item.dateLabel || item.date || ''),
+        el('span', '', `${item.account || 'UID ' + item.uid}${item.ipLocation ? ' · IP ' + item.ipLocation : ''}`)
+      );
+      head.append(meta);
+      card.append(head, el('h3', '', item.title));
+      if (item.quote) card.append(el('blockquote', 'update-quote', item.quote));
+      if (item.subQuote) card.append(el('div', 'update-subquote', item.subQuote));
+      if (item.analysis) card.append(el('p', 'update-analysis', item.analysis));
+
+      if (Array.isArray(item.screenshots) && item.screenshots.length) {
+        const thumbs = el('div', 'update-thumbs');
+        item.screenshots.forEach((shot, sIdx) => {
+          const rec = registerImage({
+            id: `${item.id}-shot-${sIdx + 1}`,
+            title: `${item.title}（实拍 ${sIdx + 1}）`,
+            groupLabel: '对方近期动态与言论实拍',
+            versionLabel: shot.label || 'B站原图截图',
+            src: shot.src,
+            alt: shot.alt || item.title,
+            caption: item.quote || item.analysis || '',
+          }, '对方近期动态与言论实拍');
+          const btn = el('button', 'update-thumb-btn');
+          btn.type = 'button';
+          btn.setAttribute('aria-label', `放大查看：${shot.label || item.title}`);
+          const img = el('img');
+          img.src = shot.src;
+          img.alt = shot.alt || item.title;
+          img.loading = 'lazy';
+          btn.append(img, el('span', '', shot.label || `查看实拍 ${sIdx + 1} ↗`));
+          btn.addEventListener('click', () => openImage(rec.index, btn));
+          thumbs.append(btn);
+        });
+        card.append(thumbs);
+      }
+
+      const links = el('div', 'card-links');
+      if (item.slideRef) {
+        const jump = el('a', '', `跳至对应事件原图 (${item.slideRef.replace('#source-', '图 ')}) ↑`);
+        jump.href = item.slideRef;
+        links.append(jump);
+      }
+      addLinks(links, item.links);
+      if (links.childElementCount) card.append(links);
+      host.append(card);
+    }
   }
 
   function initNoticeSubtabs() {
@@ -445,28 +593,36 @@
     for (const [id, key] of Object.entries({
       'author-statement': 'authorStatement',
       'summary-note': 'summaryNote', 'gallery-note': 'galleryNote', 'notice-note': 'noticeNote',
+      'opponent-updates-note': 'opponentUpdatesNote',
       'dynamic-record-note': 'dynamicRecordNote', 'video-record-note': 'videoRecordNote',
       'own-comment-note': 'ownCommentNote',
       'comment-note': 'commentNote', 'comment-link-note': 'commentLinkNote',
-    })) document.getElementById(id).textContent = data[key] || '';
+    })) {
+      const node = document.getElementById(id);
+      if (node) node.textContent = data[key] || '';
+    }
 
-    document.querySelector('[data-count="gallery"]').textContent = String(data.gallery.length);
-    document.querySelector('[data-count="notices"]').textContent = String(data.notices.length);
-    document.querySelector('[data-count="comments"]').textContent = String(data.comments.length);
+    document.querySelectorAll('[data-count="gallery"]').forEach(n => { n.textContent = String(data.gallery.length); });
+    document.querySelectorAll('[data-count="notices"]').forEach(n => { n.textContent = String(data.notices.length); });
+    document.querySelectorAll('[data-count="opponentUpdates"]').forEach(n => { n.textContent = String((data.opponentUpdates || []).length); });
+    document.querySelectorAll('[data-count="comments"]').forEach(n => { n.textContent = String(data.comments.length); });
 
     renderSummary(data.summary, data);
     renderSystemAuditCards(data.crossPageAudit);
     renderGalleryIndex(data.gallery);
-    initGalleryFilter();
-    initNoticeSubtabs();
 
     const gGrid = document.getElementById('gallery-grid');
     gGrid.replaceChildren();
     for (const item of data.gallery || []) gGrid.append(imageCard(item, '事件说明图'));
+    initGalleryFilter();
+    initNoticeSubtabs();
+    initCollapsibleSections();
 
     const nGrid = document.getElementById('notice-grid');
     nGrid.replaceChildren();
     for (const item of data.notices || []) nGrid.append(imageCard(item, '平台截图'));
+
+    renderOpponentUpdates(data.opponentUpdates || []);
 
     document.getElementById('attack-message').textContent = data.attackQuote.text;
     document.getElementById('attack-attribution').textContent = data.attackQuote.attribution;
@@ -484,7 +640,10 @@
     document.getElementById('load-status').hidden = true;
     if (location.hash) {
       const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-      if (target) requestAnimationFrame(() => target.scrollIntoView());
+      if (target) {
+        expandForTarget(target);
+        requestAnimationFrame(() => target.scrollIntoView());
+      }
     }
   }
 

@@ -37,7 +37,7 @@ function checkLinks(links = []) {
 }
 
 export function validateManifest(data) {
-  keys(data, ['schemaVersion', 'title', 'updatedAt', 'timeZone', 'authorStatement', 'relatedVideo', 'escalation20261118', 'summary', 'summaryNote', 'crossPageAudit', 'profileCard', 'galleryNote', 'gallery', 'attackQuote', 'noticeNote', 'notices', 'dynamicRecordNote', 'dynamicRecords', 'videoRecordNote', 'videoRecords', 'ownCommentNote', 'ownCommentRemovals', 'recordSourceNote', 'commentNote', 'commentLinkNote', 'comments', 'archiveSummary'], 'manifest');
+  keys(data, ['schemaVersion', 'title', 'updatedAt', 'timeZone', 'authorStatement', 'relatedVideo', 'escalation20261118', 'summary', 'summaryNote', 'crossPageAudit', 'profileCard', 'galleryNote', 'gallery', 'attackQuote', 'noticeNote', 'notices', 'opponentUpdatesNote', 'opponentUpdates', 'dynamicRecordNote', 'dynamicRecords', 'videoRecordNote', 'videoRecords', 'ownCommentNote', 'ownCommentRemovals', 'recordSourceNote', 'commentNote', 'commentLinkNote', 'comments', 'archiveSummary'], 'manifest');
   assert.equal(data.schemaVersion, 3);
   assert.equal(data.timeZone, 'Asia/Shanghai');
   text(data.title, 'title');
@@ -45,7 +45,29 @@ export function validateManifest(data) {
   keys(data.relatedVideo, ['label', 'href'], 'relatedVideo');
   text(data.authorStatement, 'authorStatement');
   if (data.crossPageAudit) {
-    keys(data.crossPageAudit, ['checkedAt', 'bv1q4CommentsBackend', 'bv1q4CommentsBackendPages', 'bv1q4CommentsBaseline', 'bv1q4CommentsPublicVisible', 'bv1q4CommentsDiscrepancy', 'uploadTotalVideos', 'uploadPublishedVideos', 'uploadNotPassedTotal', 'uploadLocked', 'uploadReturnedSelfOnly', 'communityVisibleNov18', 'communityCumulativeNov16', 'deniedDynamicAppeals', 'deniedAppealDynamicIds', 'accountMutes', 'outgoingReportFeedback647'], 'crossPageAudit');
+    keys(data.crossPageAudit, [
+      'checkedAt', 'bv1q4CommentsBackend', 'bv1q4CommentsBackendPages', 'bv1q4CommentsBaseline', 'bv1q4CommentsPublicVisible', 'bv1q4CommentsDiscrepancy',
+      'uploadTotalVideos', 'uploadPublishedVideos', 'uploadNotPassedTotal', 'uploadLocked', 'uploadReturnedSelfOnly',
+      'communityVisibleNov18', 'communityCumulativeNov16', 'communityNewNov19To22', 'communityCumulativeNov23',
+      'deniedDynamicAppeals', 'deniedAppealDynamicIds', 'accountMutes', 'outgoingReportFeedback647',
+      'heroRestrictionDetail', 'commentDiscrepancyNote', 'uploadStatusNote', 'systemStatusNote',
+      'fourthCardValue', 'fourthCardLabel', 'fourthCardNote',
+    ], 'crossPageAudit');
+  }
+  if (data.opponentUpdates) {
+    text(data.opponentUpdatesNote, 'opponentUpdatesNote');
+    assert(Array.isArray(data.opponentUpdates) && data.opponentUpdates.length >= 1);
+    for (const item of data.opponentUpdates) {
+      keys(item, ['id', 'isNew', 'typeLabel', 'date', 'dateLabel', 'ipLocation', 'account', 'uid', 'title', 'quote', 'subQuote', 'analysis', 'screenshots', 'slideRef', 'links'], 'opponent update');
+      for (const k of ['id', 'title']) text(item[k], `opponentUpdates.${k}`);
+      if (item.screenshots) {
+        for (const shot of item.screenshots) {
+          keys(shot, ['src', 'alt', 'label'], 'opponent update screenshot');
+          assert.match(shot.src, /^reporting-records-20261116\/comment-proof-\d{2}\.jpg$/);
+        }
+      }
+      if (item.links) checkLinks(item.links);
+    }
   }
   if (data.profileCard) {
     keys(data.profileCard, ['src', 'alt', 'title', 'caption', 'secondarySrc', 'secondaryAlt', 'secondaryTitle'], 'profileCard');
@@ -79,7 +101,7 @@ export function validateManifest(data) {
     for (const key of ['title', 'label', 'alt', 'caption']) text(item[key], `${item.id}.${key}`);
     checkLinks(item.links);
   }
-  assert.deepEqual(data.notices.map(item => item.id), ['notice-04', 'notice-05', 'notice-13', 'notice-06', 'notice-07', 'notice-08', 'notice-09', 'notice-10', 'notice-11', 'notice-12', 'notice-01', 'notice-02', 'notice-03']);
+  assert.deepEqual(data.notices.map(item => item.id), ['notice-14', 'notice-15', 'notice-16', 'notice-17', 'notice-18', 'notice-19', 'notice-20', 'notice-04', 'notice-05', 'notice-13', 'notice-06', 'notice-07', 'notice-08', 'notice-09', 'notice-10', 'notice-11', 'notice-12', 'notice-01', 'notice-02', 'notice-03']);
   for (const item of data.notices) {
     keys(item, ['id', 'title', 'label', 'src', 'alt', 'caption', 'version', 'versionLabel'], 'notice image');
     assert.equal(item.src, `${stem}/${item.id}.jpg`);
@@ -125,12 +147,12 @@ export function validateManifest(data) {
     reasonCounts: countBy(data.dynamicRecords, 'reasonCategory'),
   };
   assert.deepEqual(data.summary, derived, 'Published summary must match item counts');
-  assert.equal(derived.dynamicEvents, 63);
-  assert.equal(derived.dynamicObjects, 62);
-  assert.equal(derived.rightsHolderEvents, 15);
-  assert.equal(derived.rightsHolderObjects, 14);
-  assert.equal(derived.datedDynamicEvents, 57);
-  assert.deepEqual(derived.reasonCounts, { rights_holder_complaint: 15, inappropriate: 14, personal_attack: 16, provocation: 18 });
+  assert.equal(derived.dynamicEvents, 73);
+  assert.equal(derived.dynamicObjects, 72);
+  assert.equal(derived.rightsHolderEvents, 22);
+  assert.equal(derived.rightsHolderObjects, 21);
+  assert.equal(derived.datedDynamicEvents, 65);
+  assert.deepEqual(derived.reasonCounts, { rights_holder_complaint: 22, inappropriate: 14, personal_attack: 17, provocation: 20 });
   assert.deepEqual(derived.videoTriggerCounts, { not_specified: 3, rights_holder_complaint: 3, user_report: 3 });
   assert.deepEqual(data.videoRecords.map(item => item.bvid), expectedBvids);
   for (const item of data.videoRecords) {
@@ -182,6 +204,7 @@ export async function checkAssets(data, { requireAll = false } = {}) {
     ...data.notices,
     ...(data.profileCard ? [{ id: 'profile-card', src: data.profileCard.src }, ...(data.profileCard.secondarySrc ? [{ id: 'profile-card-2', src: data.profileCard.secondarySrc }] : [])] : []),
     ...data.comments.filter(c => c.screenshot).map(c => ({ id: `${c.id}-proof`, src: c.screenshot })),
+    ...(data.opponentUpdates || []).flatMap(u => (u.screenshots || []).map((s, idx) => ({ id: `${u.id}-shot-${idx + 1}`, src: s.src }))),
   ]) {
     if (!seenSrc.has(item.src)) {
       seenSrc.add(item.src);

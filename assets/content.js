@@ -251,9 +251,9 @@ export function renderContent(programId, subId, data) {
       '<article class="download-card"><h3>UNIVERSAL ADV READER</h3><p class="meta-line">universal-adv-reader.pages.dev</p>' +
       '<a class="download-button" href="https://universal-adv-reader.pages.dev/apps/web" target="_blank" rel="noopener noreferrer">打开通用阅读网站 ↗</a></article>';
     if (subId === 'reporting-records') return '<p class="content-kicker">MAGIUS LINK / RECORDS</p><h2>事件原图与全量记录</h2>' +
-      '<p>查看《魔法纪录》中文版事件全套 21 张无删改原图、2026-11-18 B站多页面实查截图（评论落差 348/249 与 8 个受限视频），以及 4,433 条关联账号历史公开评论全量检索与画像。</p>' +
-      '<article class="download-card"><h3>21 张事件原图、B站实拍截图与 4,433 条历史评论</h3>' +
-      '<p>含 00 至 18 无黑框原图、B站原评论楼及官方接口实拍截图，全部 4,433 条发言按 12 类整理开放实时检索。</p>' +
+      '<p>查看《魔法纪录》中文版事件全套 21 张无删改原图、2026-11-23 B站多页面实查截图（Toy 遭限权仅自见、累计 73 条动态下架、评论落差 346/247），以及圆周率 11 月历次动态/最新言论与 4,433 条历史公开发言 12 分类全量检索。</p>' +
+      '<article class="download-card"><h3>21 张事件原图、20 张 B站实拍截图、近期动态与 4,433 条检索</h3>' +
+      '<p>支持各分区独立折叠、阶段筛选与手机端自适应排布，内置 00 至 18 无黑框原图、对方 11-15/11-22 最新发言实拍与全部 4,433 条发言实时搜索。</p>' +
       '<a class="download-button" href="./assets/reports/reporting-records-20261116.html" target="_blank" rel="noopener noreferrer">打开事件记录专页 ↗</a></article>';
     if (subId === 'programs') {
       return '<p class="content-kicker">MAGIUS LINK / EVIDENCE</p><h2>资源比对与证据记录</h2>' +

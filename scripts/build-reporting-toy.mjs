@@ -94,23 +94,23 @@ const isBilibili = href => {
 
 const data = structuredClone(rawData);
 data.title = '事件截图与处理记录';
-data.authorStatement = '本页汇总 21 张完整事件说明原图、13 张平台页面状态截图，以及已核对的公开评论与官方接口索引。点击任意图像可放大阅读原图细节。';
-data.summaryNote = '63 条动态移除通知涉及 62 个不同动态，其中 15 条权利人投诉通知涉及 14 个动态，已包含在前项。目标视频另保存 19 张创作助手通知：18 张要求修改、1 张通知通过。这些通知、内容对象和状态分别计数。';
+data.authorStatement = `本页汇总 21 张完整事件说明原图、${data.notices.length} 张平台页面状态截图，以及已核对的公开评论与官方接口索引。点击任意图像可放大阅读原图细节。`;
+data.summaryNote = `${data.summary.dynamicEvents} 条动态移除通知涉及 ${data.summary.dynamicObjects} 个不同动态，其中 ${data.summary.rightsHolderEvents} 条权利人投诉通知涉及 ${data.summary.rightsHolderObjects} 个动态，已包含在前项。目标视频另保存 19 张创作助手通知：18 张要求修改、1 张通知通过。这些通知、内容对象和状态分别计数。`;
 data.galleryNote = '21 项事件说明图按编号排列，点击图片可 1:1 放大阅读全部对话与时间线细节。';
-data.noticeNote = '下列 13 张平台页面原图展示已核对的处理通知、视频状态与评论区记录示例；完整动态明细在下方分栏展开。';
-data.dynamicRecordNote = '处理理由合计：引战 18 条、人身攻击 16 条、不适宜内容 14 条、权利人侵权投诉 15 条。57 条有日期，6 条日期未记录；其中 10 条日期由录屏补证。';
+data.noticeNote = `下列 ${data.notices.length} 张平台页面原图展示已核对的处理通知、视频状态与评论区记录示例；完整动态明细在下方分栏展开。`;
+data.dynamicRecordNote = `处理理由合计：引战 ${data.summary.reasonCounts.provocation} 条、人身攻击 ${data.summary.reasonCounts.personal_attack} 条、不适宜内容 ${data.summary.reasonCounts.inappropriate} 条、权利人侵权投诉 ${data.summary.reasonCounts.rights_holder_complaint} 条。`;
 data.videoRecordNote = '下列 9 个视频是逐页核对的当前处理状态。表中时间取自视频列表，视频入口用于核对 BVID。';
 data.ownCommentNote = '已将 3 条评论移除通知与目标视频 BV1q4Wa67EB2 下的评论 ID 逐一对应。';
 data.recordSourceNote = '动态记录、创作中心视频详情与系统通知均来自账户内页面实拍与录屏核对；下方公开评论提供原楼入口、官方接口返回及页面截图对照。';
 data.commentNote = '以下为公开评论记录与对应页面截图，经官方接口核对作者、时间与正文，按时间与主题排列。';
 data.commentLinkNote = '“原楼入口”进入讨论线程；“官方接口原文”打开接口返回，按评论 ID 查找即可核对。';
 data.escalation20261118 = {
-  date: '2026-11-18',
-  headline: '2026-11-18 页面状态与数据汇总说明',
+  date: data.updatedAt || '2026-11-23',
+  headline: `${data.updatedAt || '2026-11-23'} 页面状态与数据汇总说明`,
   items: [
-    '目标视频 BV1q4Wa67EB2 评论计数对照：11 月 16 日管理列表记录为 351 条，11 月 18 日管理列表显示 348 条（35页），前台页面当前显示 249 条，差额 99 条。',
-    '视频列表状态核对：92 个投稿中 84 个正常显示，8 个处于未通过状态（6 个锁定、2 个退回）；目标视频经 18 次修改记录后于第 19 次通知通过。',
-    '通知与归档记录更新：已补充 13 张平台页面通知截图、9 张公开评论页面截图及 4,433 条公开历史发言分类检索表。',
+    `目标视频 BV1q4Wa67EB2 评论计数对照：11 月 16 日管理列表记录为 351 条，当前管理列表显示 ${data.crossPageAudit?.bv1q4CommentsBackend ?? 346} 条（35页），前台页面显示 ${data.crossPageAudit?.bv1q4CommentsPublicVisible ?? 247} 条，差额 ${data.crossPageAudit?.bv1q4CommentsDiscrepancy ?? 99} 条。`,
+    `视频列表状态核对：${data.crossPageAudit?.uploadTotalVideos ?? 94} 个投稿中 ${data.crossPageAudit?.uploadPublishedVideos ?? 86} 个正常显示，${data.crossPageAudit?.uploadNotPassedTotal ?? 8} 个处于未通过状态（${data.crossPageAudit?.uploadLocked ?? 6} 个锁定、${data.crossPageAudit?.uploadReturnedSelfOnly ?? 2} 个退回）；目标视频经 18 次修改记录后于第 19 次通知通过。`,
+    `通知与公开记录更新：已补充 ${data.notices.length} 张平台页面通知截图及 14 条关于平台举报的历史公开评论记录与对应页面截图。`,
   ],
 };
 data.attackQuote = {
@@ -167,9 +167,10 @@ if (data.crossPageAudit && Array.isArray(data.crossPageAudit.accountMutes)) {
   ];
 }
 
-// Keep only the selected comments specifically about reporting (with their screenshots and official API links) and omit the 4,433 full archive from the Toy build
+// Keep only the selected comments specifically about reporting (with their screenshots and official API links) and omit the 4,433 full archive and opponentUpdates from the Toy build
 delete data.archiveSummary;
-data.escalation20261118.items[2] = '通知与公开记录更新：已补充 13 张平台页面通知截图及 14 条关于平台举报的历史公开评论记录与对应页面截图。';
+delete data.opponentUpdates;
+delete data.opponentUpdatesNote;
 const reportingRpids = new Set([
   '172809228160', '172761210528', '159728551632', '181141997728',
   '181176975312', '169264599776', '212547002016', '134773333424',
@@ -204,20 +205,15 @@ if (losslessImageDir) {
 let html = await readFile(join(reports, `${stem}.html`), 'utf8');
 html = html.replace('data-mode="web"', 'data-mode="toy"');
 html = html.replace(/\s*<!-- WEB_ONLY_START -->[\s\S]*?<!-- WEB_ONLY_END -->/g, '');
-html = html.replace(/\s*<section id="full-archive" class="archive-explorer"[\s\S]*?<\/section>/, '');
+html = html.replace(/\s*<section id="opponent-updates"[\s\S]*?<\/section>/, '');
+html = html.replace(/\s*<section id="full-archive"[\s\S]*?<\/section>/, '');
+html = html.replace(/\s*<a href="#opponent-updates"[\s\S]*?<\/a>/, '\n        <a href="#comments"><span class="nav-index">03</span><span class="nav-text">历史举报记录</span><span class="nav-count" data-count="comments">14</span></a>');
 html = html
   .replaceAll('《魔法纪录》中文版事件：原图与全量记录 · MADE IN MAGIUS', '事件截图与处理记录')
   .replaceAll('《魔法纪录》中文版事件：原图与全量记录', '事件截图与处理记录')
-  .replaceAll('《魔法纪录》中文版事件：21 张完整无删改说明图、B站多页面处理核查截图与 4,433 条历史公开发言全量检索。', '事件截图与处理记录：21 张 4K 无损事件说明原图、13 张平台页面记录截图与历史举报公开发言记录。')
-  .replaceAll('03 / ASSOCIATED ACCOUNTS &amp; PUBLIC COMMENT ARCHIVE (4,433)', '03 / PUBLIC REPORTING COMMENTS')
-  .replaceAll('03 / PUBLIC COMMENT ARCHIVE (4,433)', '03 / PUBLIC REPORTING COMMENTS')
-  .replaceAll('<span class="nav-index">04</span>精选举报实证', '<span class="nav-index">03</span>历史举报自述记录')
-  .replaceAll('圆周率记录与4433深挖', '历史举报自述记录')
-  .replaceAll('圆周率关联账号存证、4,433 条 12 分类全量检索与举报实证', '关于平台举报的历史公开发言记录')
-  .replaceAll('圆周率历史举报轨迹与 4,433 条全量画像', '关于平台举报的历史公开发言记录')
-  .replaceAll('圆周率历史言论实证与 4,433 条全量分类画像', '关于平台举报的历史公开发言记录')
-  .replaceAll('03-B / FEATURED SCREENSHOT EVIDENCE (25)', '03 / VERIFIED REPORTING COMMENTS')
-  .replaceAll('附 B站页面与官方接口实拍截图的代表性发言（25 条）', '已核对的历史举报公开发言与页面截图（14 条）')
+  .replaceAll('《魔法纪录》中文版事件：21 张完整无删改说明图、B站多页面处理核查截图、圆周率近期动态与历次发言实录及 4,433 条历史公开发言全量检索。', '事件截图与处理记录：21 张 4K 无损事件说明原图、平台页面记录截图与历史举报公开发言记录。')
+  .replaceAll('05 / FEATURED SCREENSHOT EVIDENCE', '03 / VERIFIED REPORTING COMMENTS')
+  .replaceAll('附 B站页面与官方接口实拍截图的代表性历史发言', '已核对的历史举报公开发言与页面截图（14 条）')
   .replaceAll('UID 647014264 / 1703887112 / 3546599567395767', 'UID 647014264')
   .replaceAll('UID 647014264 / 1703887112', 'UID 647014264')
   .replaceAll('阶段二 · 圆周率', '阶段二 · 后续回应')

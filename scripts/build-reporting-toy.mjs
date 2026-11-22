@@ -119,22 +119,23 @@ data.attackQuote = {
   text: '图 05 第四列所示针对作者的发言记录（完整原话见图 05 原图）',
   attribution: '图 05 第四列，发言者为截图昵称“沉恋古川”；完整对话见上方原图。',
 };
-if (data.profileCard) {
-  data.profileCard = {
-    src: data.profileCard.src,
-    alt: '关联账号主页页面记录截图',
-    title: '关联账号主页页面状态记录（UID 647014264）',
-    caption: '保存自公开个人主页的页面状态截图，包含当前昵称、等级、签名与公开动态列表。',
-  };
-}
+delete data.profileCard;
+
+const TOY_STAGE_LABELS = {
+  '总览导航': '总览导航',
+  '阶段一 · 起因': '阶段一 · 起因',
+  '阶段一 · 盗码': '阶段一 · 盗码',
+  '阶段二 · 圆周率': '阶段二 · 后续回应',
+  '阶段三 · DD魔女': '阶段三 · 后续讨论',
+};
 
 for (const item of data.gallery) {
   const copy = APPROVED_GALLERY_COPY[item.number] || ['事件说明图 ' + item.number, '按图中日期和对话顺序点击放大阅读。'];
   item.title = copy[0];
   item.caption = copy[1];
   item.alt = `图 ${item.number}：${copy[0]}`;
-  item.label = `作者说明图 · ${item.number}`;
-  item.versionLabel = '原图';
+  item.label = TOY_STAGE_LABELS[item.label] || '总览导航';
+  item.versionLabel = `原图 · ${item.number}`;
   item.links = (item.links || []).filter(link => !link.webOnly && isBilibili(link.href));
 }
 for (let i = 0; i < data.notices.length; i++) {
@@ -150,7 +151,7 @@ for (let i = 0; i < data.notices.length; i++) {
 for (const item of data.videoRecords) {
   if (item.bvid === 'BV1q4Wa67EB2') {
     item.status = '第19次通知通过';
-    item.reasonSummary = '历经 18 次修改通知后于 11-17 01:40 通知通过；管理列表显示 348 条评论，前台显示 249 条。';
+    item.reasonSummary = `历经 18 次修改通知后于 11-17 01:40 通知通过；管理列表显示 ${data.crossPageAudit?.bv1q4CommentsBackend ?? 346} 条评论，前台显示 ${data.crossPageAudit?.bv1q4CommentsPublicVisible ?? 247} 条。`;
   } else if (typeof item.reasonSummary === 'string') {
     item.reasonSummary = item.reasonSummary
       .replaceAll('低俗/引战', '不适宜/引战')
@@ -158,13 +159,20 @@ for (const item of data.videoRecords) {
       .replaceAll('已经造成网暴，', '涉及争议，');
   }
 }
-if (data.crossPageAudit && Array.isArray(data.crossPageAudit.accountMutes)) {
+if (data.crossPageAudit) {
   data.crossPageAudit.accountMutes = [
     '2026-10-10 03:39 账户发言状态受限 7 天（2026-10-17 04:00 解除）',
     '2026-11-01 21:25 账户发言状态受限 7 天（2026-11-08 21:25 解除）',
     '2026-11-04 16:11 状态申诉通知结果记录',
-    '2026-11-18 个人通讯账户状态记录（见截图 notice-13）',
+    '2026-11-18 外部通讯账户状态记录（见截图 notice-13）',
   ];
+  data.crossPageAudit.heroRestrictionDetail = `${data.crossPageAudit.uploadLocked ?? 6} 锁定 + ${data.crossPageAudit.uploadReturnedSelfOnly ?? 2} 退回 · 含动态与页面状态明细`;
+  data.crossPageAudit.commentDiscrepancyNote = `系统通知记录 3 条评论移除，管理列表 ${data.crossPageAudit.bv1q4CommentsBackend ?? 346} 条中前台显示 ${data.crossPageAudit.bv1q4CommentsPublicVisible ?? 247} 条（差额 ${data.crossPageAudit.bv1q4CommentsDiscrepancy ?? 99} 条）`;
+  data.crossPageAudit.uploadStatusNote = `${data.crossPageAudit.uploadTotalVideos ?? 94} 稿件中 ${data.crossPageAudit.uploadLocked ?? 6} 锁定 + ${data.crossPageAudit.uploadReturnedSelfOnly ?? 2} 退回；BV1q4Wa67EB2 历 18 次修改通知后通过`;
+  data.crossPageAudit.systemStatusNote = `多页系统通知与动态处理台账汇总（累计 ${data.summary.dynamicEvents} 条动态处理通知）`;
+  data.crossPageAudit.fourthCardValue = `${(data.crossPageAudit.outgoingReportFeedback647 || []).length} 条平台回执`;
+  data.crossPageAudit.fourthCardLabel = '社区反馈与历史回执记录';
+  data.crossPageAudit.fourthCardNote = '社区中心针对提交反馈的常规回执记录，完整明细见下方分栏';
 }
 
 // Keep only the selected comments specifically about reporting (with their screenshots and official API links) and omit the 4,433 full archive and opponentUpdates from the Toy build
@@ -212,11 +220,15 @@ html = html
   .replaceAll('《魔法纪录》中文版事件：原图与全量记录 · MADE IN MAGIUS', '事件截图与处理记录')
   .replaceAll('《魔法纪录》中文版事件：原图与全量记录', '事件截图与处理记录')
   .replaceAll('《魔法纪录》中文版事件：21 张完整无删改说明图、B站多页面处理核查截图、圆周率近期动态与历次发言实录及 4,433 条历史公开发言全量检索。', '事件截图与处理记录：21 张 4K 无损事件说明原图、平台页面记录截图与历史举报公开发言记录。')
+  .replaceAll('05 精选举报实拍 (<span data-count="comments">25</span>) ↓', '03 历史举报记录 (<span data-count="comments">14</span>) ↓')
+  .replaceAll('B站全站处理核查（社区中心 / 系统通知 / 创作后台 / Toy）', '平台页面与通知状态核查记录')
+  .replaceAll('受限稿件、Toy与审改记录', '稿件状态与修改通知记录')
   .replaceAll('05 / FEATURED SCREENSHOT EVIDENCE', '03 / VERIFIED REPORTING COMMENTS')
   .replaceAll('附 B站页面与官方接口实拍截图的代表性历史发言', '已核对的历史举报公开发言与页面截图（14 条）')
   .replaceAll('UID 647014264 / 1703887112 / 3546599567395767', 'UID 647014264')
   .replaceAll('UID 647014264 / 1703887112', 'UID 647014264')
   .replaceAll('阶段二 · 圆周率', '阶段二 · 后续回应')
+  .replaceAll('阶段三 · DD魔女', '阶段三 · 后续讨论')
   .replaceAll('一 · 起因与挂人 (01–05)', '一 · 合作与群公告记录 (01–05)')
   .replaceAll('二 · 盗用代码与 cn_base (06–09C)', '二 · 资源与版本对照 (06–09C)')
   .replaceAll('三 · 圆周率删评伪证与恐吓 (10–14)', '三 · 后续回应与页面记录 (10–14)')
@@ -230,8 +242,8 @@ if (Buffer.byteLength(html) >= 1024 * 1024) throw new Error('Toy index.html must
 let sanitizedJs = await readFile(join(reports, `${stem}.js`), 'utf8');
 sanitizedJs = sanitizedJs
   .replace(
-    "[data.archiveSummary?.totalRecords || 4433, '4,433 条历史公开发言', 'UID 647014264 (4,329) + 1703887112 (104) · 12类精细归类']",
-    "[data.comments.length, '历史举报公开发言', 'UID 647014264 关于平台举报的公开评论与接口/截图核对']"
+    /\[data\.archiveSummary\?\.totalRecords \|\| 4433, '4,433 条历史公开发言', `[^`]+`\]/,
+    "[data.comments.length, '历史举报公开发言', '关于平台举报的历史公开评论与接口/截图核对']"
   )
   .replace(
     /\s*initArchiveExplorer\(data\.archiveSummary\?\.datasetPath \|\| 'reporting-records-20261116\/comments-4433\.json'\);/,
@@ -242,11 +254,14 @@ sanitizedJs = sanitizedJs
     '\n\n  init().catch'
   )
   .replaceAll('阶段二 · 圆周率', '阶段二 · 后续回应')
+  .replaceAll('阶段三 · DD魔女', '阶段三 · 后续讨论')
   .replaceAll('全站受限与禁言记录', '平台页面与视频状态记录')
   .replaceAll('2×7天禁言 · 个人QQ封禁', '含视频状态与通知明细')
   .replaceAll('系统通知申诉与账号禁言', '系统通知与申诉状态记录')
   .replaceAll('10月10日与11月1日两次 7 天禁言 · 账号禁言申诉未通过 · 侵权/限流警告', '包含多页系统通知与处理状态详情记录')
   .replaceAll('账号禁言、申诉驳回与警告记录（message.bilibili.com）', '系统通知与状态记录汇总')
+  .replaceAll('动态申诉「无法恢复」(7条) 与对 647014264 反馈 (2条)', '动态申诉与平台回执汇总')
+  .replaceAll('Toy 状态与对 647014264 反馈', '平台通知与回执记录')
   .replaceAll('AICU全量归档', '历史归档记录')
   .replaceAll('原被AI屏蔽 · 现已恢复', '已归档记录');
 

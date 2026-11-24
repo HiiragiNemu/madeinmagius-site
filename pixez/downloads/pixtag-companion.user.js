@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         MadeInMagius PixEz Pulse — Pixiv 全量标签共现分析 & Chrome 免配置登录桥接
+// @name         MadeInMagius PixEz Pulse — Pixiv 全量标签共现分析 & 全自动授权登录桥接
 // @namespace    https://madeinmagius-site.pages.dev/
-// @version      3.9.0
-// @description  在 Pixiv (/tags/ 与 /search?q= 全格式链接) 嵌入纸张档案风全量共现分析抽屉；自动将已登录的 Chrome Pixiv 会话同步至本地终端与 MadeInMagius 网页版，并拦截 post-redirect 空白页。
+// @version      4.0.0
+// @description  在 Pixiv (/tags/ 与 /search?q= 全格式链接) 嵌入纸张档案风全量共现分析抽屉；自动同步 Chrome Pixiv 登录态并全自动接管 OAuth 授权回调回传原页面（零空白页、零 F12）。
 // @author       MadeInMagius
 // @match        https://www.pixiv.net/*
 // @match        https://accounts.pixiv.net/*
@@ -13,97 +13,300 @@
 // @match        https://hiiraginemu.github.io/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_cookie
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_addValueChangeListener
 // @connect      www.pixiv.net
 // @connect      accounts.pixiv.net
 // @connect      app-api.pixiv.net
 // @connect      danbooru.donmai.us
-// @run-at       document-idle
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
   'use strict';
 
-  const LOCAL_WEB_ORIGIN = 'http://localhost:3456';
+  const VERSION = '4.0.0';
+  const DEFAULT_WEB_ORIGIN = 'http://localhost:3456';
 
-  // =========================================================================
-  // 1. OAuth Custom Scheme Callback / accounts.pixiv.net/post-redirect 空白页接管
-  // =========================================================================
-  const href = window.location.href;
-  if (href.startsWith('pixiv://account/login') || (href.includes('code=') && href.includes('via=login'))) {
-    const urlObj = new URL(href.replace('pixiv://', 'https://'));
-    const code = urlObj.searchParams.get('code');
-    if (code) {
-      window.location.href = `${LOCAL_WEB_ORIGIN}/?pixiv_code=${encodeURIComponent(code)}`;
-      return;
-    }
+  function isAppHost(host) {
+    return (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === 'madeinmagius-site.pages.dev' ||
+      host === 'hiiraginemu.github.io'
+    );
   }
 
-  // 当用户在桌面 Chrome 打开 accounts.pixiv.net/post-redirect 时，防止停留在空白页
-  if (window.location.hostname === 'accounts.pixiv.net' && window.location.pathname.startsWith('/post-redirect')) {
-    setTimeout(() => {
-      if (!document.getElementById('pxp-post-redirect-helper')) {
-        const panel = document.createElement('div');
-        panel.id = 'pxp-post-redirect-helper';
-        panel.style.cssText = 'position:fixed;inset:0;background:#F4EFE6;color:#231F1C;font-family:"Noto Sans SC","Inter",sans-serif;display:flex;align-items:center;justify-content:center;z-index:999999;padding:24px;';
-        panel.innerHTML = `
-          <div style="max-width:680px;width:100%;background:#FAF6F0;border:2px solid #231F1C;padding:24px;box-shadow:6px 6px 0 rgba(35,31,28,0.16);">
-            <div style="font-size:12px;font-family:monospace;color:#8E2B23;font-weight:700;margin-bottom:6px;">PIXEZ PULSE v3.0 // CHROME OAUTH & SESSION BRIDGE</div>
-            <h2 style="margin:0 0 12px 0;font-size:20px;color:#231F1C;">检测到 Pixiv OAuth 桌面端跳转页 (post-redirect)</h2>
-            <p style="font-size:13px;line-height:1.65;color:#5A534A;margin:0 0 14px 0;">
-              桌面版 Chrome 浏览器已在此页面完成 Pixiv 登录校验，但因为桌面系统未注册移动端专属的 <code>pixiv://account/login?code=...</code> 协议，Chrome 默认会停留在空白画面。
-            </p>
-            <div style="background:#EAE3D5;border:1px solid #B5AC9E;padding:12px;margin-bottom:16px;font-size:13px;line-height:1.65;">
-              <div><strong>方式 A（已安装油猴脚本 · 推荐一键同步）：</strong></div>
-              <div>由于您已安装 PixEz Pulse v3.0 油猴脚本，点击下方「返回本地终端并自动同步 Chrome 登录态」，脚本将自动把当前 Chrome 已登录的 Pixiv 会话桥接至 <code>localhost:3456</code>（默认解锁 R-18）。</div>
-              <div style="margin-top:8px;"><strong>方式 B（获取原生 OAuth Code）：</strong></div>
-              <div>按 <code>F12</code> 打开开发者工具切到 <strong>Console（控制台）</strong>，复制红色的 <code>Failed to launch 'pixiv://account/login?code=...'</code> 整行报错文本，粘贴回本地终端即可。</div>
-            </div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;">
-              <a href="${LOCAL_WEB_ORIGIN}/?from_chrome_bridge=1" style="background:#8E2B23;color:#FAF6F0;text-decoration:none;padding:10px 18px;font-weight:700;font-size:13px;border:1px solid #8E2B23;">返回本地终端并自动同步 Chrome 登录态 (localhost:3456)</a>
-              <a href="https://www.pixiv.net/" style="background:#FAF6F0;color:#231F1C;text-decoration:none;padding:10px 16px;font-weight:700;font-size:13px;border:1px solid #231F1C;">前往 Pixiv 首页</a>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(panel);
+  function extractCodeFromText(text) {
+    if (!text) return '';
+    const m = String(text).match(/pixiv:\/\/account\/login\?[^"'<>\s]*code=([A-Za-z0-9_-]+)/i)
+      || String(text).match(/[?&]code=([A-Za-z0-9_-]{12,})/);
+    return m ? m[1] : '';
+  }
+
+  function deliverOAuthCode(code) {
+    if (!code) return;
+    const payload = { code, ts: Date.now(), version: VERSION };
+    try {
+      if (typeof GM_setValue === 'function') {
+        GM_setValue('pixez_oauth_code_v4', JSON.stringify(payload));
       }
-    }, 600);
+    } catch (_) {}
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'PIXEZ_OAUTH_CODE', code, source: 'userscript_auto' }, '*');
+      }
+    } catch (_) {}
+  }
+
+  function deliverCookieSession(cookieVal, userName = '') {
+    if (!cookieVal) return;
+    const normalized = cookieVal.includes('PHPSESSID=') ? cookieVal : `PHPSESSID=${cookieVal}`;
+    const payload = { cookie: normalized, userName: userName || '', ts: Date.now(), version: VERSION };
+    try {
+      if (typeof GM_setValue === 'function') {
+        GM_setValue('pixez_cookie_session_v4', JSON.stringify(payload));
+      }
+    } catch (_) {}
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'PIXEZ_USERSCRIPT_BRIDGE_READY', cookie: normalized, userName, source: 'userscript_auto' }, '*');
+      }
+    } catch (_) {}
+  }
+
+  function readChromePixivCookie(cb) {
+    if (typeof GM_cookie !== 'undefined' && GM_cookie.list) {
+      try {
+        GM_cookie.list({ url: 'https://www.pixiv.net' }, function (cookies, error) {
+          if (!error && Array.isArray(cookies)) {
+            const phpSess = cookies.find((c) => c.name === 'PHPSESSID');
+            if (phpSess && phpSess.value) {
+              cb(`PHPSESSID=${phpSess.value}`);
+              return;
+            }
+          }
+          cb('');
+        });
+        return;
+      } catch (_) {}
+    }
+    cb('');
+  }
+
+  function showAutoAuthOverlay(title, desc, done = false, returnUrl = '') {
+    const render = () => {
+      let box = document.getElementById('pxp-auto-auth-overlay');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'pxp-auto-auth-overlay';
+        box.style.cssText = 'position:fixed;inset:0;background:#f3eacb;color:#2c2318;font-family:"PingFang SC","Microsoft YaHei UI",sans-serif;display:flex;align-items:center;justify-content:center;z-index:2147483647;padding:24px;';
+        (document.body || document.documentElement).appendChild(box);
+      }
+      box.innerHTML = `
+        <div style="max-width:460px;width:100%;background:#fff7de;border:2px solid #6e5a3b;padding:20px 22px;box-shadow:0 8px 28px rgba(55,42,24,0.22);">
+          <div style="font-size:11px;font-family:Consolas,monospace;color:#755f3e;font-weight:800;margin-bottom:6px;">MADE IN MAGIUS // PIXIV AUTO AUTH v${VERSION}</div>
+          <h2 style="margin:0 0 8px 0;font-size:17px;color:#18120a;">${title}</h2>
+          <p style="margin:0 0 14px 0;font-size:13px;line-height:1.6;color:#4f402b;">${desc}</p>
+          ${done && returnUrl ? `<a href="${returnUrl}" style="display:inline-block;background:#755f3e;color:#fff7df;text-decoration:none;padding:7px 14px;font-weight:800;font-size:12.5px;border:1px solid #4f402b;">立即返回 PixEz Pulse 终端</a>` : ''}
+        </div>
+      `;
+    };
+    if (document.body) render();
+    else window.addEventListener('DOMContentLoaded', render, { once: true });
+  }
+
+  // =========================================================================
+  // 1. 全自动 OAuth 回调捕获 (accounts.pixiv.net/post-redirect & app-api.pixiv.net)
+  //    在 document-start 阶段直接接管，禁止跳转进空白页，自动回传 code 给原页面并关闭窗口！
+  // =========================================================================
+  const href = window.location.href;
+  const directCode = extractCodeFromText(href);
+  if (directCode && (href.startsWith('pixiv://') || window.location.hostname === 'app-api.pixiv.net' || href.includes('via=login'))) {
+    deliverOAuthCode(directCode);
+    const backOrigin = (typeof GM_getValue === 'function' && GM_getValue('pixez_last_app_origin_v4', '')) || DEFAULT_WEB_ORIGIN;
+    showAutoAuthOverlay('Pixiv 授权成功', '已将登录授权自动回传至原终端页面，本窗口即将自动关闭…', true, `${backOrigin}/?pixiv_code=${encodeURIComponent(directCode)}`);
+    setTimeout(() => {
+      window.close();
+      if (!window.closed) window.location.replace(`${backOrigin}/?pixiv_code=${encodeURIComponent(directCode)}`);
+    }, 450);
+    return;
+  }
+
+  if (
+    (window.location.hostname === 'accounts.pixiv.net' && window.location.pathname.startsWith('/post-redirect')) ||
+    (window.location.hostname === 'app-api.pixiv.net' && window.location.pathname.startsWith('/web/v1/'))
+  ) {
+    const backOrigin = (typeof GM_getValue === 'function' && GM_getValue('pixez_last_app_origin_v4', '')) || DEFAULT_WEB_ORIGIN;
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get('return_to') || window.location.href;
+
+    // 阻止原生页面继续跳往 Chrome 无法打开的 pixiv:// 协议导致空白页
+    try { window.stop(); } catch (_) {}
+    showAutoAuthOverlay('正在自动完成 Pixiv 授权…', '正在将登录凭据自动回传给原终端页面，无需任何手动操作。');
+
+    // 并行策略 A: 同步当前已登录的 Chrome PHPSESSID 会话
+    readChromePixivCookie((cookieStr) => {
+      if (cookieStr) deliverCookieSession(cookieStr);
+    });
+
+    // 并行策略 B: 使用 GM_xmlhttpRequest 静默追踪 return_to，直接从响应头/finalUrl 抓取 pixiv://account/login?code=...
+    if (typeof GM_xmlhttpRequest === 'function' && returnTo && returnTo.startsWith('http')) {
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url: returnTo,
+        headers: { Referer: 'https://accounts.pixiv.net/' },
+        anonymous: false,
+        redirect: 'manual',
+        onload: (res) => {
+          const locHeader = (res.responseHeaders || '').match(/^location:\s*(.+)$/im);
+          const loc = locHeader ? locHeader[1].trim() : '';
+          const captured = extractCodeFromText(loc) || extractCodeFromText(res.finalUrl) || extractCodeFromText(res.responseText);
+          if (captured) {
+            deliverOAuthCode(captured);
+            showAutoAuthOverlay('Pixiv 自动授权已完成', '已自动回传 OAuth 授权并同步登录状态，正在关闭本页…', true, `${backOrigin}/?pixiv_code=${encodeURIComponent(captured)}`);
+            setTimeout(() => {
+              window.close();
+              if (!window.closed) window.location.replace(`${backOrigin}/?pixiv_code=${encodeURIComponent(captured)}`);
+            }, 450);
+          } else {
+            // 若未能抓到 code（例如已通过 cookie 完成登录），直接回传 cookie 并返回
+            readChromePixivCookie((cookieStr) => {
+              if (cookieStr) deliverCookieSession(cookieStr);
+              showAutoAuthOverlay('Pixiv 登录态已同步', '已将当前 Chrome Pixiv 登录状态同步回原页面，正在返回…', true, backOrigin);
+              setTimeout(() => {
+                window.close();
+                if (!window.closed) window.location.replace(backOrigin);
+              }, 600);
+            });
+          }
+        },
+        onerror: () => {
+          readChromePixivCookie((cookieStr) => {
+            if (cookieStr) deliverCookieSession(cookieStr);
+            showAutoAuthOverlay('Pixiv 登录态已同步', '已将当前 Chrome 会话同步回原页面，正在返回…', true, backOrigin);
+            setTimeout(() => {
+              window.close();
+              if (!window.closed) window.location.replace(backOrigin);
+            }, 600);
+          });
+        }
+      });
+    }
     return;
   }
 
   // =========================================================================
-  // 2. 在 localhost:3456 与 madeinmagius-site 自动桥接 Chrome 已登录的 Pixiv 会话
+  // 2. 在终端页面 (localhost:3456 / madeinmagius-site.pages.dev / hiiraginemu.github.io)
+  //    自动广播桥接就绪、自动同步 Chrome 会话、并实时接收跨标签页 OAuth 授权码！
   // =========================================================================
-  if (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname === 'madeinmagius-site.pages.dev' ||
-    window.location.hostname === 'hiiraginemu.github.io'
-  ) {
-    function bridgeChromePixivSession() {
-      if (typeof GM_cookie !== 'undefined' && GM_cookie.list) {
-        GM_cookie.list({ url: 'https://www.pixiv.net' }, function (cookies, error) {
-          if (!error && Array.isArray(cookies)) {
-            const phpSess = cookies.find(c => c.name === 'PHPSESSID');
-            if (phpSess && phpSess.value) {
+  if (isAppHost(window.location.hostname)) {
+    try {
+      if (typeof GM_setValue === 'function') {
+        const appUrl = window.location.origin + (window.location.pathname.includes('/pixez') ? '/pixez' : '');
+        GM_setValue('pixez_last_app_origin_v4', appUrl);
+      }
+    } catch (_) {}
+
+    function announceAndSync() {
+      window.postMessage({ type: 'PIXEZ_USERSCRIPT_ALIVE', version: VERSION }, '*');
+      // 1) 优先直接读取 Chrome 当前 pixiv.net PHPSESSID
+      readChromePixivCookie((cookieStr) => {
+        if (cookieStr) {
+          let cachedUserName = '';
+          try {
+            const saved = JSON.parse((typeof GM_getValue === 'function' && GM_getValue('pixez_cookie_session_v4', '')) || '{}');
+            cachedUserName = saved.userName || '';
+          } catch (_) {}
+          window.postMessage({
+            type: 'PIXEZ_USERSCRIPT_BRIDGE_READY',
+            cookie: cookieStr,
+            userName: cachedUserName,
+            source: 'GM_cookie'
+          }, '*');
+        } else {
+          // 2) 回退到缓存的跨站会话
+          try {
+            const saved = JSON.parse((typeof GM_getValue === 'function' && GM_getValue('pixez_cookie_session_v4', '')) || '{}');
+            if (saved.cookie) {
               window.postMessage({
                 type: 'PIXEZ_USERSCRIPT_BRIDGE_READY',
-                cookie: `PHPSESSID=${phpSess.value}`,
-                source: 'GM_cookie'
+                cookie: saved.cookie,
+                userName: saved.userName || '',
+                source: 'GM_storage'
               }, '*');
             }
-          }
-        });
-      }
+          } catch (_) {}
+        }
+      });
     }
 
-    bridgeChromePixivSession();
+    // 实时监听其他标签页（Pixiv 登录页）写入的 OAuth Code 或 Cookie 会话
+    if (typeof GM_addValueChangeListener === 'function') {
+      GM_addValueChangeListener('pixez_oauth_code_v4', (_name, _oldVal, newVal) => {
+        try {
+          const parsed = JSON.parse(newVal || '{}');
+          if (parsed.code && Date.now() - (parsed.ts || 0) < 60000) {
+            window.postMessage({ type: 'PIXEZ_OAUTH_CODE', code: parsed.code, source: 'GM_listener' }, '*');
+          }
+        } catch (_) {}
+      });
+      GM_addValueChangeListener('pixez_cookie_session_v4', (_name, _oldVal, newVal) => {
+        try {
+          const parsed = JSON.parse(newVal || '{}');
+          if (parsed.cookie) {
+            window.postMessage({
+              type: 'PIXEZ_USERSCRIPT_BRIDGE_READY',
+              cookie: parsed.cookie,
+              userName: parsed.userName || '',
+              source: 'GM_listener'
+            }, '*');
+          }
+        } catch (_) {}
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', announceAndSync, { once: true });
+    } else {
+      announceAndSync();
+    }
+    setTimeout(announceAndSync, 600);
+
     window.addEventListener('message', (ev) => {
       if (ev.data && ev.data.type === 'PIXEZ_REQUEST_CHROME_BRIDGE') {
-        bridgeChromePixivSession();
+        announceAndSync();
       }
     });
     return;
   }
+
+  // 在 pixiv.net 正常浏览时，也自动把当前登录的昵称与会话同步给 GM 存储（供终端自动登录）
+  if (window.location.hostname === 'www.pixiv.net') {
+    window.addEventListener('DOMContentLoaded', () => {
+      let userName = '';
+      try {
+        const meta = document.querySelector('meta[name="global-data"]');
+        if (meta && meta.content) {
+          const gd = JSON.parse(meta.content);
+          userName = gd?.userData?.name || '';
+        }
+      } catch (_) {}
+      readChromePixivCookie((cookieStr) => {
+        if (cookieStr) deliverCookieSession(cookieStr, userName);
+      });
+    }, { once: true });
+  }
+
+  // 等待 DOM Ready 再注入 Pixiv 站内抽屉 UI
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initPixivInPageDrawer, { once: true });
+    return;
+  }
+  initPixivInPageDrawer();
+
+  function initPixivInPageDrawer() {
 
   // =========================================================================
   // 3. Pixiv 站内全格式 URL 解析 (/tags/ 与 /search?q= 全支持)
@@ -642,5 +845,6 @@
     startSampling(true);
   } else {
     drawer.classList.add('pxp-hidden');
+  }
   }
 })();

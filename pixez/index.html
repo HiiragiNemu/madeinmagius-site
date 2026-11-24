@@ -1,51 +1,62 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="paper" data-theme-bar-mode="top" data-pixel-font="false" data-crt-fx="true" data-lofi-fx="true" data-fx-curvature="true">
+<html lang="zh-CN" data-call-theme="paper" data-call-phosphor="green" data-call-theme-bar-mode="floating" data-call-fx-curvature="true" data-call-fx-scanlines="true" data-call-fx-noise="true" data-call-fx-pixel-font="false" data-call-fx-registration="true" data-call-fx-glass-damage="false" data-call-optics-active="true" data-call-crt-engine="static-svg" data-call-ios="false" data-call-ios-flat="false" data-call-reader-optics="v14" data-active-view="table">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>MadeInMagius // Pixiv 标签共现频次与语义分类</title>
-  <link rel="stylesheet" href="./styles.css?v=3.9" />
+  <script id="pixez-preboot-optics">
+    (() => {
+      const root = document.documentElement;
+      const ua = navigator.userAgent || '';
+      const ios = /AppleWebKit/.test(ua) && (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+      const DEFAULTS = {
+        light: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: false },
+        paper: { curvature: true, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+        green: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: false },
+        dark:  { curvature: true, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+        frost: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: true }
+      };
+      let theme = 'paper', phosphor = 'green', themeBarMode = 'floating';
+      let fx = { ...DEFAULTS.paper };
+      try {
+        const saved = JSON.parse(localStorage.getItem('pixez_visual_v40') || '{}');
+        if (saved && DEFAULTS[saved.theme]) theme = saved.theme;
+        if (saved && (saved.phosphor === 'amber' || saved.phosphor === 'green')) phosphor = saved.phosphor;
+        if (saved && (saved.themeBarMode === 'top' || saved.themeBarMode === 'floating')) themeBarMode = saved.themeBarMode;
+        fx = { ...DEFAULTS[theme], ...(saved?.effects?.[theme] || {}) };
+      } catch (_) {}
+      root.dataset.callTheme = theme;
+      root.dataset.callPhosphor = phosphor;
+      root.dataset.callThemeBarMode = themeBarMode;
+      root.dataset.callIos = String(ios);
+      root.dataset.callIosFlat = String(ios);
+      root.dataset.callCrtEngine = ios ? 'native-flat' : 'static-svg';
+      root.dataset.callFxCurvature = String(!ios && Boolean(fx.curvature));
+      root.dataset.callFxScanlines = String(Boolean(fx.scanlines));
+      root.dataset.callFxNoise = String(Boolean(fx.noise));
+      root.dataset.callFxPixelFont = String(Boolean(fx.pixelFont));
+      root.dataset.callFxRegistration = String(Boolean(fx.registration));
+      root.dataset.callFxGlassDamage = String(Boolean(fx.glassDamage));
+      root.dataset.callOpticsActive = String(!ios && Boolean(fx.curvature));
+      root.dataset.callGlassActive = 'false';
+      root.dataset.callReaderOptics = 'v14';
+      root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
+    })();
+  </script>
+  <link rel="stylesheet" href="./styles.css?v=4.0" />
+  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.0" />
 </head>
-<body>
-  <!-- MAGIUS LINK Background Emblem Watermark (Exact magius-mark.svg + magius-link-wordmark.svg from magireco-call-search-cn) -->
-  <div class="call-brand-watermark-v8" aria-hidden="true">
-    <img class="call-brand-emblem-v8" src="./textures/magius-mark.svg" alt="" />
-    <img class="call-brand-wordmark-v8" src="./textures/magius-link-wordmark.svg" alt="" />
-  </div>
-
-  <!-- Physical Screen Material & Optical Layers (z-index: 60, pointer-events: none; artwork images sit at z-index: 80 above this layer) -->
-  <div class="call-reader-screen-v7" aria-hidden="true">
-    <span class="call-fx-day-grain-v7"></span>
-    <span class="call-fx-scanlines-v7"></span>
-    <span class="call-fx-night-phosphor-v7"></span>
-    <span class="call-fx-night-grain-v7"></span>
-    <span class="call-fx-frost-grain-v7"></span>
-    <span class="call-fx-frost-smudges-v7"></span>
-    <span class="call-fx-frost-glass-v7"></span>
-    <span class="call-fx-frost-wear-v7"></span>
-    <span class="call-fx-bezel-v7"></span>
-  </div>
-
-  <!-- Right-Side Floating Quick Action Rail (Exact port of call-jump-widget-v7 from magireco-call-search-cn) -->
-  <aside class="call-jump-widget-v7" id="quickJumpRail" aria-label="快捷导航与一键搜索悬浮栏">
-    <div class="call-jump-head-v7">
-      <button class="call-jump-grip-v7" id="quickRailGrip" type="button" title="拖动悬浮框位置；双击恢复默认位置">⋮⋮</button>
-      <button class="call-jump-collapse-v7" id="quickRailCollapseBtn" type="button" title="折叠/展开快捷栏">&lt;</button>
+<body class="call-screen-host-v7">
+  <!-- Single Bounded CRT Optical Viewport (Exact magireco-call-search-cn / MagiReader v14 architecture) -->
+  <div class="call-display-root-v7" id="callDisplayRoot" data-call-screen-root="true">
+    <!-- MAGIUS LINK Background Emblem Watermark -->
+    <div class="call-brand-watermark-v8" aria-hidden="true">
+      <img class="call-brand-emblem-v8" src="./textures/magius-mark.svg" alt="" />
+      <img class="call-brand-wordmark-v8" src="./textures/magius-link-wordmark.svg" alt="" />
     </div>
-    <div class="call-jump-actions-v7">
-      <button type="button" data-rail-action="top" title="回到顶部"><span class="call-rail-letter">↑</span></button>
-      <button type="button" data-rail-action="query" title="定位到搜索输入框"><span class="call-rail-letter">选</span></button>
-      <button type="button" data-rail-action="filter" title="定位到分类与清洗开关"><span class="call-rail-letter">筛</span></button>
-      <button type="button" data-rail-action="table" title="切换到共现排行榜"><span class="call-rail-letter">榜</span></button>
-      <button type="button" data-rail-action="search" title="立即执行采样搜索">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5"/></svg>
-      </button>
-      <button type="button" data-rail-action="clear" title="清空当前叠加必含筛选"><span class="call-rail-letter">×</span></button>
-      <button type="button" data-rail-action="network" title="切换到共现拓扑图"><span class="call-rail-letter">拓</span></button>
-      <button type="button" data-rail-action="gallery" title="切换到样本画廊"><span class="call-rail-letter">图</span></button>
-      <button type="button" data-rail-action="bottom" title="跳至页面底部"><span class="call-rail-letter">↓</span></button>
-    </div>
-  </aside>
+
+    <!-- Single Bounded Scrollable Document Inside the Optical Lens -->
+    <div class="call-display-scroll-v7" id="callDisplayScroll" data-call-scroll-root="true">
 
   <!-- Masthead:
        Row 1: Dedicated Top Row (MadeInMagius + 我的其他工具和动态 + 使用说明)
@@ -67,34 +78,8 @@
       </div>
     </div>
 
-    <!-- Row 2: Call-Site Theme & Appearance Bar (Dockable at Top or Draggable Floating) -->
-    <div class="masthead__theme-slot" id="themeBarTopSlot">
-      <div class="call-floating-widget-v7 call-theme-widget-v7" id="themeSwitcher" role="toolbar" aria-label="主题与画面设置">
-        <button class="call-floating-grip-v7 call-theme-grip-v7" id="themeWidgetGrip" type="button" title="拖动主题栏；双击恢复默认位置">
-          <span aria-hidden="true">⋮⋮</span>
-        </button>
-        <div class="call-theme-options-v7">
-          <button class="call-theme-option-v7" data-theme-choice="light" type="button" title="明亮" aria-label="切换为明亮主题" aria-pressed="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>
-          </button>
-          <button class="call-theme-option-v7 active" data-theme-choice="paper" type="button" title="纸张 (默认)" aria-label="切换为纸张主题" aria-pressed="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 5.5c3.3-.8 5.8-.1 8.5 1.5v11c-2.7-1.6-5.2-2.3-8.5-1.5zM20.5 5.5c-3.3-.8-5.8-.1-8.5 1.5v11c2.7-1.6 5.2-2.3 8.5-1.5z"/></svg>
-          </button>
-          <button class="call-theme-option-v7" data-theme-choice="eyecare" type="button" title="护眼" aria-label="切换为护眼主题" aria-pressed="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19.5 4.5C12.7 4.5 7.2 7 5.4 12.2c-1 2.9.8 5.8 3.7 5.8 5.4 0 9.1-5.7 10.4-13.5Z"/><path d="M5 20c2.1-4.3 5.4-7.4 10.2-9.4"/></svg>
-          </button>
-          <button class="call-theme-option-v7" data-theme-choice="green" type="button" title="夜间 (绿磷/橙磷)" aria-label="切换为夜间主题" aria-pressed="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.5 15.7A7.8 7.8 0 0 1 8.3 5.5 8 8 0 1 0 18.5 15.7Z"/></svg>
-          </button>
-          <button class="call-theme-option-v7" data-theme-choice="frost" type="button" title="冷辉" aria-label="切换为冷辉主题" aria-pressed="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3H3v4M17 3h4v4M3 17v4h4M21 17v4h-4"/><path d="M8 8h8v8H8z"/></svg>
-          </button>
-        </div>
-        <button class="call-floating-utility-v7" id="openStyleConfigBtn" type="button" title="外观设置 / 画面与字体效果" aria-label="画面与字体效果" aria-expanded="false">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h10M18 18h2"/><rect x="11" y="4.5" width="4" height="3"/><rect x="7" y="10.5" width="4" height="3"/><rect x="14" y="16.5" width="4" height="3"/></svg>
-        </button>
-      </div>
-    </div>
+    <!-- Row 2 Slot: Hidden by default because draggable floating theme bar is default! -->
+    <div class="masthead__theme-slot" id="themeBarTopSlot"></div>
 
     <!-- Row 3: Compact View Switcher & Tools -->
     <div class="masthead__toolbar">
@@ -389,6 +374,139 @@
       </section>
     </div>
   </main>
+    </div> <!-- /call-display-scroll-v7 -->
+
+    <!-- Floating Draggable Theme & Appearance Bar (DEFAULT = FLOATING inside display root!) -->
+    <div class="call-floating-widget-v7 call-theme-widget-v7" id="themeSwitcher" role="toolbar" aria-label="主题与画面设置">
+      <button class="call-floating-grip-v7 call-theme-grip-v7" id="themeWidgetGrip" type="button" title="拖动主题栏；双击恢复默认位置">
+        <span aria-hidden="true">⋮⋮</span>
+      </button>
+      <div class="call-theme-options-v7">
+        <button class="call-theme-option-v7" data-call-theme-option="light" type="button" title="明亮" aria-label="切换为明亮主题" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>
+        </button>
+        <button class="call-theme-option-v7 active" data-call-theme-option="paper" type="button" title="纸张 (默认)" aria-label="切换为纸张主题" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 5.5c3.3-.8 5.8-.1 8.5 1.5v11c-2.7-1.6-5.2-2.3-8.5-1.5zM20.5 5.5c-3.3-.8-5.8-.1-8.5 1.5v11c-2.7-1.6-5.2-2.3-8.5-1.5z"/></svg>
+        </button>
+        <button class="call-theme-option-v7" data-call-theme-option="green" type="button" title="护眼" aria-label="切换为护眼主题" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19.5 4.5C12.7 4.5 7.2 7 5.4 12.2c-1 2.9.8 5.8 3.7 5.8 5.4 0 9.1-5.7 10.4-13.5Z"/><path d="M5 20c2.1-4.3 5.4-7.4 10.2-9.4"/></svg>
+        </button>
+        <button class="call-theme-option-v7" data-call-theme-option="dark" type="button" title="夜间 (绿磷/橙磷)" aria-label="切换为夜间主题" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.5 15.7A7.8 7.8 0 0 1 8.3 5.5 8 8 0 1 0 18.5 15.7Z"/></svg>
+        </button>
+        <button class="call-theme-option-v7" data-call-theme-option="frost" type="button" title="冷辉" aria-label="切换为冷辉主题" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3H3v4M17 3h4v4M3 17v4h4M21 17v4h-4"/><path d="M8 8h8v8H8z"/></svg>
+        </button>
+      </div>
+      <button class="call-floating-utility-v7" id="openStyleConfigBtn" type="button" title="外观设置 / 画面与字体效果" aria-label="画面与字体效果" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h10M18 18h2"/><rect x="11" y="4.5" width="4" height="3"/><rect x="7" y="10.5" width="4" height="3"/><rect x="14" y="16.5" width="4" height="3"/></svg>
+      </button>
+    </div>
+
+    <!-- Right-Side Floating Quick Action Rail (Floats cleanly over right edge with ZERO empty vertical gutter!) -->
+    <aside class="call-floating-widget-v7 call-jump-widget-v7" id="quickJumpRail" aria-label="快捷导航与一键搜索悬浮栏">
+      <div class="call-jump-head-v7">
+        <button class="call-jump-grip-v7" id="quickRailGrip" type="button" title="拖动悬浮框位置；双击恢复默认位置">⋮⋮</button>
+        <button class="call-jump-collapse-v7" id="quickRailCollapseBtn" type="button" title="折叠/展开快捷栏">&lt;</button>
+      </div>
+      <div class="call-jump-actions-v7">
+        <button type="button" data-rail-action="top" title="回到顶部"><span class="call-rail-letter">↑</span></button>
+        <button type="button" data-rail-action="query" title="定位到搜索输入框"><span class="call-rail-letter">选</span></button>
+        <button type="button" data-rail-action="filter" title="定位到分类与清洗开关"><span class="call-rail-letter">筛</span></button>
+        <button type="button" data-rail-action="table" title="切换到共现排行榜"><span class="call-rail-letter">榜</span></button>
+        <button type="button" data-rail-action="search" title="立即执行采样搜索">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5"/></svg>
+        </button>
+        <button type="button" data-rail-action="clear" title="清空当前叠加必含筛选"><span class="call-rail-letter">×</span></button>
+        <button type="button" data-rail-action="network" title="切换到共现拓扑图"><span class="call-rail-letter">拓</span></button>
+        <button type="button" data-rail-action="gallery" title="切换到样本画廊"><span class="call-rail-letter">图</span></button>
+        <button type="button" data-rail-action="bottom" title="跳至页面底部"><span class="call-rail-letter">↓</span></button>
+      </div>
+    </aside>
+
+    <!-- Floating SYS://DISPLAY.CONFIG Window inside display root -->
+    <section class="call-floating-widget-v7 call-fx-window-v7 hidden" id="styleConfigModal" role="dialog" aria-label="画面与字体效果">
+      <header class="call-fx-titlebar-v7" id="fxWindowTitlebar" title="拖动设置窗口">
+        <div class="call-fx-title-copy-v7">
+          <small>SYS://DISPLAY.CONFIG</small>
+          <strong>画面与字体效果</strong>
+        </div>
+        <button class="call-fx-close-v7" id="closeStyleConfigBtn" type="button" aria-label="关闭设置">×</button>
+      </header>
+      <div class="call-fx-body-v7">
+        <p class="call-fx-intro-v7">
+          当前主题：<strong id="fxCurrentThemeLabel">纸张</strong>。采用 MagiReader / Call v14 真实静态光学与玻璃质感；设置按主题保存。（所有作品图片均已光学隔离）
+        </p>
+
+        <fieldset id="fxPhosphorFieldset" hidden>
+          <legend>夜间磷光</legend>
+          <div class="call-fx-segment-v7">
+            <button type="button" data-phosphor-choice="green" aria-pressed="true">绿磷光</button>
+            <button type="button" data-phosphor-choice="amber" aria-pressed="false">橙磷光</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>屏幕与字体效果</legend>
+          <label class="call-fx-toggle-row-v7">
+            <span>屏幕曲率模拟</span>
+            <input type="checkbox" id="toggleCurvatureCheck" checked />
+          </label>
+          <label class="call-fx-toggle-row-v7">
+            <span>扫描线</span>
+            <input type="checkbox" id="toggleCrtFxCheck" checked />
+          </label>
+          <label class="call-fx-toggle-row-v7">
+            <span>屏幕噪点</span>
+            <input type="checkbox" id="toggleNoiseFxCheck" checked />
+          </label>
+          <label class="call-fx-toggle-row-v7">
+            <span>像素字体</span>
+            <input type="checkbox" id="togglePixelFontCheck" />
+          </label>
+          <label class="call-fx-toggle-row-v7">
+            <span>静态色散与荧光描边</span>
+            <input type="checkbox" id="toggleLofiFxCheck" checked />
+          </label>
+          <label class="call-fx-toggle-row-v7" id="fxGlassDamageRow" hidden>
+            <span>玻璃裂纹与划痕</span>
+            <input type="checkbox" id="toggleGlassDamageCheck" checked />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>主题栏位置</legend>
+          <div class="call-fx-segment-v7">
+            <button type="button" data-themebar-mode="floating" aria-pressed="true">可拖拽悬浮</button>
+            <button type="button" data-themebar-mode="top" aria-pressed="false">顶部随页面滚动</button>
+          </div>
+        </fieldset>
+
+        <footer class="call-fx-footer-v7">
+          <button type="button" id="resetThemeDefaultsBtn">恢复本主题默认</button>
+          <button type="button" id="doneStyleConfigBtn">关闭</button>
+        </footer>
+      </div>
+    </section>
+
+    <!-- In-Screen Optical Scrollbar -->
+    <div class="call-optical-scroll-v7" id="callOpticalScroll" aria-hidden="true">
+      <div class="call-optical-scroll-track-v7"></div>
+      <div class="call-optical-scroll-thumb-v7" id="callOpticalScrollThumb"></div>
+    </div>
+
+    <!-- Exact Reader v14 Direct Screen Material Layers + Frost Surface + Bezel -->
+    <span class="call-fx-night-phosphor-v7 call-material-direct-v11" aria-hidden="true"></span>
+    <span class="call-fx-night-grain-v7 call-material-direct-v11" aria-hidden="true"></span>
+    <div class="call-reader-screen-v7" aria-hidden="true">
+      <span class="call-fx-frost-grain-v7"></span>
+      <span class="call-fx-frost-smudges-v7"></span>
+      <span class="call-fx-frost-glass-v7"></span>
+    </div>
+    <span class="call-fx-bezel-v7" aria-hidden="true"></span>
+  </div> <!-- /call-display-root-v7 -->
+
+  <!-- ALL MODALS LIVE OUTSIDE .call-display-root-v7 SO ARTWORK IMAGES ARE 100% OPTICALLY CLEAN -->
 
   <!-- ===================================================================== -->
   <!-- FLOATING WINDOW: 我的其他工具和动态 (Exact port of AboutModal.tsx)      -->
@@ -574,68 +692,7 @@
     </div>
   </div>
 
-  <!-- ===================================================================== -->
-  <!-- FLOATING DISPLAY CONFIG POPOVER (Exact replica of call-fx-window-v7)   -->
-  <!-- ===================================================================== -->
-  <section class="call-floating-widget-v7 call-fx-window-v7 hidden" id="styleConfigModal" role="dialog" aria-label="画面与字体效果">
-    <header class="call-fx-titlebar-v7" id="fxWindowTitlebar" title="拖动设置窗口">
-      <div class="call-fx-title-copy-v7">
-        <small>SYS://DISPLAY.CONFIG</small>
-        <strong>画面与字体效果</strong>
-      </div>
-      <button class="call-fx-close-v7" id="closeStyleConfigBtn" type="button" aria-label="关闭设置">×</button>
-    </header>
-    <div class="call-fx-body-v7">
-      <p class="call-fx-intro-v7">
-        当前主题：<strong id="fxCurrentThemeLabel">纸张</strong>。保留静态玻璃质感；无画面抖动、滚动扫描或动态噪点。设置按主题保存。（所有作品图片均已光学隔离）
-      </p>
-
-      <fieldset id="fxPhosphorFieldset">
-        <legend>夜间磷光</legend>
-        <div class="call-fx-segment-v7">
-          <button type="button" data-phosphor-choice="green" aria-pressed="true">绿磷光</button>
-          <button type="button" data-phosphor-choice="amber" aria-pressed="false">橙磷光</button>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>屏幕与字体效果</legend>
-        <label class="call-fx-toggle-row-v7">
-          <span>屏幕曲率模拟</span>
-          <input type="checkbox" id="toggleCurvatureCheck" checked />
-        </label>
-        <label class="call-fx-toggle-row-v7">
-          <span>扫描线</span>
-          <input type="checkbox" id="toggleCrtFxCheck" checked />
-        </label>
-        <label class="call-fx-toggle-row-v7">
-          <span>屏幕噪点</span>
-          <input type="checkbox" id="toggleNoiseFxCheck" checked />
-        </label>
-        <label class="call-fx-toggle-row-v7">
-          <span>像素字体</span>
-          <input type="checkbox" id="togglePixelFontCheck" />
-        </label>
-        <label class="call-fx-toggle-row-v7">
-          <span>静态色散与荧光描边</span>
-          <input type="checkbox" id="toggleLofiFxCheck" checked />
-        </label>
-      </fieldset>
-
-      <fieldset>
-        <legend>主题栏位置</legend>
-        <div class="call-fx-segment-v7">
-          <button type="button" data-themebar-mode="top" aria-pressed="true">顶部随页面滚动</button>
-          <button type="button" data-themebar-mode="floating" aria-pressed="false">可拖拽悬浮</button>
-        </div>
-      </fieldset>
-
-      <footer class="call-fx-footer-v7">
-        <button type="button" id="resetThemeDefaultsBtn">恢复本主题默认</button>
-        <button type="button" id="doneStyleConfigBtn">关闭</button>
-      </footer>
-    </div>
-  </section>
+  <!-- FLOATING DISPLAY CONFIG POPOVER moved inside #callDisplayRoot -->
 
   <!-- ===================================================================== -->
   <!-- MODAL 4: USER MANUAL & FEATURE GUIDE                                  -->
@@ -725,53 +782,52 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 6: PIXIV LOGIN / CHROME BRIDGE / OAUTH / COOKIE                 -->
+  <!-- MODAL 6: PIXIV AUTOMATED ONE-CLICK AUTH & PERSISTENT SESSION          -->
   <!-- ===================================================================== -->
   <div class="modal-backdrop hidden" id="authModal">
-    <div class="modal-window modal-window--lg">
+    <div class="modal-window modal-window--md">
       <div class="modal-titlebar">
         <div>
-          <h3>连接 Pixiv 账号（支持油猴自动同步 Chrome 登录态 / Cookie / OAuth）</h3>
+          <h3>连接 Pixiv 账号（全自动授权与持久化登录）</h3>
         </div>
         <button class="btn-modal-close" id="closeAuthModalBtn" type="button">[X] 关闭</button>
       </div>
       <div class="modal-content">
         <div class="auth-status-banner" id="authStatusBanner">
-          <div id="authCurrentStatusBox">当前状态: 免登录直连模式 — 无需登录即可直接进行全量页面采样、分类排行与高清看图下载。</div>
+          <div id="authCurrentStatusBox">当前状态: 免登录直连模式 — 无需登录即可采样与看图。</div>
           <button class="t-btn t-btn--danger hidden" id="oauthLogoutBtn" type="button">退出当前账号</button>
         </div>
 
-        <div class="auth-methods-grid">
-          <div class="auth-method-card">
-            <div class="subbox-title">方式 A // 已登录 Chrome 浏览器一键同步 / Cookie 直通（最省心 · 零空白页）</div>
-            <p class="modal-note">
-              如果您当前的 Chrome 浏览器已经登录了 Pixiv：<br/>
-              1. <strong>自动同步</strong>：安装本项目的 <a href="./downloads/pixtag-companion.user.js" target="_blank"><strong>v3.9 油猴脚本 (pixtag-companion.user.js)</strong></a> 后，脚本会自动将您 Chrome 已登录的 Pixiv 会话同步至本页面，无需任何手动操作。<br/>
-              2. <strong>手动填入 PHPSESSID</strong>：在已登录的 <code>pixiv.net</code> 页面按 <code>F12</code> &rarr; <code>Application (应用)</code> &rarr; <code>Cookies</code> 复制 <code>PHPSESSID</code> 填入下方即可持久化登录：
-            </p>
-            <div class="copy-input-row">
-              <input type="password" id="cookieInput" placeholder="粘贴已登录 Chrome 的 PHPSESSID 值..." />
-              <button class="t-btn t-btn--primary" id="saveCookieBtn" type="button">验证并保存登录</button>
-              <button class="t-btn" id="clearCookieBtn" type="button">清除</button>
-            </div>
-          </div>
-
-          <div class="auth-method-card">
-            <div class="subbox-title">方式 B // PixEz 官方 OAuth PKCE 登录或 Refresh Token</div>
-            <p class="modal-note">
-              点击下方「打开 Pixiv 官方 OAuth 授权页」，当页面变空白时按 <strong>F12 切到 Console</strong>，直接<strong>复制红色的 <code>Failed to launch 'pixiv://account/login?code=...'</code> 整行报错文本</strong>粘贴到下方输入框即可完成登录：
-            </p>
-            <button class="t-btn" id="startPixivOAuthBtn" type="button">打开 Pixiv 官方 OAuth 授权页 ↗</button>
-            <div class="copy-input-row">
-              <input type="text" id="oauthCodeInput" placeholder="粘贴 F12 Console 中的 Failed to launch 'pixiv://...code=...' 整行文本..." />
-              <button class="t-btn t-btn--primary" id="submitOAuthCodeBtn" type="button">完成 OAuth 登录</button>
-            </div>
-            <div class="copy-input-row" style="margin-top:4px;">
-              <input type="password" id="refreshTokenInput" placeholder="或直接输入已有的 PixEz / Pixiv Refresh Token..." />
-              <button class="t-btn" id="submitRefreshTokenBtn" type="button">Token 登录</button>
-            </div>
+        <div class="auth-method-card" id="autoAuthPrimaryCard">
+          <div class="subbox-title" id="bridgeStatusTitle">全自动登录与跨页授权桥接</div>
+          <p class="modal-note" id="bridgeStatusDesc">
+            安装或更新 <strong>v4.0 油猴桥接脚本</strong> 后，打开本页会自动同步您浏览器已登录的 Pixiv 账号；或点击下方「一键登录 Pixiv」，在 Pixiv 页面点击「继续使用此账号」后会自动回传授权并关闭弹窗，后续每次打开均自动保持登录状态。
+          </p>
+          <div class="modal-footer-btns" style="justify-content:flex-start;">
+            <button class="t-btn t-btn--primary" id="startPixivOAuthBtn" type="button">一键登录 Pixiv ↗</button>
+            <button class="t-btn" id="syncChromeBridgeNowBtn" type="button">立即同步当前浏览器登录态</button>
+            <a class="t-btn" id="installAuthBridgeLink" href="./downloads/pixtag-companion.user.js" target="_blank" rel="noopener">安装 / 更新 v4.0 自动桥接脚本</a>
           </div>
         </div>
+
+        <details class="auth-advanced-details">
+          <summary>无脚本环境手动导入凭据（可选备用）</summary>
+          <div class="auth-advanced-body">
+            <div class="copy-input-row">
+              <input type="password" id="cookieInput" placeholder="可选: 填入 PHPSESSID..." />
+              <button class="t-btn t-btn--primary" id="saveCookieBtn" type="button">保存并持久化</button>
+              <button class="t-btn" id="clearCookieBtn" type="button">清除</button>
+            </div>
+            <div class="copy-input-row">
+              <input type="password" id="refreshTokenInput" placeholder="可选: 填入已有 PixEz Refresh Token..." />
+              <button class="t-btn" id="submitRefreshTokenBtn" type="button">Token 登录</button>
+            </div>
+            <div class="copy-input-row">
+              <input type="text" id="oauthCodeInput" placeholder="可选: 填入 OAuth 回调 code..." />
+              <button class="t-btn" id="submitOAuthCodeBtn" type="button">验证 Code</button>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   </div>
@@ -856,9 +912,9 @@
       <div class="modal-content">
         <div class="client-grid">
           <div class="client-box">
-            <div class="client-box__tag">油猴脚本 v3.8 (推荐)</div>
-            <h3>Pixiv 网页内嵌抽屉 + Chrome 登录态自动桥接脚本</h3>
-            <p>安装后不仅能在 <code>pixiv.net/tags/...</code> 与 <code>pixiv.net/search?q=...</code> 右侧直接展开档案风全量共现分析抽屉，还能<strong>自动把您当前已登录的 Chrome Pixiv 会话同步给本页面</strong>，并自动拦截 `post-redirect` 空白页。</p>
+            <div class="client-box__tag">油猴脚本 v4.0 (推荐)</div>
+            <h3>Pixiv 网页内嵌抽屉 + 全自动授权登录桥接脚本</h3>
+            <p>安装后不仅能在 <code>pixiv.net/tags/...</code> 与 <code>pixiv.net/search?q=...</code> 右侧直接展开档案风全量共现分析抽屉，还能<strong>自动同步您当前 Chrome 的 Pixiv 登录态，并全自动接管 Pixiv 登录授权回调（零空白页、零 F12）</strong>。</p>
             <div class="client-box__actions">
               <button class="t-btn t-btn--primary" id="copyUserscriptSourceBtn" type="button">一键复制油猴脚本代码</button>
               <a class="t-btn" href="./downloads/pixtag-companion.user.js" target="_blank">下载/安装 .user.js 脚本</a>
@@ -879,6 +935,10 @@
   </div>
 
   <div class="toast-container" id="toastContainer"></div>
-  <script src="./app.js?v=3.9"></script>
+  <script src="./optics/reader-optics-graphs-v14.js?v=4.0"></script>
+  <script src="./optics/reader-optics-v14.js?v=4.0"></script>
+  <script src="./optics/reader-glass-cache-v12.js?v=4.0"></script>
+  <script src="./optics/reader-glass-v12.js?v=4.0"></script>
+  <script src="./app.js?v=4.0"></script>
 </body>
 </html>

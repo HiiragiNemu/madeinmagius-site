@@ -334,7 +334,9 @@ function selectSub(id, focus = false) {
 }
 
 function parseHash() {
-  const [p, s] = location.hash.slice(1).split('/');
+  const [rawP, rawS] = location.hash.slice(1).split('/');
+  const p = rawP === 'exedra' ? 'home' : rawP;
+  const s = (rawP === 'exedra' && !rawS) ? 'exedra-downloads' : rawS;
   if (!PROGRAMS[p]) return;
 
   programId = p;

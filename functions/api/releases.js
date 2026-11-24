@@ -72,7 +72,42 @@ const NETEASE_LEGACY_251 = {
   },
 };
 
+const PIXIV_FALLBACK_V100 = {
+  tag: 'v1.0.0',
+  name: 'MadeInMagius PixEz Pulse v1.0.0',
+  published_at: '2026-11-24T02:34:30Z',
+  release_url: 'https://madeinmagius-site.pages.dev/#pixiv',
+  assets: {
+    android: {
+      id: 785402037,
+      name: 'PixEz-Pulse-v1.0.0-android-release.apk',
+      size: 52394816,
+      digest: 'sha256:71160501e3ed0b561296013ea2a4232b66e59370461e354ca600c0d82c9d5a1f',
+      content_type: 'application/vnd.android.package-archive',
+      download: './downloads/pixiv/android',
+    },
+    userscript: {
+      id: 785402031,
+      name: 'pixtag-companion.user.js',
+      size: 25801,
+      digest: 'sha256:a811eb208814dbff5d3dd8701591d3b0d36322efb28e1e5b50564f2648a4175c',
+      content_type: 'application/javascript; charset=utf-8',
+      download: './downloads/pixiv/userscript',
+    },
+  },
+};
+
 const PROJECTS = {
+  pixiv: {
+    repo: 'HiiragiNemu/pixez-pulse',
+    mode: 'latest',
+    fallbackOnLookupError: true,
+    fallback: PIXIV_FALLBACK_V100,
+    assets: {
+      android: /\.apk$/i,
+      userscript: /\.user\.js$/i,
+    },
+  },
   bilibili: {
     repo: 'HiiragiNemu/Bilibili-Follower-Snapshot',
     mode: 'latest',
@@ -173,10 +208,18 @@ function assetShape(asset, project, key, route = key) {
 }
 
 async function latestProject(key, config, token) {
-  const release = await githubJson(
-    `https://api.github.com/repos/${config.repo}/releases/latest`,
-    token,
-  );
+  let release;
+  try {
+    release = await githubJson(
+      `https://api.github.com/repos/${config.repo}/releases/latest`,
+      token,
+    );
+  } catch (err) {
+    if (config.fallbackOnLookupError && config.fallback) {
+      return { ...config.fallback, source: 'static-fallback' };
+    }
+    throw err;
+  }
 
   if (config.minimumVersion && !atLeast(release.tag_name, config.minimumVersion)) {
     return { ...config.fallback, source: 'legacy-public-fallback' };

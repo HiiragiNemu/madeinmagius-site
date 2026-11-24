@@ -1,12 +1,9 @@
 /* ============================================================================
- * PIXEZ PULSE v3.5 — Authentic MagiReader / Call v14 Optical & Compact Terminal
- * - Direct port of call-theme-mode-v1.css + call-reader-optics-v14.css + suite-v7
- * - Physical screen layers (.call-reader-screen-v7 at z-index: 60) cover all UI
- *   panels, tables, borders, and text; artwork images (.artwork-thumb-box,
- *   .viewer-media-box, .clean-optical-media) sit at z-index: 80 above the grid!
- * - Size-sensitive registration & dispersion applies uniformly to ALL text roles.
- * - Ultra-compact button/input/table density with zero horizontal clipping even
- *   in 600px-800px split-screen viewports, plus themed scrollbars.
+ * PIXEZ PULSE v4.0 — Exact MagiReader / Call v14 Optical & Compact Terminal
+ * - Real SVG barrel curvature, RGB chromatic offset, low-pass softness,
+ *   phosphor bloom & frost scratch refraction via optics/reader-optics-v14.css
+ * - Translucent hover faces so MAGIUS LINK emblem watermark stays visible
+ * - Zero blank right-side gutter; portaled dropdowns immune to occlusion
  * ============================================================================ */
 
 @font-face {
@@ -26,23 +23,24 @@
 }
 
 /* ============================================================================
- * 1. THEME PALETTES & OPTICAL TOKENS (Exact values from call-theme-mode-v1.css)
+ * 1. THEME PALETTES & TRANSLUCENT CONTROL TOKENS (Exact Call / MagiReader v14)
  * ============================================================================ */
 
-/* DEFAULT: 纸张 (Archival Paper with fine grid, grain, and warm ink registration) */
+/* DEFAULT: 纸张 (Archival Paper) */
 :root,
-:root[data-theme="paper"] {
+:root[data-call-theme="paper"] {
   color-scheme: light;
   --t-bg: #f3eacb;
+  --call-bg: #f3eacb;
   --t-field:
     radial-gradient(ellipse at 50% 12%, rgba(255, 251, 224, 0.46), transparent 63%),
-    linear-gradient(rgba(92, 70, 37, 0.032) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(92, 70, 37, 0.032) 1px, transparent 1px),
+    linear-gradient(rgba(92, 70, 37, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(92, 70, 37, 0.028) 1px, transparent 1px),
     #f3eacb;
   --t-field-size: 100% 100%, 16px 16px, 16px 16px, auto;
-  --t-surface: rgba(245, 236, 208, 0.35);
-  --t-surface-soft: rgba(231, 218, 184, 0.48);
-  --t-surface-raised: #fff7de;
+  --t-surface: rgba(245, 236, 208, 0.34);
+  --t-surface-soft: rgba(231, 218, 184, 0.46);
+  --t-surface-raised: rgba(255, 247, 222, 0.74);
   --t-surface-modal: #f5ecd0;
   --t-text: #2c2318;
   --t-text-strong: #18120a;
@@ -54,61 +52,51 @@
   --t-accent-ink: #fff7df;
   --t-danger: #8e2b23;
   --t-network-bg: transparent;
-  --t-panel-shadow: inset 0 1px rgba(255, 252, 236, 0.72), 0 2px 6px rgba(55, 42, 24, 0.08);
   --t-selected-shadow: inset 0 0 0 2px rgba(216, 198, 157, 0.38), 0 2px 0 rgba(79, 57, 24, 0.38);
 
-  /* Exact Reader r12 physical control faces (reader-controls-v12.css lines 19-32) */
-  --control-face: linear-gradient(175deg, #fff6db, #e8d8b1);
-  --control-hover: linear-gradient(#fff9e8, #f3dfac);
+  --call-accent: #755f3e;
+  --call-accent-strong: #4f402b;
+  --call-border: rgba(128, 110, 75, 0.52);
+  --call-border-strong: #6e5a3b;
+
+  /* Translucent tactile faces so hovering NEVER covers the MAGIUS LINK watermark */
+  --control-face: linear-gradient(175deg, rgba(255, 246, 219, 0.72), rgba(232, 216, 177, 0.70));
+  --control-hover: linear-gradient(rgba(255, 249, 232, 0.58), rgba(243, 223, 172, 0.54));
   --control-edge: #a18a60;
-  --control-rest: inset 0 0 0 1px #fff6dc, 0 1px 0 rgba(133, 109, 62, 0.5), 0 2px 4px rgba(79, 57, 24, 0.1);
-  --control-lit: inset 0 0 0 1px #fff8e6, 0 0 0 1px #755f3e, 0 2px 8px rgba(133, 109, 62, 0.35);
+  --control-rest: inset 0 0 0 1px rgba(255, 246, 220, 0.75), 0 1px 0 rgba(133, 109, 62, 0.42), 0 2px 4px rgba(79, 57, 24, 0.08);
+  --control-lit: inset 0 0 0 1px rgba(255, 248, 230, 0.9), 0 0 0 1px #755f3e, 0 2px 8px rgba(133, 109, 62, 0.35);
   --control-press: inset 0 2px 4px rgba(110, 78, 36, 0.25), inset 0 0 0 1px #b89c68;
   --control-selected: linear-gradient(155deg, #897049, #5e482b);
   --control-selected-ink: #fff3cf;
   --control-hover-ink: #140e06;
-  --control-panel: linear-gradient(100deg, rgba(226, 210, 166, 0.47), rgba(255, 241, 197, 0.12));
+  --control-panel: linear-gradient(100deg, rgba(226, 210, 166, 0.78), rgba(245, 236, 208, 0.88));
 
-  /* Scrollbar tokens */
   --t-scroll-track: #e5d8b4;
   --t-scroll-thumb: #8b734b;
   --t-scroll-thumb-hover: #5c492c;
 
-  /* Category semantic colors */
   --t-cat-chr: #175c42;
   --t-cat-atr: #8e2b23;
   --t-cat-ip: #784812;
   --t-cat-meta: #493d68;
   --t-cat-bmk: #645b4d;
-
-  /* Size-sensitive registration */
-  --t-sized-lead: rgba(255, 252, 225, 0.55);
-  --t-sized-trail: rgba(127, 75, 53, 0.28);
-  --t-ambient-glow: rgba(117, 95, 62, 0.10);
-  --t-base-text-shadow:
-    clamp(-1px, calc(1.7px - 0.17em), 0px) 0 0.008em var(--t-sized-lead),
-    clamp(0px, calc(0.2em - 2px), 1.4px) 0.008em 0.008em var(--t-sized-trail);
-  --t-hover-text-shadow:
-    0 0 1px rgba(255, 252, 230, 0.9),
-    0 0 6px rgba(117, 95, 62, 0.35);
-  --t-inverse-text-shadow:
-    clamp(0.06px, calc(0.12em - 0.9px), 1.2px) 0 0.008em rgba(42, 30, 15, 0.45);
-  --t-scan-opacity: 0.14;
-  --t-day-grain-opacity: 0.20;
+  --t-hover-text-shadow: 0 0 1px rgba(255, 252, 230, 0.9), 0 0 6px rgba(117, 95, 62, 0.35);
+  --t-inverse-text-shadow: clamp(0.06px, calc(0.12em - 0.9px), 1.2px) 0 0.008em rgba(42, 30, 15, 0.45);
 }
 
-/* 明亮 (Light Neutral Archive from theme-mode-v1.css lines 17-43 & reader-controls-v12.css lines 3-18) */
-:root[data-theme="light"] {
+/* 明亮 (Light Neutral Archive) */
+:root[data-call-theme="light"] {
   color-scheme: light;
   --t-bg: #d8d4c6;
+  --call-bg: #d8d4c6;
   --t-field:
-    linear-gradient(rgba(60, 70, 72, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(60, 70, 72, 0.03) 1px, transparent 1px),
+    linear-gradient(rgba(60, 70, 72, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(60, 70, 72, 0.028) 1px, transparent 1px),
     #d8d4c6;
   --t-field-size: 16px 16px, 16px 16px, auto;
-  --t-surface: rgba(243, 244, 244, 0.38);
-  --t-surface-soft: rgba(225, 228, 228, 0.52);
-  --t-surface-raised: #fbfcfc;
+  --t-surface: rgba(243, 244, 244, 0.36);
+  --t-surface-soft: rgba(225, 228, 228, 0.48);
+  --t-surface-raised: rgba(251, 252, 252, 0.74);
   --t-surface-modal: #edf0e9;
   --t-text: #222a2d;
   --t-text-strong: #111618;
@@ -120,19 +108,23 @@
   --t-accent-ink: #f7fbfb;
   --t-danger: #844b60;
   --t-network-bg: transparent;
-  --t-panel-shadow: inset 0 1px rgba(255, 255, 255, 0.55), 0 3px 10px rgba(28, 34, 36, 0.11);
   --t-selected-shadow: inset 0 1px rgba(208, 225, 215, 0.5), 0 2px 4px rgba(35, 56, 45, 0.25);
 
-  --control-face: linear-gradient(#f9faf8, #dfe3e1);
-  --control-hover: linear-gradient(#ffffff, #e7efec);
+  --call-accent: #5c696c;
+  --call-accent-strong: #354044;
+  --call-border: rgba(109, 121, 124, 0.52);
+  --call-border-strong: #4e5c60;
+
+  --control-face: linear-gradient(rgba(249, 250, 248, 0.72), rgba(223, 227, 225, 0.70));
+  --control-hover: linear-gradient(rgba(255, 255, 255, 0.60), rgba(231, 239, 236, 0.56));
   --control-edge: #889795;
-  --control-rest: inset 0 1px 0 #fff, 0 1px 0 rgba(119, 135, 131, 0.33), 0 2px 5px rgba(37, 58, 50, 0.08);
-  --control-lit: inset 0 1px #fff, 0 0 0 1px #354044, 0 3px 8px rgba(37, 58, 50, 0.22);
+  --control-rest: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 0 rgba(119, 135, 131, 0.33), 0 2px 5px rgba(37, 58, 50, 0.08);
+  --control-lit: inset 0 1px #fff, 0 0 0 1px #354044, 0 3px 8px rgba(37, 58, 50, 0.24);
   --control-press: inset 0 2px 4px rgba(38, 61, 56, 0.22);
   --control-selected: linear-gradient(#667a73, #3d544c);
   --control-selected-ink: #f7fff9;
   --control-hover-ink: #111618;
-  --control-panel: linear-gradient(180deg, rgba(239, 242, 236, 0.74), rgba(221, 227, 214, 0.48));
+  --control-panel: linear-gradient(180deg, rgba(239, 242, 236, 0.84), rgba(221, 227, 214, 0.86));
 
   --t-scroll-track: #cfd2c8;
   --t-scroll-thumb: #667874;
@@ -143,32 +135,25 @@
   --t-cat-ip: #734c18;
   --t-cat-meta: #3f4b6e;
   --t-cat-bmk: #586466;
-
-  --t-sized-lead: rgba(255, 252, 225, 0.50);
-  --t-sized-trail: rgba(69, 154, 244, 0.42);
-  --t-base-text-shadow:
-    clamp(-1px, calc(1.7px - 0.17em), 0px) 0 0.008em var(--t-sized-lead),
-    clamp(0px, calc(0.2em - 2px), 1.4px) 0.008em 0.008em var(--t-sized-trail);
   --t-hover-text-shadow: 0 0 1px #fff, 0 0 5px rgba(53, 64, 68, 0.28);
   --t-inverse-text-shadow: 0 1px 1px rgba(20, 30, 28, 0.45);
-  --t-scan-opacity: 0.10;
-  --t-day-grain-opacity: 0.18;
 }
 
-/* 护眼 (Eyecare Sage Green from theme-mode-v1.css lines 90-113 & reader-controls-v12.css lines 33-46) */
-:root[data-theme="eyecare"] {
+/* 护眼 (Eyecare Sage Green — maps to Reader v14 key "green") */
+:root[data-call-theme="green"] {
   color-scheme: light;
   --t-bg: #d6e9c4;
+  --call-bg: #d6e9c4;
   --t-field:
     radial-gradient(circle at 18% 14%, rgba(109, 162, 126, 0.14), transparent 29%),
     radial-gradient(circle at 82% 76%, rgba(73, 133, 103, 0.11), transparent 31%),
-    linear-gradient(rgba(40, 86, 65, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(40, 86, 65, 0.03) 1px, transparent 1px),
+    linear-gradient(rgba(40, 86, 65, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(40, 86, 65, 0.028) 1px, transparent 1px),
     #d6e9c4;
   --t-field-size: 100% 100%, 100% 100%, 16px 16px, 16px 16px, auto;
-  --t-surface: rgba(237, 245, 232, 0.36);
-  --t-surface-soft: rgba(209, 227, 207, 0.50);
-  --t-surface-raised: #f8fcf5;
+  --t-surface: rgba(237, 245, 232, 0.34);
+  --t-surface-soft: rgba(209, 227, 207, 0.46);
+  --t-surface-raised: rgba(248, 252, 245, 0.74);
   --t-surface-modal: #d5e7ca;
   --t-text: #163327;
   --t-text-strong: #0c2118;
@@ -180,19 +165,23 @@
   --t-accent-ink: #f5fff9;
   --t-danger: #8a3548;
   --t-network-bg: transparent;
-  --t-panel-shadow: inset 0 1px rgba(255, 255, 255, 0.52), 0 4px 12px rgba(25, 66, 51, 0.09);
   --t-selected-shadow: inset 0 1px rgba(165, 213, 170, 0.5), 0 2px 0 rgba(32, 75, 53, 0.66), 0 3px 8px rgba(52, 89, 59, 0.18);
 
-  --control-face: linear-gradient(150deg, #edf6e4, #bfd8bc);
-  --control-hover: linear-gradient(150deg, #f3ffec, #c5e6c9);
+  --call-accent: #40785d;
+  --call-accent-strong: #23523c;
+  --call-border: rgba(69, 109, 89, 0.54);
+  --call-border-strong: #436e59;
+
+  --control-face: linear-gradient(150deg, rgba(237, 246, 228, 0.72), rgba(191, 216, 188, 0.70));
+  --control-hover: linear-gradient(150deg, rgba(243, 255, 236, 0.60), rgba(197, 230, 201, 0.56));
   --control-edge: #71987c;
-  --control-rest: inset 0 1px #f7fff0, inset 0 -1px rgba(144, 183, 152, 0.35), 0 1px 4px rgba(29, 72, 51, 0.1);
+  --control-rest: inset 0 1px rgba(247, 255, 240, 0.75), inset 0 -1px rgba(144, 183, 152, 0.35), 0 1px 4px rgba(29, 72, 51, 0.1);
   --control-lit: inset 0 1px #fff, 0 0 0 1px #285641, 0 3px 9px rgba(56, 108, 63, 0.25);
   --control-press: inset 0 2px 4px rgba(41, 82, 61, 0.33);
   --control-selected: linear-gradient(145deg, #478669, #235b45);
   --control-selected-ink: #efffe8;
   --control-hover-ink: #0a1f16;
-  --control-panel: linear-gradient(110deg, rgba(157, 191, 150, 0.5), rgba(222, 237, 205, 0.22));
+  --control-panel: linear-gradient(110deg, rgba(194, 222, 188, 0.84), rgba(222, 237, 205, 0.86));
 
   --t-scroll-track: #c4dbb3;
   --t-scroll-thumb: #4f8569;
@@ -203,22 +192,15 @@
   --t-cat-ip: #784b12;
   --t-cat-meta: #39486e;
   --t-cat-bmk: #466357;
-
-  --t-sized-lead: rgba(255, 252, 225, 0.50);
-  --t-sized-trail: rgba(69, 154, 244, 0.36);
-  --t-base-text-shadow:
-    clamp(-1px, calc(1.7px - 0.17em), 0px) 0 0.008em var(--t-sized-lead),
-    clamp(0px, calc(0.2em - 2px), 1.4px) 0.008em 0.008em var(--t-sized-trail);
   --t-hover-text-shadow: 0 0 1px #fff, 0 0 6px rgba(40, 86, 65, 0.30);
   --t-inverse-text-shadow: 0 1px 1px rgba(18, 45, 32, 0.45);
-  --t-scan-opacity: 0.12;
-  --t-day-grain-opacity: 0.18;
 }
 
-/* 冷辉 (Cold Microfilm from theme-mode-v1.css lines 175-211 & reader-controls-v12.css lines 71-88) */
-:root[data-theme="frost"] {
+/* 冷辉 (Cold Microfilm — exact theme-mode-v1.css & reader-controls-v12.css) */
+:root[data-call-theme="frost"] {
   color-scheme: dark;
   --t-bg: #00070c;
+  --call-bg: #00070c;
   --t-field:
     radial-gradient(ellipse 28vw 23vh at 76vw 35vh, rgba(12, 107, 109, 0.42), transparent 78%),
     radial-gradient(ellipse 23vw 38vh at 50vw 72vh, rgba(0, 61, 68, 0.35), transparent 76%),
@@ -227,7 +209,7 @@
   --t-field-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
   --t-surface: rgba(6, 26, 32, 0.24);
   --t-surface-soft: rgba(11, 38, 44, 0.42);
-  --t-surface-raised: rgba(7, 30, 37, 0.88);
+  --t-surface-raised: rgba(7, 30, 37, 0.68);
   --t-surface-modal: #08212b;
   --t-text: #d6f2e7;
   --t-text-strong: #f0fff9;
@@ -239,15 +221,19 @@
   --t-accent-ink: #07201c;
   --t-danger: #a84c66;
   --t-network-bg: transparent;
-  --t-panel-shadow: inset 0 0 9px rgba(78, 183, 177, 0.12), inset 0 1px rgba(234, 255, 250, 0.18);
   --t-selected-shadow:
     inset 0 12px 24px -9px rgba(188, 235, 221, 0.36),
     inset 0 -10px 22px -12px rgba(143, 210, 196, 0.22),
     0 0 4px rgba(193, 235, 220, 0.65),
     0 0 12px rgba(149, 222, 208, 0.68);
 
-  --control-face: linear-gradient(140deg, rgba(34, 66, 75, 0.48), rgba(8, 29, 36, 0.69));
-  --control-hover: rgba(170, 224, 205, 0.18);
+  --call-accent: #9adccc;
+  --call-accent-strong: #d7fff3;
+  --call-border: rgba(122, 180, 171, 0.55);
+  --call-border-strong: #b8e6d8;
+
+  --control-face: linear-gradient(140deg, rgba(34, 66, 75, 0.46), rgba(8, 29, 36, 0.62));
+  --control-hover: rgba(170, 224, 205, 0.16);
   --control-edge: rgba(122, 180, 171, 0.56);
   --control-rest: inset 0 0 8px rgba(106, 185, 176, 0.08), inset 0 0 0 1px rgba(131, 182, 176, 0.12);
   --control-lit:
@@ -256,10 +242,10 @@
     0 0 4px rgba(193, 235, 220, 0.72),
     0 0 12px rgba(149, 222, 208, 0.72);
   --control-press: inset 0 3px 9px rgba(0, 24, 32, 0.68), 0 0 5px rgba(209, 244, 232, 0.56);
-  --control-selected: linear-gradient(135deg, rgba(170, 222, 205, 0.26), rgba(70, 124, 119, 0.22));
+  --control-selected: linear-gradient(135deg, rgba(170, 222, 205, 0.30), rgba(70, 124, 119, 0.26));
   --control-selected-ink: #e8fff6;
   --control-hover-ink: #f0fff9;
-  --control-panel: linear-gradient(100deg, rgba(56, 94, 100, 0.24), rgba(18, 45, 50, 0.10));
+  --control-panel: linear-gradient(145deg, rgba(16, 44, 49, 0.86), rgba(6, 24, 30, 0.90));
 
   --t-scroll-track: #041318;
   --t-scroll-thumb: #589e92;
@@ -270,34 +256,20 @@
   --t-cat-ip: #ffdc85;
   --t-cat-meta: #b0d0ff;
   --t-cat-bmk: #96c2b9;
-
-  --t-sized-lead: rgba(255, 252, 225, 0.50);
-  --t-sized-trail: rgba(69, 154, 244, 0.55);
-  --t-ambient-glow: rgba(135, 232, 216, 0.32);
-  --t-base-text-shadow:
-    -0.45px 0 0.35px rgba(112, 216, 209, 0.42),
-    0.45px 0.12px 0.35px rgba(220, 255, 249, 0.42),
-    0 0 2px rgba(223, 248, 236, 0.55),
-    0 0 7px rgba(137, 213, 194, 0.34);
-  --t-hover-text-shadow:
-    0 0 2px #ffffff,
-    0 0 8px rgba(180, 255, 238, 0.78),
-    0 0 14px rgba(110, 235, 214, 0.48);
-  --t-inverse-text-shadow:
-    0 0 2px rgba(223, 248, 236, 0.65),
-    0 0 7px rgba(137, 213, 194, 0.40);
-  --t-scan-opacity: 0.18;
+  --t-hover-text-shadow: 0 0 2px #ffffff, 0 0 8px rgba(180, 255, 238, 0.78), 0 0 14px rgba(110, 235, 214, 0.48);
+  --t-inverse-text-shadow: 0 0 2px rgba(223, 248, 236, 0.65), 0 0 7px rgba(137, 213, 194, 0.40);
 }
 
-/* 夜间 · 绿磷光 (Deep green black + bright phosphor ink from theme-mode-v1.css lines 2677-2691 & reader-controls-v12.css lines 47-63) */
-:root[data-theme="green"] {
+/* 夜间 · 绿磷光 (Exact MagiReader Night Green) */
+:root[data-call-theme="dark"] {
   color-scheme: dark;
-  --t-bg: #040905;
-  --t-field: radial-gradient(ellipse at 48% 42%, #132414 0%, #09140b 57%, #020603 100%);
+  --t-bg: #030702;
+  --call-bg: #030702;
+  --t-field: radial-gradient(ellipse 60vw 62vh at 51vw 46vh, #22321c 0%, #162212 40%, #0c1409 72%, #030702 100%);
   --t-field-size: 100% 100%;
   --t-surface: rgba(6, 16, 7, 0.24);
-  --t-surface-soft: rgba(13, 31, 12, 0.52);
-  --t-surface-raised: rgba(8, 20, 9, 0.92);
+  --t-surface-soft: rgba(13, 31, 12, 0.48);
+  --t-surface-raised: rgba(8, 20, 9, 0.68);
   --t-surface-modal: #091109;
   --t-text: #c2ff78;
   --t-text-strong: #eaffbf;
@@ -309,25 +281,23 @@
   --t-accent-ink: #0e1e07;
   --t-danger: #b84e68;
   --t-network-bg: transparent;
-  --t-panel-shadow: inset 0 1px rgba(209, 255, 164, 0.08), inset 0 -1px rgba(0, 0, 0, 0.60);
-  --t-selected-shadow:
-    inset 0 0 1px #ffffff,
-    0 0 6px #adff4f,
-    0 0 16px rgba(166, 247, 82, 0.42);
+  --t-selected-shadow: inset 0 0 1px #ffffff, 0 0 6px #adff4f, 0 0 16px rgba(166, 247, 82, 0.42);
 
-  --control-face: linear-gradient(180deg, rgba(12, 24, 12, 0.86), rgba(5, 12, 6, 0.92));
-  --control-hover: #122114;
+  --call-accent: #adff4f;
+  --call-accent-strong: #dbffaf;
+  --call-border: rgba(174, 255, 101, 0.44);
+  --call-border-strong: rgba(205, 255, 156, 0.84);
+
+  --control-face: linear-gradient(180deg, rgba(12, 24, 12, 0.64), rgba(5, 12, 6, 0.72));
+  --control-hover: rgba(20, 38, 22, 0.56);
   --control-edge: rgba(145, 224, 72, 0.58);
   --control-rest: inset 0 0 4px rgba(180, 220, 40, 0.08);
-  --control-lit:
-    inset 0 0 9px rgba(167, 255, 84, 0.16),
-    0 0 2px #adff4f,
-    0 0 12px rgba(166, 247, 82, 0.48);
+  --control-lit: inset 0 0 9px rgba(167, 255, 84, 0.18), 0 0 2px #adff4f, 0 0 12px rgba(166, 247, 82, 0.52);
   --control-press: inset 0 2px 5px #000000, 0 0 6px #adff4f;
   --control-selected: #adff4f;
   --control-selected-ink: #102108;
   --control-hover-ink: #f4fff0;
-  --control-panel: linear-gradient(90deg, rgba(24, 43, 22, 0.47), rgba(8, 17, 7, 0.20));
+  --control-panel: linear-gradient(90deg, rgba(16, 30, 14, 0.88), rgba(8, 17, 7, 0.92));
 
   --t-scroll-track: #050b03;
   --t-scroll-thumb: #5c9636;
@@ -338,31 +308,20 @@
   --t-cat-ip: #ffee75;
   --t-cat-meta: #8afae0;
   --t-cat-bmk: #96cf6e;
-
-  /* Exact Reader local phosphor bloom from theme-mode-v1.css line 2811 */
-  --t-base-text-shadow:
-    0 0 0.8px currentColor,
-    -0.45px 0 0.3px rgba(120, 255, 229, 0.58),
-    0.55px 0.1px 0.4px rgba(255, 224, 122, 0.48),
-    0 0 5px rgba(166, 255, 79, 0.50);
-  --t-hover-text-shadow:
-    0 0 1px #ffffff,
-    -0.55px 0 0.4px rgba(120, 255, 229, 0.82),
-    0.65px 0 0.4px rgba(255, 232, 122, 0.78),
-    0 0 9px rgba(173, 255, 79, 0.85);
+  --t-hover-text-shadow: 0 0 1px #ffffff, -0.55px 0 0.4px rgba(120, 255, 229, 0.82), 0.65px 0 0.4px rgba(255, 232, 122, 0.78), 0 0 9px rgba(173, 255, 79, 0.85);
   --t-inverse-text-shadow: none;
-  --t-scan-opacity: 0.20;
 }
 
-/* 夜间 · 橙磷光 (Amber Phosphor from theme-mode-v1.css lines 147-172 & reader-controls-v12.css lines 64-70) */
-:root[data-theme="amber"] {
+/* 夜间 · 橙磷光 (Exact MagiReader Night Amber) */
+:root[data-call-theme="dark"][data-call-phosphor="amber"] {
   color-scheme: dark;
   --t-bg: #070305;
-  --t-field: radial-gradient(ellipse 60vw 62vh at 51vw 46vh, #2b1d21 0%, #1b1114 42%, #0f080b 74%, #050203 100%);
+  --call-bg: #070305;
+  --t-field: radial-gradient(ellipse 60vw 62vh at 51vw 46vh, #3a2b2f 0%, #261b1e 40%, #150c10 72%, #070305 100%);
   --t-field-size: 100% 100%;
   --t-surface: rgba(16, 10, 13, 0.26);
-  --t-surface-soft: rgba(33, 22, 25, 0.52);
-  --t-surface-raised: rgba(21, 13, 16, 0.92);
+  --t-surface-soft: rgba(33, 22, 25, 0.48);
+  --t-surface-raised: rgba(21, 13, 16, 0.68);
   --t-surface-modal: #160e0d;
   --t-text: #fff282;
   --t-text-strong: #fffbe0;
@@ -373,26 +332,23 @@
   --t-accent-strong: #fff8b8;
   --t-accent-ink: #120a0d;
   --t-danger: #cc5238;
-  --t-network-bg: transparent;
-  --t-panel-shadow: inset 0 1px rgba(255, 240, 119, 0.10), inset 0 -1px rgba(0, 0, 0, 0.65);
-  --t-selected-shadow:
-    inset 0 0 1px #ffffff,
-    0 0 6px #fff077,
-    0 0 16px rgba(255, 182, 65, 0.46);
+  --t-selected-shadow: inset 0 0 1px #ffffff, 0 0 6px #fff077, 0 0 16px rgba(255, 182, 65, 0.46);
 
-  --control-face: linear-gradient(180deg, rgba(36, 25, 27, 0.86), rgba(16, 9, 11, 0.92));
-  --control-hover: #24181a;
+  --call-accent: #fff077;
+  --call-accent-strong: #fff8b8;
+  --call-border: rgba(215, 184, 98, 0.52);
+  --call-border-strong: #ffe280;
+
+  --control-face: linear-gradient(180deg, rgba(36, 25, 27, 0.64), rgba(16, 9, 11, 0.72));
+  --control-hover: rgba(46, 30, 32, 0.56);
   --control-edge: rgba(205, 175, 92, 0.62);
   --control-rest: inset 0 0 4px rgba(255, 210, 75, 0.08);
-  --control-lit:
-    inset 0 0 9px rgba(255, 240, 119, 0.18),
-    0 0 2px #fff077,
-    0 0 12px rgba(255, 182, 65, 0.52);
+  --control-lit: inset 0 0 9px rgba(255, 240, 119, 0.20), 0 0 2px #fff077, 0 0 12px rgba(255, 182, 65, 0.52);
   --control-press: inset 0 2px 5px #000000, 0 0 6px #fff077;
   --control-selected: #fff077;
   --control-selected-ink: #120a0d;
   --control-hover-ink: #fffdf2;
-  --control-panel: linear-gradient(90deg, rgba(68, 49, 38, 0.47), rgba(23, 14, 16, 0.20));
+  --control-panel: linear-gradient(90deg, rgba(44, 30, 26, 0.88), rgba(20, 12, 14, 0.92));
 
   --t-scroll-track: #0b0608;
   --t-scroll-thumb: #9e8038;
@@ -403,23 +359,11 @@
   --t-cat-ip: #ffd854;
   --t-cat-meta: #ffc47d;
   --t-cat-bmk: #dfc474;
-
-  --t-base-text-shadow:
-    0 0 0.8px currentColor,
-    -0.45px 0 0.3px rgba(255, 250, 211, 0.52),
-    0.65px 0.1px 0.4px rgba(255, 72, 22, 0.82),
-    0 0 5px rgba(255, 182, 58, 0.44);
-  --t-hover-text-shadow:
-    0 0 1px #ffffff,
-    -0.55px 0 0.4px rgba(255, 252, 220, 0.85),
-    0.75px 0 0.4px rgba(255, 78, 28, 0.92),
-    0 0 9px rgba(255, 210, 75, 0.85);
-  --t-inverse-text-shadow: none;
-  --t-scan-opacity: 0.24;
+  --t-hover-text-shadow: 0 0 1px #ffffff, -0.55px 0 0.4px rgba(255, 252, 220, 0.85), 0.75px 0 0.4px rgba(255, 78, 28, 0.92), 0 0 9px rgba(255, 210, 75, 0.85);
 }
 
 /* ============================================================================
- * 2. GLOBAL RESET & THEMED SCROLLBARS
+ * 2. GLOBAL RESET & SINGLE BOUNDED CRT VIEWPORT (Exact Call / MagiReader v14)
  * ============================================================================ */
 * {
   box-sizing: border-box;
@@ -430,40 +374,22 @@
   scrollbar-color: var(--t-scroll-thumb) var(--t-scroll-track);
 }
 
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--t-scroll-track);
-  border-left: 1px solid var(--t-border);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--t-scroll-thumb);
-  border: 1px solid var(--t-border-strong);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--t-scroll-thumb-hover);
-}
-
-::-webkit-scrollbar-corner {
-  background: var(--t-scroll-track);
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--t-scroll-track); border-left: 1px solid var(--t-border); }
+::-webkit-scrollbar-thumb { background: var(--t-scroll-thumb); border: 1px solid var(--t-border-strong); }
+::-webkit-scrollbar-thumb:hover { background: var(--t-scroll-thumb-hover); }
+::-webkit-scrollbar-corner { background: var(--t-scroll-track); }
 
 html, body {
-  min-height: 100%;
-  max-width: 100%;
-  overflow-x: clip;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
   background-color: var(--t-bg);
 }
 
 body {
-  background-image: var(--t-field);
-  background-size: var(--t-field-size, auto);
-  background-attachment: fixed;
   color: var(--t-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", sans-serif;
   font-size: 12.5px;
@@ -479,155 +405,60 @@ button, input, select, textarea, a {
   display: none !important;
 }
 
-/* Pixel Font Mode (Covers entire display scope when enabled, per call-theme-mode-v1.css line 537) */
-:root[data-pixel-font="true"] body,
-:root[data-pixel-font="true"] body :is(
+/* Pixel Font Mode (Covers display scope + modals when toggled ON) */
+:root[data-call-fx-pixel-font="true"] body,
+:root[data-call-fx-pixel-font="true"] body :is(
   button, input, textarea, select, option, a, span, p, h1, h2, h3, h4, h5, h6, label, legend, summary, strong, b, small, li, td, th
 ) {
   font-family: 'MagiPixelSC', 'MagiPixelJP', "MS Gothic", monospace !important;
   font-synthesis: none !important;
 }
 
-/* ============================================================================
- * 3. AUTHENTIC READER / CALL V14 OPTICAL PIPELINE & IMAGE ISOLATION
- * ============================================================================ */
-
-/* Physical Screen Overlay (z-index: 60 — sits over all UI panels/tables/text,
-   while artwork images at z-index: 80 sit cleanly ABOVE this layer!) */
-.call-reader-screen-v7 {
+/* Bounded CRT Optical Viewport */
+.call-display-root-v7 {
   position: fixed;
   inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  user-select: none;
-  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
+  background: var(--t-field);
+  background-size: var(--t-field-size, auto);
+  color: var(--t-text);
 }
 
-.call-reader-screen-v7 > span {
+.call-display-scroll-v7 {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  display: none;
+  z-index: 2;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: transparent;
+  color: var(--t-text);
+  scrollbar-width: none;
 }
 
-/* 3A. Scanlines & Phosphor Grid (Controlled by data-crt-fx="true") */
-:root[data-crt-fx="true"] .call-fx-scanlines-v7 {
-  display: block;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(5, 0, 2, 0) 0px,
-    rgba(5, 0, 2, 0.06) 0.4px,
-    rgba(5, 0, 2, 0.22) 0.8px,
-    rgba(5, 0, 2, 0.34) 1.2px,
-    rgba(5, 0, 2, 0.22) 1.6px,
-    rgba(5, 0, 2, 0.06) 2px,
-    rgba(5, 0, 2, 0) 2.4px,
-    rgba(5, 0, 2, 0) 3px
-  );
-  opacity: var(--t-scan-opacity, 0.22);
-  mix-blend-mode: multiply;
+.call-display-scroll-v7::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
-:root[data-crt-fx="true"]:is([data-theme="green"], [data-theme="amber"]) .call-fx-night-phosphor-v7 {
-  display: block;
-  background:
-    repeating-linear-gradient(0deg, rgba(5, 0, 2, 0.52) 0 0.6px, transparent 0.6px 2px),
-    url('./textures/NoiseAndGrain.png') 0 0 / 128px 64px repeat,
-    url('./textures/PixelOverlay_RGB_16.png') 0 0 / 4px 4px repeat;
-  background-blend-mode: multiply, soft-light, normal;
-  mix-blend-mode: soft-light;
-  opacity: var(--t-scan-opacity, 0.32);
-}
-
-/* 3B. Film Grain, Glass Wear & Screen Curvature Bezel */
-:root[data-fx-curvature="true"] .call-fx-bezel-v7 {
-  display: block;
-  box-shadow:
-    inset 0 0 2px 1px rgba(0, 0, 0, 0.85),
-    inset 0 0 9px 3px rgba(0, 0, 0, 0.52),
-    inset 0 0 22px 4px rgba(0, 0, 0, 0.22);
-}
-
-:root[data-lofi-fx="true"]:is([data-theme="paper"], [data-theme="light"], [data-theme="eyecare"]) .call-fx-day-grain-v7 {
-  display: block;
-  opacity: var(--t-day-grain-opacity, 0.20);
-  background:
-    url('./textures/magi-lofi-grain.png') 17px 13px / 384px 384px repeat,
-    url('./textures/NoiseAndGrain.png') 0 0 / 128px 64px repeat;
-  background-blend-mode: soft-light, multiply;
-  mix-blend-mode: multiply;
-}
-
-:root[data-lofi-fx="true"]:is([data-theme="green"], [data-theme="amber"]) .call-fx-night-grain-v7 {
-  display: block;
-  background:
-    url('./textures/magi-lofi-grain.png') 7px 13px / 384px 384px repeat,
-    url('./textures/NoiseAndGrain.png') 0 0 / 128px 64px repeat;
-  background-blend-mode: soft-light, overlay;
-  mix-blend-mode: soft-light;
-  opacity: 0.20;
-}
-
-:root[data-lofi-fx="true"][data-theme="amber"] .call-fx-night-grain-v7 {
-  opacity: 0.24;
-}
-
-:root[data-lofi-fx="true"][data-theme="frost"] .call-fx-frost-grain-v7 {
-  display: block;
-  opacity: 0.34;
-  mix-blend-mode: screen;
-  background:
-    url('./textures/magi-lofi-grain.png') 19px 17px / 384px 384px repeat,
-    url('./textures/magi-lofi-grain.png') 173px 91px / 384px 384px repeat;
-  background-blend-mode: screen;
-  mask-image:
-    radial-gradient(ellipse 19% 13% at 78% 34%, #000 12%, transparent 90%),
-    radial-gradient(ellipse 14% 26% at 94% 68%, rgba(0, 0, 0, 0.86), transparent 93%),
-    radial-gradient(ellipse 17% 19% at 54% 77%, rgba(0, 0, 0, 0.7), transparent 92%),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.42) 20%, rgba(0, 0, 0, 0.68) 38%, rgba(0, 0, 0, 0.75) 70%, rgba(0, 0, 0, 0.55));
-}
-
-:root[data-lofi-fx="true"][data-theme="frost"] .call-fx-frost-smudges-v7 {
-  display: block;
-  opacity: 0.12;
-  mix-blend-mode: screen;
-  background: url('./textures/DirtHighContrast.png') center / cover no-repeat;
-  filter: grayscale(1);
-  mask-image: radial-gradient(ellipse at 48% 43%, rgba(0, 0, 0, 0.15) 20%, #000 85%);
-}
-
-:root[data-lofi-fx="true"][data-theme="frost"] .call-fx-frost-glass-v7 {
-  display: block;
-  opacity: 0.16;
-  mix-blend-mode: screen;
-  background: url('./textures/2k_BG_Texture.png') center / 100% 100% no-repeat;
-  filter: grayscale(1);
-  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.65) 22%, #000 45%);
-}
-
-:root[data-lofi-fx="true"][data-theme="frost"] .call-fx-frost-wear-v7 {
-  display: block;
-  opacity: 0.28;
-  mix-blend-mode: screen;
-  background: url('./textures/frost-glass-scratches.svg') center / 100% 100% no-repeat;
-  filter: drop-shadow(0.42px 0 rgba(255, 255, 255, 0.35)) drop-shadow(-0.34px 0 rgba(104, 228, 215, 0.22));
-  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.65) 22%, #000 45%);
-}
-
-/* MAGIUS LINK Background Emblem Watermark (Exact magius-mark.svg + magius-link-wordmark.svg from theme-mode-v1.css lines 2718-2726 & 2949-2963) */
+/* ============================================================================
+ * 3. UNINTERRUPTED MAGIUS LINK WATERMARK, FLOATING JUMP RAIL & OPTICAL SCROLLBAR
+ * ============================================================================ */
 :root {
   --call-brand-width: min(64vw, 50dvh, 520px);
   --call-wordmark-ratio: 0.56;
 }
 
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) {
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) {
   --call-wordmark-ratio: 0.42;
 }
 
 .call-brand-watermark-v8 {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
   user-select: none;
   display: flex;
@@ -636,19 +467,19 @@ button, input, select, textarea, a {
   justify-content: center;
   gap: 2px;
   mix-blend-mode: normal;
-  opacity: 0.085;
+  opacity: 0.11;
 }
 
-:root:is([data-theme="paper"], [data-theme="light"], [data-theme="eyecare"]) .call-brand-watermark-v8 img {
+:root:is([data-call-theme="paper"], [data-call-theme="light"], [data-call-theme="green"]) .call-brand-watermark-v8 img {
   filter: brightness(0) sepia(0.4) !important;
 }
 
-:root:is([data-theme="green"], [data-theme="amber"]) .call-brand-watermark-v8 {
-  opacity: 0.16 !important;
+:root[data-call-theme="dark"] .call-brand-watermark-v8 {
+  opacity: 0.17 !important;
 }
 
-:root[data-theme="frost"] .call-brand-watermark-v8 {
-  opacity: 0.14 !important;
+:root[data-call-theme="frost"] .call-brand-watermark-v8 {
+  opacity: 0.15 !important;
 }
 
 .call-brand-emblem-v8 {
@@ -668,21 +499,59 @@ button, input, select, textarea, a {
   margin: 0 !important;
 }
 
-/* Right-Side Floating Quick Action Rail (Sleek 26px rail that never covers table buttons) */
-.call-jump-widget-v7 {
-  position: fixed;
-  right: 4px;
-  top: 52%;
-  transform: translateY(-50%);
-  z-index: 56;
-  width: 28px;
-  padding: 1px;
-  background: var(--t-surface-modal, var(--t-surface-raised));
+/* In-screen themed optical scrollbar (exact magireco-call-search-cn design) */
+.call-optical-scroll-v7 {
+  position: absolute;
+  z-index: 4800;
+  right: 3px;
+  top: 10px;
+  bottom: 10px;
+  width: 10px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.call-optical-scroll-track-v7 {
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: color-mix(in srgb, var(--t-border) 50%, transparent);
+}
+
+.call-optical-scroll-thumb-v7 {
+  position: absolute;
+  left: 1px;
+  top: 0;
+  width: 7px;
+  min-height: 36px;
+  background: var(--t-scroll-thumb);
   border: 1px solid var(--t-border-strong);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--t-accent) 35%, transparent);
+}
+
+.call-optical-scroll-thumb-v7:hover {
+  background: var(--t-scroll-thumb-hover);
+}
+
+/* Right-Side Floating Quick Action Rail (Floats cleanly over right edge — ZERO reserved page column!) */
+.call-jump-widget-v7 {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2380;
+  width: 30px;
+  padding: 2px;
+  background: color-mix(in srgb, var(--t-surface-modal) 86%, transparent);
+  border: 1px solid var(--t-border-strong);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
   user-select: none;
+  contain: layout paint;
 }
 
 .call-jump-widget-v7.is-positioned {
@@ -715,6 +584,7 @@ button, input, select, textarea, a {
 
 .call-jump-grip-v7 {
   cursor: grab;
+  touch-action: none;
 }
 
 .call-jump-grip-v7:hover,
@@ -759,7 +629,7 @@ button, input, select, textarea, a {
 }
 
 .call-jump-widget-v7.is-collapsed {
-  width: 22px;
+  width: 24px;
 }
 
 .call-jump-widget-v7.is-collapsed .call-jump-head-v7 {
@@ -779,63 +649,7 @@ button, input, select, textarea, a {
   height: 20px;
 }
 
-/* UNIFIED SIZE-SENSITIVE REGISTRATION & DISPERSION ON EVERY TEXT ROLE
-   (Exact selector & formula from call-reader-optics-v14.css lines 114 & 153) */
-:root[data-lofi-fx="true"] body :is(
-  button, input, textarea, select, option, a, span, p, b, strong, label, legend, h1, h2, h3, h4, small, summary, li, output, th, td
-) {
-  text-shadow: var(--t-base-text-shadow) !important;
-}
-
-/* Inverse controls (active/selected buttons with dark ink on bright accent background)
-   use pale rim echo instead of dark-background glow (call-reader-optics-v14.css line 133) */
-:root[data-lofi-fx="true"] body :is(
-  .ctrl-chip.active,
-  .sub-tab.active,
-  .t-btn--primary,
-  .t-btn--execute,
-  .subfilter-chip,
-  .t-count
-),
-:root[data-lofi-fx="true"] body :is(
-  .ctrl-chip.active,
-  .sub-tab.active,
-  .t-btn--primary,
-  .t-btn--execute,
-  .subfilter-chip,
-  .t-count
-) * {
-  text-shadow: var(--t-inverse-text-shadow) !important;
-}
-
-/* Modal Windows also get the scanline/phosphor overlay on their UI frame (z-index: 5),
-   while artwork thumbnails & viewer images inside modals sit above it at z-index: 20! */
-:root[data-crt-fx="true"] .modal-window::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(5, 0, 2, 0) 0px,
-      rgba(5, 0, 2, 0.06) 0.4px,
-      rgba(5, 0, 2, 0.22) 0.8px,
-      rgba(5, 0, 2, 0.34) 1.2px,
-      rgba(5, 0, 2, 0.22) 1.6px,
-      rgba(5, 0, 2, 0.06) 2px,
-      rgba(5, 0, 2, 0) 2.4px,
-      rgba(5, 0, 2, 0) 3px
-    ),
-    url('./textures/PixelOverlay_RGB_16.png') 0 0 / 4px 4px repeat;
-  opacity: var(--t-scan-opacity, 0.22);
-  mix-blend-mode: multiply;
-}
-
-/* 3C. ABSOLUTE ARTWORK IMAGE OPTICAL ISOLATION
-   Lifts all artwork images to z-index: 80 (above .call-reader-screen-v7 at z-index: 60
-   and above .modal-window::after at z-index: 5) with zero grid, zero scanlines, zero blur! */
+/* Artwork image clean optical isolation */
 .artwork-thumb-box,
 .artwork-thumb-box img,
 .viewer-media-box,
@@ -846,7 +660,6 @@ button, input, select, textarea, a {
 .viewer-thumb-item img,
 .clean-optical-media {
   position: relative;
-  z-index: 80;
   filter: none !important;
   -webkit-filter: none !important;
   mix-blend-mode: normal !important;
@@ -854,9 +667,8 @@ button, input, select, textarea, a {
   text-shadow: none !important;
 }
 
-/* Protect badges sitting inside .artwork-thumb-box so they stay visible above the image */
 .artwork-badges {
-  z-index: 85;
+  z-index: 5;
 }
 
 /* ============================================================================
@@ -896,7 +708,7 @@ button, input, select, textarea, a {
   border-bottom: 1px solid var(--t-border);
 }
 
-:root[data-theme-bar-mode="floating"] .masthead__theme-slot {
+:root[data-call-theme-bar-mode="floating"] .masthead__theme-slot {
   display: none !important;
 }
 
@@ -914,22 +726,23 @@ button, input, select, textarea, a {
   user-select: none;
 }
 
-:root[data-theme-bar-mode="top"] .call-theme-grip-v7 {
+:root[data-call-theme-bar-mode="top"] .call-theme-grip-v7 {
   display: none !important;
 }
 
-:root[data-theme-bar-mode="floating"] .call-theme-widget-v7 {
-  position: fixed;
-  z-index: 56;
+:root[data-call-theme-bar-mode="floating"] .call-theme-widget-v7 {
+  position: absolute;
+  z-index: 2320;
   left: 50%;
-  bottom: 14px;
+  bottom: 12px;
   transform: translateX(-50%);
-  background: var(--t-surface-modal);
+  background: color-mix(in srgb, var(--t-surface-modal) 92%, transparent);
   border: 1.5px solid var(--t-border-strong);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.36);
+  contain: layout paint;
 }
 
-:root[data-theme-bar-mode="floating"] .call-theme-widget-v7.is-positioned {
+:root[data-call-theme-bar-mode="floating"] .call-theme-widget-v7.is-positioned {
   transform: none;
   bottom: auto;
   right: auto;
@@ -1013,12 +826,12 @@ button, input, select, textarea, a {
 
 /* Exact Floating SYS://DISPLAY.CONFIG Window (.call-fx-window-v7 from theme-mode-v1.css lines 697-725) */
 .call-fx-window-v7 {
-  position: fixed;
-  right: 42px;
-  top: 68px;
-  width: min(380px, calc(100vw - 54px));
-  max-height: calc(100dvh - 84px);
-  z-index: 58;
+  position: absolute;
+  right: 54px;
+  top: 52px;
+  width: min(380px, calc(100% - 72px));
+  max-height: calc(100% - 72px);
+  z-index: 2470;
   background: var(--t-surface-modal);
   border: 1.5px solid var(--t-border-strong);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
@@ -1220,11 +1033,11 @@ button, input, select, textarea, a {
   font-weight: 900;
 }
 
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) .magi-madeinmagius-text {
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) .magi-madeinmagius-text {
   color: var(--t-text-strong);
 }
 
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) .magi-madeinmagius-text strong {
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) .magi-madeinmagius-text strong {
   color: var(--t-accent);
 }
 
@@ -1353,7 +1166,7 @@ button, input, select, textarea, a {
   line-height: 18px;
 }
 
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) .sticky-filter-bar__label {
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) .sticky-filter-bar__label {
   color: var(--t-accent);
 }
 
@@ -1402,9 +1215,9 @@ button, input, select, textarea, a {
  * 6. MAIN TERMINAL SHELL & COMPACT QUERY CONSOLE
  * ============================================================================ */
 .terminal-shell {
-  max-width: 1560px;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: 5px 36px 24px 6px;
+  padding: 4px 12px 68px 12px;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -1413,7 +1226,6 @@ button, input, select, textarea, a {
 /* All document panels share the same uninterrupted watermark plane (theme-mode-v1.css line 2693) */
 .panel {
   position: relative;
-  z-index: 1;
   background: transparent !important;
   border: 1px solid var(--t-border);
   box-shadow: inset 0 1px color-mix(in srgb, var(--t-text) 8%, transparent);
@@ -1517,15 +1329,12 @@ button, input, select, textarea, a {
 
 .autocomplete-dropdown {
   position: absolute;
-  top: calc(100% + 1px);
-  left: 0;
-  right: 0;
-  background: var(--t-surface-raised);
-  border: 1px solid var(--t-border-strong);
-  z-index: 220;
+  background: var(--t-surface-modal);
+  border: 1.5px solid var(--t-border-strong);
+  z-index: 2485;
   max-height: 240px;
   overflow-y: auto;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
 }
 
 .ac-item {
@@ -1632,14 +1441,14 @@ button, input, select, textarea, a {
 
 .t-cselect__menu {
   position: absolute;
-  top: calc(100% + 1px);
-  left: -1px;
-  min-width: calc(100% + 2px);
+  min-width: 84px;
   width: max-content;
-  z-index: 57;
-  background: var(--t-surface-modal, var(--t-surface-raised));
-  border: 1px solid var(--t-border-strong);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 2490;
+  background: var(--t-surface-modal);
+  border: 1.5px solid var(--t-border-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.48);
   display: flex;
   flex-direction: column;
 }
@@ -1956,7 +1765,7 @@ button, input, select, textarea, a {
 }
 
 .data-table td {
-  padding: 3px 5px;
+  padding: 3px 4px;
   border-bottom: 1px solid var(--t-border);
   vertical-align: middle;
 }
@@ -1966,8 +1775,8 @@ button, input, select, textarea, a {
 }
 
 .data-table tbody tr:hover {
-  background: var(--control-hover);
-  box-shadow: inset 2px 0 0 var(--t-accent-strong);
+  background: color-mix(in srgb, var(--t-accent) 11%, transparent) !important;
+  box-shadow: inset 2px 0 0 var(--t-accent-strong) !important;
 }
 
 .data-table tbody tr.pinned-locked-row {
@@ -1975,9 +1784,9 @@ button, input, select, textarea, a {
   border-left: 3px solid var(--t-accent);
 }
 
-.col-rank { width: 28px; text-align: center; }
-.col-cat { width: 52px; white-space: nowrap; }
-.col-stat { width: 116px; white-space: nowrap; }
+.col-rank { width: 24px; text-align: center; }
+.col-cat { width: 44px; white-space: nowrap; }
+.col-stat { width: 96px; white-space: nowrap; }
 .col-act { width: 1%; white-space: nowrap; text-align: right; }
 
 .text-right { text-align: right !important; }
@@ -2005,9 +1814,9 @@ button, input, select, textarea, a {
   color: var(--t-accent-strong);
 }
 
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) .rank-badge.top-1,
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) .rank-badge.top-2,
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) .rank-badge.top-3 {
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) .rank-badge.top-1,
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) .rank-badge.top-2,
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) .rank-badge.top-3 {
   color: var(--t-accent);
 }
 
@@ -2032,7 +1841,7 @@ button, input, select, textarea, a {
 
 .tag-name-link:hover {
   color: var(--control-hover-ink) !important;
-  background: var(--control-hover) !important;
+  background: color-mix(in srgb, var(--t-accent) 14%, transparent) !important;
   border-color: var(--t-accent-strong) !important;
   box-shadow: var(--control-lit) !important;
   text-shadow: var(--t-hover-text-shadow) !important;
@@ -2063,7 +1872,7 @@ button, input, select, textarea, a {
 
 .danbooru-badge:hover {
   color: var(--control-hover-ink) !important;
-  background: var(--control-hover) !important;
+  background: color-mix(in srgb, var(--t-accent) 14%, transparent) !important;
   border-style: solid !important;
   border-color: var(--t-accent-strong) !important;
   box-shadow: var(--control-lit) !important;
@@ -2102,7 +1911,7 @@ button, input, select, textarea, a {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 104px;
+  min-width: 88px;
 }
 
 .stat-combined-top {
@@ -2125,7 +1934,7 @@ button, input, select, textarea, a {
   color: var(--t-accent-strong);
 }
 
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) .freq-pct {
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) .freq-pct {
   color: var(--t-accent);
 }
 
@@ -2171,7 +1980,7 @@ button, input, select, textarea, a {
   margin-left: 2px;
 }
 
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) .third-mini-chip b {
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) .third-mini-chip b {
   color: var(--t-accent);
 }
 
@@ -2533,7 +2342,7 @@ button, input, select, textarea, a {
   position: fixed;
   inset: 0;
   background: rgba(6, 8, 10, 0.76);
-  z-index: 500;
+  z-index: 6000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2573,8 +2382,8 @@ button, input, select, textarea, a {
   gap: 8px;
 }
 
-:root[data-lofi-fx="true"] body .magi-about-titlebar,
-:root[data-lofi-fx="true"] body .magi-about-titlebar * {
+:root[data-call-fx-registration="true"] body .magi-about-titlebar,
+:root[data-call-fx-registration="true"] body .magi-about-titlebar * {
   text-shadow: var(--t-inverse-text-shadow) !important;
 }
 
@@ -2660,7 +2469,7 @@ button, input, select, textarea, a {
   font-weight: 900;
 }
 
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) .magi-link-glyph {
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) .magi-link-glyph {
   color: var(--t-accent);
 }
 
@@ -2898,7 +2707,7 @@ button, input, select, textarea, a {
   color: var(--t-accent-strong);
 }
 
-:root:is([data-theme="green"], [data-theme="amber"], [data-theme="frost"]) :is(.subbox-title, .inspector-section__head, .client-box__tag) {
+:root:is([data-call-theme="dark"], [data-call-theme="frost"]) :is(.subbox-title, .inspector-section__head, .client-box__tag) {
   color: var(--t-accent);
 }
 
@@ -3071,7 +2880,7 @@ button, input, select, textarea, a {
   position: fixed;
   bottom: 10px;
   right: 10px;
-  z-index: 800;
+  z-index: 6500;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -3122,7 +2931,7 @@ button, input, select, textarea, a {
     font-size: 13.5px;
   }
   .terminal-shell {
-    padding: 4px 30px 20px 4px;
+    padding: 4px 6px 64px 6px;
   }
   .call-jump-widget-v7 {
     width: 24px;
@@ -3132,13 +2941,90 @@ button, input, select, textarea, a {
     width: 20px;
     height: 21px;
   }
-  .col-stat {
-    width: 86px;
+  .telemetry-item {
+    white-space: normal;
+    max-width: 100%;
+    flex-wrap: wrap;
+    word-break: break-word;
+  }
+  .table-scroll {
+    overflow-x: hidden;
+  }
+  .data-table thead {
+    display: none;
+  }
+  .data-table,
+  .data-table tbody {
+    display: block;
+    width: 100%;
+  }
+  .data-table tbody tr {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rank tag cat"
+      "stat stat act";
+    align-items: center;
+    gap: 3px 5px;
+    padding: 4px 5px;
+    border-bottom: 1px solid var(--t-border);
+  }
+  .data-table tbody td {
+    display: block;
+    padding: 0;
+    border: none;
+    width: auto !important;
+    min-width: 0;
+  }
+  .data-table tbody td.col-rank { grid-area: rank; text-align: center; }
+  .data-table tbody td.col-tag  { grid-area: tag; }
+  .data-table tbody td.col-cat  { grid-area: cat; text-align: right; }
+  .data-table tbody td.col-stat { grid-area: stat; }
+  .data-table tbody td.col-act  { grid-area: act; text-align: right; }
+  .data-table tbody td.empty-cell {
+    grid-column: 1 / -1;
+    padding: 12px 4px;
+    text-align: center;
   }
   .stat-combined-cell {
-    min-width: 78px;
+    min-width: 0;
+    width: 100%;
   }
   .artist-sub {
     display: none;
   }
+  .row-actions {
+    flex-wrap: nowrap;
+    gap: 2px;
+  }
+  .row-actions .t-btn--sm {
+    padding: 0 4px;
+    font-size: 10.5px;
+  }
+}
+
+.auth-advanced-details {
+  border: 1px solid var(--t-border);
+  background: color-mix(in srgb, var(--t-surface-soft) 50%, transparent);
+  padding: 5px 8px;
+}
+.auth-advanced-details > summary {
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--t-muted);
+  user-select: none;
+}
+.auth-advanced-details > summary:hover {
+  color: var(--t-text-strong);
+}
+.auth-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 7px;
+}
+.table-load-more-row td {
+  text-align: center;
+  padding: 6px !important;
 }

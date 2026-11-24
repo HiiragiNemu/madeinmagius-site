@@ -66,6 +66,21 @@ const NETEASE_LEGACY = {
 };
 
 const PROJECTS = {
+  pixiv: {
+    repo: 'HiiragiNemu/pixez-pulse',
+    mode: 'latest',
+    kinds: {
+      android: /\.apk$/i,
+      userscript: /\.user\.js$/i,
+    },
+    staticAssetFallback: {
+      userscript: {
+        assetPath: '/pixez/downloads/pixtag-companion.user.js',
+        name: 'pixtag-companion.user.js',
+        content_type: 'application/javascript; charset=utf-8',
+      },
+    },
+  },
   bilibili: {
     repo: 'HiiragiNemu/Bilibili-Follower-Snapshot',
     mode: 'latest',
@@ -334,6 +349,21 @@ async function handle(context, headOnly = false, pinnedAsset = null) {
       headers: responseHeaders,
     });
   } catch (cause) {
+    const staticFallback = config?.staticAssetFallback?.[kind];
+    if (staticFallback && context.env?.ASSETS?.fetch) {
+      const origin = new URL(context.request.url).origin;
+      const staticRes = await context.env.ASSETS.fetch(new Request(origin + staticFallback.assetPath));
+      if (staticRes.ok) {
+        const headers = new Headers();
+        headers.set('content-type', staticFallback.content_type);
+        headers.set('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(staticFallback.name)}`);
+        headers.set('cache-control', 'public, max-age=300, s-maxage=300');
+        headers.set('x-content-type-options', 'nosniff');
+        const len = staticRes.headers.get('content-length');
+        if (len) headers.set('content-length', len);
+        return new Response(headOnly ? null : staticRes.body, { status: 200, headers });
+      }
+    }
     return error(cause instanceof Error ? cause.message : 'Release mirror error.', 502);
   }
 }

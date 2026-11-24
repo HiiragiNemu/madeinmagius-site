@@ -95,16 +95,89 @@ export async function onRequest(context) {
     }
   }
 
-  // 4. Auth status & cookie verification
+  // 4. Auth status, cookie verification & PixEz OAuth PKCE (serverless Web Crypto)
   if (subPath === 'auth/status') {
+    const uidMatch = cookie.match(/(?:PHPSESSID=|^)(\d+)_/);
     return jsonResponse({
       loggedIn: Boolean(cookie),
       mode: cookie ? 'cookie' : 'guest',
-      user: cookie ? { name: 'Pixiv 会话' } : null,
+      user: cookie ? { id: uidMatch ? uidMatch[1] : 'cookie', name: uidMatch ? `Pixiv用户 #${uidMatch[1]}` : 'Pixiv 会话' } : null,
     });
   }
-  if (subPath === 'auth/verify-cookie') {
-    return jsonResponse({ ok: true, message: 'Cookie 已保存就绪' });
+  if (subPath === 'auth/logout') {
+    return jsonResponse({ error: false, loggedIn: false });
+  }
+  if (subPath === 'auth/verify-cookie' && request.method === 'POST') {
+    let body = {};
+    try { body = await request.json(); } catch {}
+    const rawCookie = String(body.cookie || cookie || '').trim();
+    const cookieHeader = rawCookie.includes('=') ? rawCookie : (rawCookie ? `PHPSESSID=${rawCookie}` : '');
+    const uidMatch = rawCookie.match(/(?:PHPSESSID=|^)(\d+)_/);
+    const uid = uidMatch ? uidMatch[1] : 'PixivUser';
+    let userName = body.userName || '';
+    if (!userName && /^\d+$/.test(uid) && cookieHeader) {
+      try {
+        const pr = await fetch(`https://www.pixiv.net/ajax/user/${uid}?lang=zh`, { headers: pixivHeaders(cookieHeader) });
+        if (pr.ok) {
+          const pj = await pr.json();
+          if (pj?.body?.name) userName = pj.body.name;
+        }
+      } catch {}
+    }
+    return jsonResponse({
+      error: false,
+      loggedIn: Boolean(cookieHeader),
+      mode: cookieHeader ? 'cookie' : 'guest',
+      user: cookieHeader ? { id: uid, name: userName || `Pixiv用户 #${uid}`, account: uid } : null,
+    });
+  }
+  if (subPath === 'oauth/start') {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const b64url = (arr) => btoa(String.fromCharCode(...arr)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    const codeVerifier = b64url(bytes);
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier)));
+    const codeChallenge = b64url(digest);
+    const loginUrl = `https://app-api.pixiv.net/web/v1/login?code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256&client=pixiv-android`;
+    return jsonResponse({ error: false, loginUrl, codeChallenge, codeVerifier });
+  }
+  if (subPath === 'oauth/exchange' && request.method === 'POST') {
+    let body = {};
+    try { body = await request.json(); } catch {}
+    const form = new URLSearchParams({
+      client_id: 'MOBrBDS8blbauoSck0ZfDbtuzpyT',
+      client_secret: 'lsACyCD94feDUtGTScpQ',
+      include_policy: 'true',
+    });
+    if (body.refreshToken) {
+      form.set('grant_type', 'refresh_token');
+      form.set('refresh_token', String(body.refreshToken).trim());
+    } else if (body.code) {
+      const m = String(body.code).match(/code=([A-Za-z0-9_-]+)/);
+      form.set('grant_type', 'authorization_code');
+      form.set('code', m ? m[1] : String(body.code).trim());
+      form.set('code_verifier', String(body.codeVerifier || ''));
+      form.set('redirect_uri', 'https://app-api.pixiv.net/web/v1/users/auth/pixiv/callback');
+    } else {
+      return jsonResponse({ error: true, message: '缺少 OAuth code 或 refresh_token' }, 400);
+    }
+    try {
+      const tokenRes = await fetch('https://oauth.secure.pixiv.net/auth/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'PixivAndroidApp/5.0.234 (Android 14; Pixel 8)',
+        },
+        body: form.toString(),
+      });
+      const td = await tokenRes.json();
+      if (!tokenRes.ok || td.has_error || !td.access_token) {
+        return jsonResponse({ error: true, message: td?.errors?.system?.message || 'Pixiv OAuth 验证失败' }, 400);
+      }
+      return jsonResponse({ error: false, user: td.user || null, refreshToken: td.refresh_token || '' });
+    } catch (e) {
+      return jsonResponse({ error: true, message: e.message || 'OAuth 请求失败' }, 502);
+    }
   }
 
   // 5. Artwork detail (/api/pixiv/illust/detail?id=...)

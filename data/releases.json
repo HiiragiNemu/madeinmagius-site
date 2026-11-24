@@ -155,10 +155,10 @@
           "download": "./downloads/pixiv/android"
         },
         "userscript": {
-          "id": 785402031,
+          "id": 787427857,
           "name": "pixtag-companion.user.js",
-          "size": 25801,
-          "digest": "sha256:a811eb208814dbff5d3dd8701591d3b0d36322efb28e1e5b50564f2648a4175c",
+          "size": 33275,
+          "digest": "sha256:b3a9685a4ecc788ff49b07b1ddac249f62635a8ce7a38f86c489810e27a2747a",
           "content_type": "application/javascript; charset=utf-8",
           "download": "./downloads/pixiv/userscript"
         }

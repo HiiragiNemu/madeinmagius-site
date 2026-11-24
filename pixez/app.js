@@ -24,29 +24,65 @@
 
   const CATEGORY_CYCLE = ['character', 'attribute_xp', 'series_ip', 'meta_general'];
 
+  const VISUAL_STORAGE_KEY = 'pixez_visual_v40';
   const THEME_LABELS = {
     light: '明亮',
     paper: '纸张',
-    eyecare: '护眼',
-    green: '夜间 (绿磷光)',
-    amber: '夜间 (橙磷光)',
+    green: '护眼',
+    dark: '夜间',
     frost: '冷辉'
   };
+  const VISUAL_DEFAULTS = {
+    light: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: false },
+    paper: { curvature: true, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+    green: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: false },
+    dark:  { curvature: true, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+    frost: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: true }
+  };
+
+  const IS_IOS = (() => {
+    const ua = navigator.userAgent || '';
+    return /AppleWebKit/.test(ua) && (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+  })();
+
+  function loadVisualState() {
+    const effects = {};
+    for (const k of Object.keys(VISUAL_DEFAULTS)) effects[k] = { ...VISUAL_DEFAULTS[k] };
+    let theme = 'paper';
+    let phosphor = 'green';
+    let themeBarMode = 'floating';
+    try {
+      const saved = JSON.parse(localStorage.getItem(VISUAL_STORAGE_KEY) || '{}');
+      if (saved && VISUAL_DEFAULTS[saved.theme]) theme = saved.theme;
+      if (saved && (saved.phosphor === 'amber' || saved.phosphor === 'green')) phosphor = saved.phosphor;
+      if (saved && (saved.themeBarMode === 'top' || saved.themeBarMode === 'floating')) themeBarMode = saved.themeBarMode;
+      if (saved && saved.effects) {
+        for (const k of Object.keys(VISUAL_DEFAULTS)) {
+          if (saved.effects[k] && typeof saved.effects[k] === 'object') {
+            effects[k] = { ...effects[k], ...saved.effects[k] };
+          }
+        }
+      }
+    } catch (_) {}
+    return { theme, phosphor, themeBarMode, effects };
+  }
+
+  const initialVisual = loadVisualState();
 
   const state = {
-    theme: localStorage.getItem('pixez_theme_v39') || 'paper',
-    nightPhosphor: localStorage.getItem('pixez_phosphor_v39') || 'green',
-    themeBarMode: localStorage.getItem('pixez_themebar_mode_v39') || 'top',
-    curvature: localStorage.getItem('pixez_curvature_v39') !== 'false',
-    pixelFont: localStorage.getItem('pixez_pixel_v39') === 'true',
-    crtFx: localStorage.getItem('pixez_crt_v39') !== 'false',
-    noiseFx: localStorage.getItem('pixez_noise_v39') !== 'false',
-    lofiFx: localStorage.getItem('pixez_lofi_v39') !== 'false',
+    theme: initialVisual.theme,
+    nightPhosphor: initialVisual.phosphor,
+    themeBarMode: initialVisual.themeBarMode,
+    visualEffects: initialVisual.effects,
     cookie: localStorage.getItem('pixez_cookie') || '',
+    refreshToken: localStorage.getItem('pixez_refresh_token_v4') || '',
+    bridgeDetected: false,
+    bridgeVersion: '',
     authStatus: { loggedIn: false, user: null, mode: 'guest' },
 
     rawDataset: null,
     activeCategoryScope: 'all',
+    tableDisplayLimit: 160,
     lockedSubTags: new Set(),
     basket: new Set(JSON.parse(localStorage.getItem('pixez_basket') || '[]')),
     userCategoryOverrides: JSON.parse(localStorage.getItem('pixez_cat_overrides') || '{}'),
@@ -80,6 +116,26 @@
   };
 
   const $ = (id) => document.getElementById(id);
+  let opticalRefs = null;
+  let opticalScrollUpdater = null;
+
+  function persistVisualState() {
+    try {
+      localStorage.setItem(VISUAL_STORAGE_KEY, JSON.stringify({
+        theme: state.theme,
+        phosphor: state.nightPhosphor,
+        themeBarMode: state.themeBarMode,
+        effects: state.visualEffects
+      }));
+    } catch (_) {}
+  }
+
+  function currentFx() {
+    if (!state.visualEffects[state.theme]) {
+      state.visualEffects[state.theme] = { ...(VISUAL_DEFAULTS[state.theme] || VISUAL_DEFAULTS.paper) };
+    }
+    return state.visualEffects[state.theme];
+  }
 
   function showToast(msg, duration = 2800) {
     const container = $('toastContainer');
@@ -129,16 +185,27 @@
   }
 
   // =========================================================================
-  // 1. THEME & AUTHENTIC READER/CALL V14 OPTICS MANAGEMENT
+  // 1. EXACT READER / CALL V14 OPTICAL ENGINE & FLOATING THEME BAR
   // =========================================================================
   function placeThemeBar() {
     const widget = $('themeSwitcher');
     const slot = $('themeBarTopSlot');
-    if (!widget || !slot) return;
+    const displayRoot = $('callDisplayRoot');
+    if (!widget || !slot || !displayRoot) return;
     if (state.themeBarMode === 'floating') {
-      if (widget.parentElement !== document.body) {
-        document.body.appendChild(widget);
+      if (widget.parentElement !== displayRoot) {
+        displayRoot.appendChild(widget);
       }
+      try {
+        const saved = JSON.parse(localStorage.getItem('pixez_pos_theme_v40') || 'null');
+        if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+          const maxX = Math.max(6, displayRoot.clientWidth - widget.offsetWidth - 6);
+          const maxY = Math.max(6, displayRoot.clientHeight - widget.offsetHeight - 6);
+          widget.classList.add('is-positioned');
+          widget.style.left = `${Math.max(6, Math.min(maxX, saved.x))}px`;
+          widget.style.top = `${Math.max(6, Math.min(maxY, saved.y))}px`;
+        }
+      } catch (_) {}
     } else {
       widget.classList.remove('is-positioned');
       ['left', 'top', 'right', 'bottom', 'transform'].forEach((p) => widget.style.removeProperty(p));
@@ -150,29 +217,55 @@
 
   function applyVisualSettings() {
     const root = document.documentElement;
-    const effectiveTheme = (state.theme === 'green' || state.theme === 'amber') ? state.nightPhosphor : state.theme;
-    state.theme = effectiveTheme;
+    const displayRoot = $('callDisplayRoot');
+    const fx = currentFx();
+    const curvatureActive = !IS_IOS && Boolean(fx.curvature);
 
-    root.setAttribute('data-theme', effectiveTheme);
-    root.setAttribute('data-theme-bar-mode', state.themeBarMode);
-    root.setAttribute('data-fx-curvature', state.curvature ? 'true' : 'false');
-    root.setAttribute('data-pixel-font', state.pixelFont ? 'true' : 'false');
-    root.setAttribute('data-crt-fx', state.crtFx ? 'true' : 'false');
-    root.setAttribute('data-lofi-fx', (state.lofiFx && state.noiseFx) ? 'true' : (state.lofiFx ? 'true' : 'false'));
+    root.dataset.callTheme = state.theme;
+    root.dataset.callPhosphor = state.nightPhosphor;
+    root.dataset.callThemeBarMode = state.themeBarMode;
+    root.dataset.callIos = String(IS_IOS);
+    root.dataset.callIosFlat = String(IS_IOS);
+    root.dataset.callCrtEngine = IS_IOS ? 'native-flat' : 'static-svg';
+    root.dataset.callFxCurvature = String(curvatureActive);
+    root.dataset.callFxScanlines = String(Boolean(fx.scanlines));
+    root.dataset.callFxNoise = String(Boolean(fx.noise));
+    root.dataset.callFxPixelFont = String(Boolean(fx.pixelFont));
+    root.dataset.callFxRegistration = String(Boolean(fx.registration));
+    root.dataset.callFxGlassDamage = String(Boolean(fx.glassDamage));
+    root.dataset.callOpticsActive = String(curvatureActive);
+    root.dataset.callReaderOptics = 'v14';
+    root.style.colorScheme = (state.theme === 'dark' || state.theme === 'frost') ? 'dark' : 'light';
+
+    if (displayRoot && window.CallReaderOpticsV14) {
+      if (!opticalRefs) {
+        opticalRefs = IS_IOS
+          ? window.CallReaderOpticsV14.mountMaterials(displayRoot)
+          : window.CallReaderOpticsV14.mount(displayRoot);
+      }
+      opticalRefs.sync();
+    }
+    if (window.CallGlass) {
+      window.CallGlass.sync(state.theme === 'frost' && Boolean(fx.glassDamage));
+    }
 
     placeThemeBar();
 
-    document.querySelectorAll('#themeSwitcher [data-theme-choice]').forEach((btn) => {
-      const choice = btn.dataset.themeChoice;
-      const isNightBtn = choice === 'green' && (effectiveTheme === 'green' || effectiveTheme === 'amber');
-      const isActive = isNightBtn || choice === effectiveTheme;
+    document.querySelectorAll('#themeSwitcher [data-call-theme-option]').forEach((btn) => {
+      const isActive = btn.dataset.callThemeOption === state.theme;
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
 
     if ($('fxCurrentThemeLabel')) {
-      $('fxCurrentThemeLabel').textContent = THEME_LABELS[effectiveTheme] || '纸张';
+      const label = state.theme === 'dark'
+        ? `夜间 (${state.nightPhosphor === 'amber' ? '橙磷光' : '绿磷光'})`
+        : (THEME_LABELS[state.theme] || '纸张');
+      $('fxCurrentThemeLabel').textContent = label;
     }
+
+    if ($('fxPhosphorFieldset')) $('fxPhosphorFieldset').hidden = state.theme !== 'dark';
+    if ($('fxGlassDamageRow')) $('fxGlassDamageRow').hidden = state.theme !== 'frost';
 
     document.querySelectorAll('[data-phosphor-choice]').forEach((btn) => {
       btn.setAttribute('aria-pressed', btn.dataset.phosphorChoice === state.nightPhosphor ? 'true' : 'false');
@@ -182,26 +275,22 @@
       btn.setAttribute('aria-pressed', btn.dataset.themebarMode === state.themeBarMode ? 'true' : 'false');
     });
 
-    if ($('toggleCurvatureCheck')) $('toggleCurvatureCheck').checked = state.curvature;
-    if ($('togglePixelFontCheck')) $('togglePixelFontCheck').checked = state.pixelFont;
-    if ($('toggleCrtFxCheck')) $('toggleCrtFxCheck').checked = state.crtFx;
-    if ($('toggleNoiseFxCheck')) $('toggleNoiseFxCheck').checked = state.noiseFx;
-    if ($('toggleLofiFxCheck')) $('toggleLofiFxCheck').checked = state.lofiFx;
+    if ($('toggleCurvatureCheck')) {
+      $('toggleCurvatureCheck').checked = curvatureActive;
+      $('toggleCurvatureCheck').disabled = IS_IOS;
+    }
+    if ($('togglePixelFontCheck')) $('togglePixelFontCheck').checked = Boolean(fx.pixelFont);
+    if ($('toggleCrtFxCheck')) $('toggleCrtFxCheck').checked = Boolean(fx.scanlines);
+    if ($('toggleNoiseFxCheck')) $('toggleNoiseFxCheck').checked = Boolean(fx.noise);
+    if ($('toggleLofiFxCheck')) $('toggleLofiFxCheck').checked = Boolean(fx.registration);
+    if ($('toggleGlassDamageCheck')) $('toggleGlassDamageCheck').checked = Boolean(fx.glassDamage);
+    if (opticalScrollUpdater) opticalScrollUpdater();
   }
 
   function setTheme(themeName) {
-    if (themeName === 'green' || themeName === 'amber') {
-      if (themeName === 'amber') state.nightPhosphor = 'amber';
-      state.theme = state.nightPhosphor;
-      localStorage.setItem('pixez_phosphor_v39', state.nightPhosphor);
-    } else {
-      state.theme = themeName;
-    }
-    localStorage.setItem('pixez_theme_v39', state.theme);
-    if (state.theme === 'paper' || state.theme === 'light' || state.theme === 'eyecare') {
-      state.pixelFont = false;
-      localStorage.setItem('pixez_pixel_v39', 'false');
-    }
+    if (!VISUAL_DEFAULTS[themeName]) return;
+    state.theme = themeName;
+    persistVisualState();
     applyVisualSettings();
     if (!$('networkView').classList.contains('hidden')) {
       renderNetworkGraph();
@@ -210,13 +299,9 @@
 
   function setPhosphor(phosphor) {
     state.nightPhosphor = phosphor === 'amber' ? 'amber' : 'green';
-    localStorage.setItem('pixez_phosphor_v39', state.nightPhosphor);
-    state.theme = state.nightPhosphor;
-    localStorage.setItem('pixez_theme_v39', state.theme);
-    if (state.nightPhosphor === 'amber') {
-      state.pixelFont = true;
-      localStorage.setItem('pixez_pixel_v39', 'true');
-    }
+    state.theme = 'dark';
+    currentFx().pixelFont = state.nightPhosphor === 'amber';
+    persistVisualState();
     applyVisualSettings();
     if (!$('networkView').classList.contains('hidden')) {
       renderNetworkGraph();
@@ -225,23 +310,78 @@
 
   function setThemeBarMode(mode) {
     state.themeBarMode = mode === 'floating' ? 'floating' : 'top';
-    localStorage.setItem('pixez_themebar_mode_v39', state.themeBarMode);
+    persistVisualState();
     applyVisualSettings();
   }
 
   function resetCurrentThemeDefaults() {
-    state.curvature = true;
-    state.crtFx = true;
-    state.noiseFx = true;
-    state.lofiFx = true;
-    state.pixelFont = state.theme === 'amber';
-    localStorage.setItem('pixez_curvature_v39', 'true');
-    localStorage.setItem('pixez_crt_v39', 'true');
-    localStorage.setItem('pixez_noise_v39', 'true');
-    localStorage.setItem('pixez_lofi_v39', 'true');
-    localStorage.setItem('pixez_pixel_v39', state.pixelFont ? 'true' : 'false');
+    state.visualEffects[state.theme] = { ...(VISUAL_DEFAULTS[state.theme] || VISUAL_DEFAULTS.paper) };
+    if (state.theme === 'dark') {
+      state.visualEffects.dark.pixelFont = state.nightPhosphor === 'amber';
+    }
+    persistVisualState();
     applyVisualSettings();
     showToast('已恢复当前主题默认画面与字体效果');
+  }
+
+  function initOpticalScrollbar() {
+    const scrollRoot = $('callDisplayScroll');
+    const bar = $('callOpticalScroll');
+    const thumb = $('callOpticalScrollThumb');
+    if (!scrollRoot || !bar || !thumb) return;
+
+    function sync() {
+      const sh = scrollRoot.scrollHeight;
+      const ch = scrollRoot.clientHeight;
+      if (sh <= ch + 2) {
+        bar.style.display = 'none';
+        return;
+      }
+      bar.style.display = 'block';
+      const trackH = bar.clientHeight || ch;
+      const thumbH = Math.max(36, Math.round((ch / sh) * trackH));
+      const maxTop = Math.max(1, trackH - thumbH);
+      const ratio = scrollRoot.scrollTop / Math.max(1, sh - ch);
+      thumb.style.height = `${thumbH}px`;
+      thumb.style.transform = `translateY(${Math.round(ratio * maxTop)}px)`;
+    }
+
+    opticalScrollUpdater = sync;
+    scrollRoot.addEventListener('scroll', () => requestAnimationFrame(sync), { passive: true });
+    if (typeof ResizeObserver === 'function') {
+      const ro = new ResizeObserver(sync);
+      ro.observe(scrollRoot);
+    }
+    window.addEventListener('resize', sync, { passive: true });
+
+    let dragStart = null;
+    bar.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const rect = bar.getBoundingClientRect();
+      const sh = scrollRoot.scrollHeight;
+      const ch = scrollRoot.clientHeight;
+      const maxScroll = Math.max(1, sh - ch);
+      if (e.target === thumb) {
+        dragStart = { y: e.clientY, top: scrollRoot.scrollTop };
+      } else {
+        const ratio = Math.max(0, Math.min(1, (e.clientY - rect.top) / Math.max(1, rect.height)));
+        scrollRoot.scrollTop = ratio * maxScroll;
+        dragStart = { y: e.clientY, top: scrollRoot.scrollTop };
+      }
+      bar.setPointerCapture?.(e.pointerId);
+    });
+    bar.addEventListener('pointermove', (e) => {
+      if (!dragStart) return;
+      const rect = bar.getBoundingClientRect();
+      const sh = scrollRoot.scrollHeight;
+      const ch = scrollRoot.clientHeight;
+      const maxScroll = Math.max(1, sh - ch);
+      const delta = e.clientY - dragStart.y;
+      scrollRoot.scrollTop = Math.max(0, Math.min(maxScroll, dragStart.top + (delta / Math.max(1, rect.height)) * sh));
+    });
+    bar.addEventListener('pointerup', () => { dragStart = null; });
+    bar.addEventListener('pointercancel', () => { dragStart = null; });
+    requestAnimationFrame(sync);
   }
 
   // =========================================================================
@@ -668,8 +808,10 @@
     const maxCount = filtered[0].count || 1;
     let unlockedRank = 0;
 
-    tbody.innerHTML = filtered
-      .slice(0, 250)
+    const visibleRows = filtered.slice(0, state.tableDisplayLimit);
+    const hasMore = filtered.length > visibleRows.length;
+
+    tbody.innerHTML = visibleRows
       .map((item) => {
         if (!item.isPinnedLocked) unlockedRank++;
         const rankBadgeClass = !item.isPinnedLocked && unlockedRank <= 3 ? `top-${unlockedRank}` : '';
@@ -739,7 +881,15 @@
           </tr>
         `;
       })
-      .join('');
+      .join('') + (hasMore ? `<tr class="table-load-more-row"><td colspan="6"><button class="t-btn t-btn--sm" id="loadMoreTableRowsBtn" type="button">展开更多标签 (还有 ${filtered.length - visibleRows.length} 条)</button></td></tr>` : '');
+
+    if ($('loadMoreTableRowsBtn')) {
+      $('loadMoreTableRowsBtn').addEventListener('click', () => {
+        state.tableDisplayLimit += 180;
+        renderTable(state.computedCoTags);
+      });
+    }
+    if (opticalScrollUpdater) requestAnimationFrame(opticalScrollUpdater);
 
     tbody.querySelectorAll('[data-inspect]').forEach((el) => {
       el.addEventListener('click', () => openInspectorModal(el.dataset.inspect));
@@ -828,7 +978,7 @@
       <article class="artwork-card" data-illust-id="${escapeHtml(w.id)}">
         <div class="artwork-thumb-box clean-optical-media" data-open-viewer="${escapeHtml(w.id)}">
           <div class="artwork-badges">${badges.join('')}</div>
-          <img class="clean-optical-media" src="${proxyImg(w.thumbUrl)}" alt="${escapeHtml(w.title)}" loading="lazy" />
+          <img class="clean-optical-media" src="${proxyImg(w.thumbUrl)}" alt="${escapeHtml(w.title)}" loading="lazy" decoding="async" />
         </div>
         <div class="artwork-meta">
           <div class="artwork-title" data-open-viewer="${escapeHtml(w.id)}" title="${escapeHtml(w.title)}">${escapeHtml(w.title || '无题')}</div>
@@ -1223,6 +1373,7 @@
       const reader = resp.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
+      let lastSnapshotRenderAt = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1260,7 +1411,13 @@
               ds.engine = ds.engine || ds.meta?.engine || 'WEB-AJAX';
               state.rawDataset = ds;
               $('engineSourceIndicator').textContent = `${ds.engine} · ${ds.pagesScanned}P`;
-              recomputeAndRender();
+
+              const now = Date.now();
+              if (eventType === 'complete' || now - lastSnapshotRenderAt >= 420) {
+                lastSnapshotRenderAt = now;
+                if (eventType === 'complete') state.tableDisplayLimit = 160;
+                recomputeAndRender();
+              }
 
               if (eventType === 'complete') {
                 progressFill.style.width = '100%';
@@ -1563,9 +1720,56 @@
   }
 
   // =========================================================================
-  // 10B. IN-DOM CUSTOM SELECT DROPDOWNS & RIGHT QUICK JUMP RAIL
+  // 10B. PORTALED CUSTOM SELECT DROPDOWNS (ZERO OCCLUSION!) & QUICK JUMP RAIL
   // =========================================================================
   const customSelectRegistry = [];
+  let activePortalMenu = null;
+
+  function closeAllCustomSelects() {
+    if (activePortalMenu) {
+      activePortalMenu.classList.add('hidden');
+      activePortalMenu = null;
+    }
+    document.querySelectorAll('.t-cselect__menu').forEach((m) => m.classList.add('hidden'));
+  }
+
+  function positionPortalMenu(anchorEl, menuEl, matchAnchorWidth = false) {
+    const displayRoot = $('callDisplayRoot') || document.body;
+    if (menuEl.parentElement !== displayRoot) {
+      displayRoot.appendChild(menuEl);
+    }
+    const hostRect = displayRoot.getBoundingClientRect();
+    const anchorRect = anchorEl.getBoundingClientRect();
+
+    menuEl.style.visibility = 'hidden';
+    menuEl.classList.remove('hidden');
+    if (matchAnchorWidth) {
+      menuEl.style.width = `${Math.round(anchorRect.width)}px`;
+    } else {
+      menuEl.style.minWidth = `${Math.max(84, Math.round(anchorRect.width))}px`;
+      menuEl.style.width = 'max-content';
+    }
+
+    const menuW = menuEl.offsetWidth;
+    const menuH = menuEl.offsetHeight;
+    let left = anchorRect.left - hostRect.left;
+    let top = anchorRect.bottom - hostRect.top + 2;
+
+    if (left + menuW > hostRect.width - 8) {
+      left = Math.max(6, hostRect.width - menuW - 8);
+    }
+    if (left < 6) left = 6;
+
+    if (top + menuH > hostRect.height - 10) {
+      const aboveTop = anchorRect.top - hostRect.top - menuH - 2;
+      if (aboveTop >= 6) top = aboveTop;
+      else top = Math.max(6, hostRect.height - menuH - 10);
+    }
+
+    menuEl.style.left = `${Math.round(left)}px`;
+    menuEl.style.top = `${Math.round(top)}px`;
+    menuEl.style.visibility = '';
+  }
 
   function syncCustomSelects() {
     for (const item of customSelectRegistry) {
@@ -1601,7 +1805,6 @@
       wrap.appendChild(sel);
       sel.classList.add('t-cselect__native');
       wrap.appendChild(btn);
-      wrap.appendChild(menu);
 
       function buildOptions() {
         const selectedOpt = sel.options[sel.selectedIndex] || sel.options[0];
@@ -1622,7 +1825,7 @@
             e.stopPropagation();
             sel.value = optBtn.dataset.val;
             buildOptions();
-            menu.classList.add('hidden');
+            closeAllCustomSelects();
             sel.dispatchEvent(new Event('change', { bubbles: true }));
           });
         });
@@ -1633,17 +1836,39 @@
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const wasHidden = menu.classList.contains('hidden');
-        document.querySelectorAll('.t-cselect__menu').forEach((m) => m.classList.add('hidden'));
-        if (wasHidden) {
+        const wasOpen = activePortalMenu === menu && !menu.classList.contains('hidden');
+        closeAllCustomSelects();
+        if (!wasOpen) {
           buildOptions();
-          menu.classList.remove('hidden');
+          positionPortalMenu(inChip ? sel.parentElement.parentElement : wrap, menu, false);
+          activePortalMenu = menu;
         }
       });
     });
 
-    document.addEventListener('click', () => {
-      document.querySelectorAll('.t-cselect__menu').forEach((m) => m.classList.add('hidden'));
+    document.addEventListener('click', () => closeAllCustomSelects());
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeAllCustomSelects();
+        $('autocompleteDropdown')?.classList.add('hidden');
+      }
+    });
+    $('callDisplayScroll')?.addEventListener('scroll', () => closeAllCustomSelects(), { passive: true });
+    window.addEventListener('resize', () => closeAllCustomSelects(), { passive: true });
+  }
+
+  function scrollToElementInRoot(targetEl) {
+    const scrollRoot = $('callDisplayScroll');
+    if (!targetEl) return;
+    if (!scrollRoot) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const sr = scrollRoot.getBoundingClientRect();
+    const er = targetEl.getBoundingClientRect();
+    scrollRoot.scrollTo({
+      top: Math.max(0, scrollRoot.scrollTop + er.top - sr.top - 8),
+      behavior: 'smooth'
     });
   }
 
@@ -1651,6 +1876,7 @@
     const rail = $('quickJumpRail');
     const grip = $('quickRailGrip');
     const collapseBtn = $('quickRailCollapseBtn');
+    const scrollRoot = $('callDisplayScroll');
     if (!rail || !grip || !collapseBtn) return;
 
     collapseBtn.addEventListener('click', () => {
@@ -1658,37 +1884,7 @@
       collapseBtn.textContent = collapsed ? '>' : '<';
     });
 
-    let dragging = false;
-    let startX = 0;
-    let startY = 0;
-    let origLeft = 0;
-    let origTop = 0;
-
-    grip.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      const rect = rail.getBoundingClientRect();
-      dragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      origLeft = rect.left;
-      origTop = rect.top;
-      rail.classList.add('is-positioned');
-      rail.style.left = `${origLeft}px`;
-      rail.style.top = `${origTop}px`;
-      grip.setPointerCapture(e.pointerId);
-    });
-
-    grip.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      const nx = Math.max(4, Math.min(window.innerWidth - rail.offsetWidth - 4, origLeft + (e.clientX - startX)));
-      const ny = Math.max(4, Math.min(window.innerHeight - rail.offsetHeight - 4, origTop + (e.clientY - startY)));
-      rail.style.left = `${nx}px`;
-      rail.style.top = `${ny}px`;
-    });
-
-    grip.addEventListener('pointerup', () => {
-      dragging = false;
-    });
+    bindDraggableWidget(rail, grip, 'pixez_pos_rail_v40', () => true);
 
     rail.querySelectorAll('[data-rail-action]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1698,15 +1894,15 @@
           if (tab) tab.click();
         };
         if (act === 'top') {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          (scrollRoot || window).scrollTo({ top: 0, behavior: 'smooth' });
         } else if (act === 'query') {
-          $('queryConsolePanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          scrollToElementInRoot($('queryConsolePanel'));
           $('tagSearchInput')?.focus();
         } else if (act === 'filter') {
-          $('filterSwitchesRow')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          scrollToElementInRoot($('filterSwitchesRow'));
         } else if (act === 'table') {
           switchView('cooccurrenceView');
-          $('rankingTablePanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          scrollToElementInRoot($('rankingTablePanel'));
         } else if (act === 'search') {
           executeAnalysis();
         } else if (act === 'clear') {
@@ -1715,12 +1911,13 @@
           showToast('已清空叠加必含筛选');
         } else if (act === 'network') {
           switchView('networkView');
-          $('networkView')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          scrollToElementInRoot($('networkView'));
         } else if (act === 'gallery') {
           switchView('artworksView');
-          $('artworksView')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          scrollToElementInRoot($('artworksView'));
         } else if (act === 'bottom') {
-          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+          if (scrollRoot) scrollRoot.scrollTo({ top: scrollRoot.scrollHeight, behavior: 'smooth' });
+          else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
       });
     });
@@ -1778,8 +1975,35 @@
   }
 
   // =========================================================================
-  // 12. AUTHENTICATION & CHROME TAMPERMONKEY SESSION BRIDGE
+  // 12. AUTOMATED PIXIV AUTH, PERSISTENT REFRESH & CHROME SESSION BRIDGE
   // =========================================================================
+  let oauthExchanging = false;
+
+  async function completeAutomatedOAuthCode(code) {
+    if (!code || oauthExchanging) return;
+    oauthExchanging = true;
+    try {
+      const r = await apiFetch('/api/oauth/exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, codeVerifier: state.codeVerifier || '' })
+      });
+      const d = await r.json();
+      if (!r.ok || d.error) throw new Error(d.message || d.error || '自动授权交换失败');
+      if (d.refreshToken) {
+        state.refreshToken = d.refreshToken;
+        localStorage.setItem('pixez_refresh_token_v4', d.refreshToken);
+      }
+      await checkAuthStatus();
+      $('authModal')?.classList.add('hidden');
+      showToast(`已自动完成 Pixiv 登录${d.user?.name ? ': ' + d.user.name : ''}（后续访问将自动保持登录）`);
+    } catch (err) {
+      showToast(`自动授权提示: ${err.message}`);
+    } finally {
+      oauthExchanging = false;
+    }
+  }
+
   async function checkAuthStatus() {
     try {
       const resp = await apiFetch('/api/auth/status', {
@@ -1787,6 +2011,38 @@
       });
       const data = await resp.json();
       state.authStatus = data;
+
+      // Persistent Auto-Login: if server restarted or running on serverless Pages, silently restore via saved Refresh Token or Cookie!
+      if (!data.loggedIn && state.refreshToken) {
+        try {
+          const rr = await apiFetch('/api/oauth/exchange', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: state.refreshToken })
+          });
+          const rd = await rr.json();
+          if (rr.ok && !rd.error && rd.user) {
+            if (rd.refreshToken) {
+              state.refreshToken = rd.refreshToken;
+              localStorage.setItem('pixez_refresh_token_v4', rd.refreshToken);
+            }
+            state.authStatus = { loggedIn: true, mode: 'oauth', user: rd.user };
+          }
+        } catch (_) {}
+      } else if (!data.loggedIn && state.cookie) {
+        try {
+          const cr = await apiFetch('/api/auth/verify-cookie', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cookie: state.cookie })
+          });
+          const cd = await cr.json();
+          if (cr.ok && !cd.error && cd.loggedIn) {
+            state.authStatus = cd;
+          }
+        } catch (_) {}
+      }
+
       updateAuthUI();
     } catch (_) {}
   }
@@ -1794,57 +2050,103 @@
   function updateAuthUI() {
     const d = state.authStatus;
     const isLogged = Boolean(d.loggedIn || state.cookie);
-    const userName = d.user?.name || d.user?.account || (state.cookie ? 'Cookie 会话' : '');
+    const userName = d.user?.name || d.user?.account || (state.cookie ? '已连接会话' : '');
 
     if (isLogged) {
       $('headerAuthLabel').textContent = `已登录: ${userName}`;
-      $('authCurrentStatusBox').textContent = `当前状态: 已连接 Pixiv 账号 (${userName}) — 全量采样与原图下载已就绪。`;
+      $('authCurrentStatusBox').textContent = `当前状态: 已自动连接 Pixiv 账号 (${userName}) — 后续打开将自动保持登录。`;
       $('oauthLogoutBtn').classList.remove('hidden');
     } else {
       $('headerAuthLabel').textContent = '账号';
-      $('authCurrentStatusBox').textContent = '当前状态: 免登录直连模式 — 无需登录即可直接进行全量页面采样、分类排行与高清看图下载。';
+      $('authCurrentStatusBox').textContent = '当前状态: 免登录直连模式 — 无需登录即可采样与看图；登录一次后将自动记住。';
       $('oauthLogoutBtn').classList.add('hidden');
+    }
+
+    if ($('bridgeStatusTitle') && $('bridgeStatusDesc')) {
+      if (state.bridgeDetected) {
+        $('bridgeStatusTitle').textContent = `全自动授权桥接已就绪 (v${state.bridgeVersion || '4.0'})`;
+        $('bridgeStatusDesc').innerHTML = '检测到自动授权脚本已启用：点击 <strong>「一键登录 Pixiv」</strong> 并在 Pixiv 页点击「继续使用此账号」后，授权会自动回传本页并关闭弹窗，下次访问自动保持登录。';
+      } else {
+        $('bridgeStatusTitle').textContent = '全自动登录与跨页授权桥接';
+      }
     }
   }
 
   window.addEventListener('message', async (ev) => {
-    if (!ev.data || ev.data.type !== 'PIXEZ_USERSCRIPT_BRIDGE_READY') return;
-    if (ev.data.cookie && ev.data.cookie !== state.cookie) {
-      state.cookie = ev.data.cookie;
-      localStorage.setItem('pixez_cookie', state.cookie);
-      try {
-        await apiFetch('/api/auth/verify-cookie', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cookie: state.cookie })
-        });
-      } catch (_) {}
-      await checkAuthStatus();
-      showToast('已通过 v3.0 油猴脚本自动同步 Chrome Pixiv 登录态');
+    if (!ev.data || typeof ev.data !== 'object') return;
+    if (ev.data.type === 'PIXEZ_USERSCRIPT_ALIVE') {
+      state.bridgeDetected = true;
+      state.bridgeVersion = ev.data.version || '4.0';
+      updateAuthUI();
+      return;
+    }
+    if (ev.data.type === 'PIXEZ_OAUTH_CODE' && ev.data.code) {
+      await completeAutomatedOAuthCode(ev.data.code);
+      return;
+    }
+    if (ev.data.type === 'PIXEZ_USERSCRIPT_BRIDGE_READY' && ev.data.cookie) {
+      const changed = ev.data.cookie !== state.cookie || !state.authStatus.loggedIn;
+      if (changed) {
+        state.cookie = ev.data.cookie;
+        localStorage.setItem('pixez_cookie', state.cookie);
+        try {
+          const resp = await apiFetch('/api/auth/verify-cookie', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cookie: state.cookie, userName: ev.data.userName || '' })
+          });
+          const d = await resp.json();
+          if (resp.ok && !d.error && d.loggedIn) {
+            state.authStatus = d;
+            updateAuthUI();
+            $('authModal')?.classList.add('hidden');
+            showToast(`已自动同步 Chrome Pixiv 登录态${d.user?.name ? ': ' + d.user.name : ''}`);
+          }
+        } catch (_) {}
+      }
     }
   });
 
   // =========================================================================
   // 13. EVENT BINDINGS & INITIALIZATION
   // =========================================================================
-  function bindDraggableWidget(widgetEl, gripEl, canDragFn) {
+  function bindDraggableWidget(widgetEl, gripEl, storageKey, canDragFn) {
     if (!widgetEl || !gripEl) return;
+    const displayRoot = $('callDisplayRoot');
+
+    const restoreSavedPos = () => {
+      if (!storageKey || (canDragFn && !canDragFn())) return;
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+        if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y) && displayRoot) {
+          const maxX = Math.max(6, displayRoot.clientWidth - widgetEl.offsetWidth - 6);
+          const maxY = Math.max(6, displayRoot.clientHeight - widgetEl.offsetHeight - 6);
+          widgetEl.classList.add('is-positioned');
+          widgetEl.style.left = `${Math.max(6, Math.min(maxX, saved.x))}px`;
+          widgetEl.style.top = `${Math.max(6, Math.min(maxY, saved.y))}px`;
+        }
+      } catch (_) {}
+    };
+    requestAnimationFrame(restoreSavedPos);
+
     let dragging = false;
     let startX = 0;
     let startY = 0;
     let origLeft = 0;
     let origTop = 0;
+    let lastPos = null;
 
     gripEl.addEventListener('pointerdown', (e) => {
       if (canDragFn && !canDragFn()) return;
       if (e.target && e.target.closest('button') && e.target.closest('button') !== gripEl) return;
       e.preventDefault();
+      const hostRect = (displayRoot || document.body).getBoundingClientRect();
       const rect = widgetEl.getBoundingClientRect();
       dragging = true;
       startX = e.clientX;
       startY = e.clientY;
-      origLeft = rect.left;
-      origTop = rect.top;
+      origLeft = rect.left - hostRect.left;
+      origTop = rect.top - hostRect.top;
       widgetEl.classList.add('is-positioned');
       widgetEl.style.left = `${origLeft}px`;
       widgetEl.style.top = `${origTop}px`;
@@ -1853,26 +2155,38 @@
 
     gripEl.addEventListener('pointermove', (e) => {
       if (!dragging) return;
-      const nx = Math.max(4, Math.min(window.innerWidth - widgetEl.offsetWidth - 4, origLeft + (e.clientX - startX)));
-      const ny = Math.max(4, Math.min(window.innerHeight - widgetEl.offsetHeight - 4, origTop + (e.clientY - startY)));
-      widgetEl.style.left = `${nx}px`;
-      widgetEl.style.top = `${ny}px`;
+      const hostW = displayRoot ? displayRoot.clientWidth : window.innerWidth;
+      const hostH = displayRoot ? displayRoot.clientHeight : window.innerHeight;
+      const nx = Math.max(6, Math.min(hostW - widgetEl.offsetWidth - 6, origLeft + (e.clientX - startX)));
+      const ny = Math.max(6, Math.min(hostH - widgetEl.offsetHeight - 6, origTop + (e.clientY - startY)));
+      lastPos = { x: Math.round(nx), y: Math.round(ny) };
+      widgetEl.style.left = `${lastPos.x}px`;
+      widgetEl.style.top = `${lastPos.y}px`;
     });
 
-    gripEl.addEventListener('pointerup', () => {
+    const finishDrag = () => {
+      if (!dragging) return;
       dragging = false;
-    });
+      if (lastPos && storageKey) {
+        try { localStorage.setItem(storageKey, JSON.stringify(lastPos)); } catch (_) {}
+      }
+    };
+    gripEl.addEventListener('pointerup', finishDrag);
+    gripEl.addEventListener('pointercancel', finishDrag);
 
     gripEl.addEventListener('dblclick', () => {
       widgetEl.classList.remove('is-positioned');
       ['left', 'top', 'right', 'bottom', 'transform'].forEach((p) => widgetEl.style.removeProperty(p));
+      if (storageKey) {
+        try { localStorage.removeItem(storageKey); } catch (_) {}
+      }
     });
   }
 
   function initEvents() {
     // Theme Switcher & Display Settings Window (call-theme-widget-v7 + call-fx-window-v7)
-    document.querySelectorAll('#themeSwitcher [data-theme-choice]').forEach((btn) => {
-      btn.addEventListener('click', () => setTheme(btn.dataset.themeChoice));
+    document.querySelectorAll('#themeSwitcher [data-call-theme-option]').forEach((btn) => {
+      btn.addEventListener('click', () => setTheme(btn.dataset.callThemeOption));
     });
 
     document.querySelectorAll('[data-phosphor-choice]').forEach((btn) => {
@@ -1883,41 +2197,22 @@
       btn.addEventListener('click', () => setThemeBarMode(btn.dataset.themebarMode));
     });
 
-    if ($('toggleCurvatureCheck')) {
-      $('toggleCurvatureCheck').addEventListener('change', (e) => {
-        state.curvature = e.target.checked;
-        localStorage.setItem('pixez_curvature_v39', state.curvature ? 'true' : 'false');
+    const bindFxToggle = (id, key) => {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener('change', (e) => {
+        currentFx()[key] = Boolean(e.target.checked);
+        persistVisualState();
         applyVisualSettings();
       });
-    }
-    if ($('togglePixelFontCheck')) {
-      $('togglePixelFontCheck').addEventListener('change', (e) => {
-        state.pixelFont = e.target.checked;
-        localStorage.setItem('pixez_pixel_v39', state.pixelFont ? 'true' : 'false');
-        applyVisualSettings();
-      });
-    }
-    if ($('toggleCrtFxCheck')) {
-      $('toggleCrtFxCheck').addEventListener('change', (e) => {
-        state.crtFx = e.target.checked;
-        localStorage.setItem('pixez_crt_v39', state.crtFx ? 'true' : 'false');
-        applyVisualSettings();
-      });
-    }
-    if ($('toggleNoiseFxCheck')) {
-      $('toggleNoiseFxCheck').addEventListener('change', (e) => {
-        state.noiseFx = e.target.checked;
-        localStorage.setItem('pixez_noise_v39', state.noiseFx ? 'true' : 'false');
-        applyVisualSettings();
-      });
-    }
-    if ($('toggleLofiFxCheck')) {
-      $('toggleLofiFxCheck').addEventListener('change', (e) => {
-        state.lofiFx = e.target.checked;
-        localStorage.setItem('pixez_lofi_v39', state.lofiFx ? 'true' : 'false');
-        applyVisualSettings();
-      });
-    }
+    };
+    bindFxToggle('toggleCurvatureCheck', 'curvature');
+    bindFxToggle('toggleCrtFxCheck', 'scanlines');
+    bindFxToggle('toggleNoiseFxCheck', 'noise');
+    bindFxToggle('togglePixelFontCheck', 'pixelFont');
+    bindFxToggle('toggleLofiFxCheck', 'registration');
+    bindFxToggle('toggleGlassDamageCheck', 'glassDamage');
+
     if ($('resetThemeDefaultsBtn')) {
       $('resetThemeDefaultsBtn').addEventListener('click', resetCurrentThemeDefaults);
     }
@@ -1928,8 +2223,15 @@
       });
     }
 
-    bindDraggableWidget($('themeSwitcher'), $('themeWidgetGrip'), () => state.themeBarMode === 'floating');
-    bindDraggableWidget($('styleConfigModal'), $('fxWindowTitlebar'), () => true);
+    bindDraggableWidget($('themeSwitcher'), $('themeWidgetGrip'), 'pixez_pos_theme_v40', () => state.themeBarMode === 'floating');
+    bindDraggableWidget($('styleConfigModal'), $('fxWindowTitlebar'), 'pixez_pos_fx_v40', () => true);
+
+    if ($('syncChromeBridgeNowBtn')) {
+      $('syncChromeBridgeNowBtn').addEventListener('click', () => {
+        window.postMessage({ type: 'PIXEZ_REQUEST_CHROME_BRIDGE' }, '*');
+        showToast(state.bridgeDetected ? '正在同步当前浏览器 Pixiv 登录态...' : '未检测到 v4.0 油猴桥接脚本，请先点击右侧安装/更新');
+      });
+    }
 
     if ($('copyUserscriptSourceBtn')) {
       $('copyUserscriptSourceBtn').addEventListener('click', async () => {
@@ -1948,7 +2250,7 @@
       });
     }
 
-    // Subsystem View Tabs
+    // Subsystem View Tabs (Automatically suspends CRT grid/distortion ONLY in Artwork Gallery!)
     document.querySelectorAll('.subsystem-tabs .sub-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.subsystem-tabs .sub-tab').forEach((b) => b.classList.remove('active'));
@@ -1957,7 +2259,9 @@
         ['cooccurrenceView', 'artworksView', 'networkView'].forEach((id) => {
           $(id).classList.toggle('hidden', id !== target);
         });
+        document.documentElement.dataset.activeView = target === 'artworksView' ? 'gallery' : (target === 'networkView' ? 'network' : 'table');
         if (target === 'networkView') renderNetworkGraph();
+        if (opticalScrollUpdater) requestAnimationFrame(opticalScrollUpdater);
       });
     });
 
@@ -2013,7 +2317,9 @@
             `
             )
             .join('');
-          dd.classList.remove('hidden');
+          const inputBox = $('tagSearchInput')?.closest('.query-input-box');
+          if (inputBox) positionPortalMenu(inputBox, dd, true);
+          else dd.classList.remove('hidden');
           dd.querySelectorAll('[data-ac]').forEach((item) => {
             item.addEventListener('click', () => {
               $('tagSearchInput').value = item.dataset.ac;
@@ -2306,7 +2612,13 @@
         const r = await apiFetch('/api/oauth/start');
         const d = await r.json();
         if (d.codeVerifier) state.codeVerifier = d.codeVerifier;
-        if (d.loginUrl) window.open(d.loginUrl, '_blank');
+        if (d.loginUrl) {
+          const w = 520, h = 720;
+          const left = Math.max(40, Math.round((screen.width - w) / 2));
+          const top = Math.max(40, Math.round((screen.height - h) / 2));
+          window.open(d.loginUrl, 'pixiv_oauth_popup', `width=${w},height=${h},left=${left},top=${top},noopener=no`);
+          showToast(state.bridgeDetected ? '已打开 Pixiv 授权窗口，点击「继续使用此账号」后将自动完成登录' : '已打开 Pixiv 授权窗口（建议安装/更新 v4.0 自动桥接脚本以实现免手动自动回传）', 4200);
+        }
       } catch (e) {
         showToast('无法生成 OAuth 链接');
       }
@@ -2315,23 +2627,10 @@
     $('submitOAuthCodeBtn').addEventListener('click', async () => {
       const codeInput = $('oauthCodeInput').value.trim();
       if (!codeInput) {
-        showToast('请粘贴 F12 Console 中的 pixiv://account/login?code=... 文本');
+        showToast('请填入 OAuth 回调 code');
         return;
       }
-      try {
-        const r = await apiFetch('/api/oauth/exchange', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: codeInput, codeVerifier: state.codeVerifier || '' })
-        });
-        const d = await r.json();
-        if (!r.ok || d.error) throw new Error(d.message || d.error || '登录失败');
-        await checkAuthStatus();
-        $('authModal').classList.add('hidden');
-        showToast('Pixiv OAuth 登录成功');
-      } catch (err) {
-        showToast(`错误: ${err.message}`);
-      }
+      await completeAutomatedOAuthCode(codeInput);
     });
 
     $('submitRefreshTokenBtn').addEventListener('click', async () => {
@@ -2345,9 +2644,13 @@
         });
         const d = await r.json();
         if (!r.ok || d.error) throw new Error(d.message || d.error || 'Token 验证失败');
+        if (d.refreshToken) {
+          state.refreshToken = d.refreshToken;
+          localStorage.setItem('pixez_refresh_token_v4', d.refreshToken);
+        }
         await checkAuthStatus();
         $('authModal').classList.add('hidden');
-        showToast('Refresh Token 登录成功');
+        showToast('Refresh Token 登录成功（后续将自动保持登录）');
       } catch (err) {
         showToast(`错误: ${err.message}`);
       }
@@ -2355,7 +2658,9 @@
 
     $('oauthLogoutBtn').addEventListener('click', async () => {
       state.cookie = '';
+      state.refreshToken = '';
       localStorage.removeItem('pixez_cookie');
+      localStorage.removeItem('pixez_refresh_token_v4');
       await apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       await checkAuthStatus();
       showToast('已退出登录');
@@ -2400,6 +2705,7 @@
 
   // Startup initialization
   applyVisualSettings();
+  initOpticalScrollbar();
   saveBasket();
   initCustomSelects();
   initQuickJumpRail();
@@ -2409,9 +2715,8 @@
   const urlParams = new URLSearchParams(window.location.search);
   const autoCode = urlParams.get('pixiv_code');
   if (autoCode) {
-    $('oauthCodeInput').value = autoCode;
-    $('submitOAuthCodeBtn').click();
-    window.history.replaceState({}, document.title, '/');
+    completeAutomatedOAuthCode(autoCode);
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 
   const initialQuery = urlParams.get('q') || urlParams.get('tag') || '森亜るるか';

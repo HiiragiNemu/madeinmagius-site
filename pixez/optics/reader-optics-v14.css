@@ -1,0 +1,297 @@
+/* Reader 7bd527d material adaptation. Values are from display-material,
+   screen-effects, night-display-surface, frost-glass-surface and scene-registration.
+   No animation, pointer listener, per-card blur or backdrop sampling. */
+html:root[data-call-theme][data-call-reader-optics="v14"]:not([data-call-ios-flat="true"]) body .call-display-root-v7 {
+  --call-optical-pass:opacity(1);
+  --call-glass-pass: ;
+  filter:var(--call-optical-pass) var(--call-glass-pass)!important;
+  -webkit-filter:var(--call-optical-pass) var(--call-glass-pass)!important;
+  contain:paint; overflow:clip!important;
+  transform:none!important; transition:none!important; animation:none!important;
+}
+/* The root itself stays dark until the complete lens/material set is decoded.
+   Existing recovery controls remain reachable if an asset fails. */
+html:root[data-call-material-ready="false"][data-call-preboot="true"]:not([data-call-loading-state="error"]) body .call-display-root-v7 { opacity:0!important; }
+html:root[data-call-theme][data-call-reader-optics="v14"][data-call-fx-registration="true"]:not([data-call-ios-flat="true"]) body .call-display-root-v7 {
+  --call-optical-pass:var(--call-active-flat-filter);
+}
+html:root[data-call-theme][data-call-reader-optics="v14"][data-call-optics-active="true"]:not([data-call-ios-flat="true"]) body .call-display-root-v7 {
+  --call-optical-pass:var(--call-active-tube-filter);
+}
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"][data-call-glass-active="true"]:not([data-call-ios-flat="true"]) body .call-display-root-v7 {
+  --call-glass-pass:var(--call-glass-filter-v12);
+}
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"][data-call-optics-active="false"]:not([data-call-ios-flat="true"]) body .call-display-scroll-v7 {
+  filter:blur(.32px) saturate(.96) contrast(.99);
+}
+html:root[data-call-theme][data-call-reader-optics="v14"] body .call-display-scroll-v7 {
+  will-change:auto!important; animation:none!important;
+}
+html:root[data-call-theme][data-call-reader-optics="v14"] body .call-fx-film-focus-v7 {
+  display:none!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important;
+}
+/* Offscreen optimizations must not leave missing card tiles inside a tube. */
+html:root[data-call-theme][data-call-reader-optics="v14"][data-call-optics-active="true"] body :is(.girlbox,.suite-character-card),
+html:root[data-call-ios-flat="true"] body :is(.girlbox,.suite-character-card) {
+  content-visibility:visible!important; contain-intrinsic-size:none!important;
+}
+
+/* Frozen Reader daylight handoff, 2026-09-28. The grain blends inside the
+   existing opaque scene, never against a transparent group or a grey mask. */
+html:root[data-call-theme] {
+  --call-reader-scan:.28; --call-day-noise:.28;
+  --call-grain-size:257px 131px; --call-grain-background-blend:soft-light; --call-grain-blend:soft-light;
+}
+html:root:is([data-call-theme="light"],[data-call-theme="paper"],[data-call-theme="green"]) {
+  --call-day-noise:.85; --call-grain-size:160px 160px;
+  --call-grain-background-blend:normal; --call-grain-blend:hard-light;
+}
+html:root[data-call-theme="dark"][data-call-phosphor="amber"] { --call-reader-scan:.42; }
+html:root[data-call-theme][data-call-reader-optics="v14"] body .call-fx-scanlines-v7 {
+  background: repeating-linear-gradient(0deg,
+      rgba(5,0,2,0) 0px, rgba(5,0,2,.06) .4px,
+      rgba(5,0,2,.22) .8px, rgba(5,0,2,.34) 1.2px,
+      rgba(5,0,2,.22) 1.6px, rgba(5,0,2,.06) 2px,
+      rgba(5,0,2,0) 2.4px, rgba(5,0,2,0) 3px)!important; display:none!important;
+  opacity:var(--call-reader-scan)!important; mix-blend-mode:multiply!important;
+}
+html:root[data-call-theme][data-call-reader-optics="v14"][data-call-fx-scanlines="true"] body .call-fx-scanlines-v7 { display:block!important; }
+html:root[data-call-theme][data-call-reader-optics="v14"] body .call-fx-day-grain-v7 {
+  display:none!important; filter:none!important;
+  background:url('../textures/NoiseAndGrain.png') 0 0/var(--call-grain-size) repeat!important;
+  background-blend-mode:var(--call-grain-background-blend)!important; mix-blend-mode:var(--call-grain-blend)!important;
+  opacity:var(--call-day-noise)!important;
+}
+html:root[data-call-theme][data-call-reader-optics="v14"][data-call-fx-noise="true"]:not([data-call-theme="dark"]) body .call-fx-day-grain-v7 { display:block!important; }
+/* Retire Call's extra cold raster; Reader uses the day raster in cold mode. */
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"] body .call-fx-night-phosphor-v7 { display:none!important; }
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"] body .call-fx-night-phosphor-v7 {
+  --call-reader-raster:linear-gradient(transparent,transparent);
+  background:var(--call-reader-raster),url('../textures/NoiseAndGrain.png') 0 0/128px 64px repeat,url('../textures/PixelOverlay_RGB_16.png') 0 0/4px 4px repeat!important;
+  background-blend-mode:multiply,soft-light,normal!important; mix-blend-mode:soft-light!important;
+  opacity:var(--call-reader-scan)!important;
+}
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"] body .call-fx-night-grain-v7 {
+  background:url('../textures/magi-lofi-grain.png') 7px 13px/384px 384px repeat,url('../textures/magi-lofi-grain.png') 7px 13px/384px 384px repeat!important;
+  background-blend-mode:screen!important; mix-blend-mode:screen!important;
+  opacity:.495!important; filter:sepia(.2) hue-rotate(42deg) saturate(.72)!important;
+}
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor="amber"] body .call-fx-night-grain-v7 { opacity:.66!important; filter:sepia(.65)!important; }
+
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"] body .call-reader-screen-v7 {
+  --call-left-material-fade:linear-gradient(90deg,rgba(0,0,0,.70),rgba(0,0,0,.84) 16%,#000 34%);
+  opacity:.96!important; mix-blend-mode:screen!important;
+  mask-image:var(--call-left-material-fade)!important;
+}
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"] body .call-fx-frost-grain-v7 {
+  display:block!important; opacity:.95!important; mix-blend-mode:screen!important;
+  background:url('../textures/magi-lofi-grain.png') 19px 17px/384px 384px repeat,url('../textures/magi-lofi-grain.png') 19px 17px/384px 384px repeat,url('../textures/magi-lofi-grain.png') 19px 17px/384px 384px repeat,url('../textures/magi-lofi-grain.png') 19px 17px/384px 384px repeat!important;
+  background-blend-mode:screen!important;
+  mask-image:radial-gradient(ellipse 19% 13% at 78% 34%,#000 12%,transparent 90%),radial-gradient(ellipse 14% 26% at 94% 68%,rgba(0,0,0,.86),transparent 93%),radial-gradient(ellipse 17% 19% at 54% 77%,rgba(0,0,0,.7),transparent 92%),radial-gradient(ellipse 11% 12% at 44% 17%,rgba(0,0,0,.62),transparent 94%),linear-gradient(90deg,rgba(0,0,0,.38),rgba(0,0,0,.45) 20%,rgba(0,0,0,.76) 38%,rgba(0,0,0,.84) 70%,rgba(0,0,0,.68))!important;
+}
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"] body .call-fx-frost-smudges-v7 {
+  opacity:.24!important; mix-blend-mode:screen!important; filter:grayscale(1)!important;
+  mask-image:radial-gradient(ellipse at 48% 43%,rgba(0,0,0,.22) 15%,#000 82%),var(--call-left-material-fade)!important;
+  mask-composite:intersect!important;
+}
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"] body .call-fx-frost-glass-v7 { opacity:.9!important; mask-image:var(--call-left-material-fade)!important; }
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"] body .call-fx-frost-wear-v7 { opacity:.78!important; mask-image:var(--call-left-material-fade)!important; }
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"][data-call-optics-active="true"] body .call-reader-screen-v7 {
+  mask-image:var(--call-left-material-fade),linear-gradient(90deg,transparent,#000 14px calc(100% - 14px),transparent),linear-gradient(0deg,transparent,#000 14px calc(100% - 14px),transparent)!important;
+  mask-composite:intersect!important;
+}
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"][data-call-optics-active="true"] body .call-fx-bezel-v7 {
+  background:linear-gradient(90deg,rgba(0,3,6,.62),rgba(0,3,6,.18) 1.4%,transparent 4% 96%,rgba(0,3,6,.18) 98.6%,rgba(0,3,6,.62)),linear-gradient(0deg,rgba(0,3,6,.58),rgba(0,3,6,.16) 2%,transparent 6% 94%,rgba(0,3,6,.16) 98%,rgba(0,3,6,.58)),radial-gradient(ellipse at 50% 47%,transparent 37%,rgba(0,0,0,.025) 64%,rgba(0,0,0,.16) 92%,rgba(0,0,0,.34) 100%)!important;
+  box-shadow:inset 0 0 3px 1px rgba(0,0,0,.85),inset 0 0 17px rgba(0,0,0,.6)!important;
+}
+/* Preserve Reader's size-sensitive ink behind the core; the scene graph handles
+   RGB splitting, including plain text, borders and icons, exactly once. */
+html:root[data-call-theme][data-call-reader-optics="v14"][data-call-fx-registration="true"] {
+  --call-sized-lead:rgba(255,252,225,.5); --call-sized-trail:rgba(69,154,244,.55);
+}
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor="green"] { --call-sized-trail:rgba(153,235,213,.48); }
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor="amber"] { --call-sized-trail:rgba(246,94,40,.52); }
+html:root[data-call-theme]:where(:not([data-call-theme="dark"]))[data-call-reader-optics="v14"][data-call-fx-registration="true"][data-call-phosphor] body .call-display-root-v7 :is(button,input,textarea,select,option,a,span,p,b,strong,label,legend,h1,h2,h3,h4,small,summary,li,output) {
+  text-shadow:clamp(-1px,calc(1.7px - .17em),0px) 0 .008em var(--call-sized-lead),clamp(0px,calc(.2em - 2px),1.4px) 0 .008em var(--call-sized-trail)!important;
+}
+html:root[data-call-theme][data-call-reader-optics="v14"][data-call-fx-registration="true"] body .call-display-root-v7 :is(.call-theme-option-v7,.call-floating-widget-v7 button) svg { filter:none!important; }
+
+/* r18 accepted Reader independent ink. These variables paint shadows only;
+   the existing control/card rules remain the sole owners of foreground fill.
+   Amber's scene pass clips pale coverage INSIDE yellow strokes, with no second
+   generic RGB split. Native-flat iOS keeps CSS ink, never a per-label filter. */
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor] body .call-display-root-v7 {
+  --call-night-base-shadow:clamp(-1.8px,calc(.91px - .124em),-.08px) 0 .016em rgba(255,232,82,.88),clamp(.1px,calc(.16em - 1.17px),2.3px) 0 .018em rgba(52,249,22,.82),0 0 .12em rgba(166,247,82,.24);
+  --call-night-white-shadow:clamp(.08px,calc(.15em - 1.1px),1.8px) 0 .012em rgb(38,141,255),clamp(-.6px,calc(.4px - .06em),-.04px) 0 .014em rgba(103,255,235,.72),0 0 .1em #eaffff35;
+  --call-night-inverse-shadow:clamp(.08px,calc(.14em - 1.03px),1.7px) 0 .007em #fffef1,clamp(.12px,calc(.21em - 1.52px),2.6px) .006em .015em #ffffd980;
+  --call-night-text-shadow:var(--call-night-base-shadow);
+}
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor="amber"] body .call-display-root-v7 {
+  --call-night-base-shadow:clamp(.05px,calc(.12em - .89px),1.65px) 0 0 #140a0c,clamp(.08px,calc(.27em - 2px),3.6px) .007em .007em #ff410de8,-.012em 0 .007em #fffad355,0 0 .16em #ffa72d35;
+}
+/* Call's inverse controls, including raw-text legacy labels and nested names. */
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor] body .call-display-root-v7 :where(
+  button[aria-pressed="true"],button[aria-expanded="true"],.suite-nav a[aria-current="page"],
+  .suite-button.is-active,input[type="button"].is-active,
+  label.girlbox:has(input:checked),#at_form label.at:has(input:checked),
+  :is(.suite-checks label,.suite-attribute-toolbar-v7 label,.suite-attribute-options-v7 label,.runes-mask-enable-v9,.runes-mask-brush-v9):has(input:checked),
+  .suite-button.primary:not(:disabled):not([aria-disabled="true"]):not(:hover):not(:focus-visible):not(:active)
+) { --call-night-text-shadow:var(--call-night-inverse-shadow); }
+/* Night hover/focus uses actual native white ink on a dark face. Do not apply
+   the yellow/red echo merely because the same key was previously selected. */
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor] body .call-display-root-v7 :where(
+  button:where(:not(.suite-character-card)),input[type="button"],input[type="submit"],input[type="reset"],
+  .suite-nav a,.suite-button,:where(#canvasImgLink,#saveHeightChartBtn),.header .menu-icon
+):where(:not(:disabled):not([aria-disabled="true"]):is(:hover,:focus-visible)) {
+  --call-night-text-shadow:var(--call-night-white-shadow);
+}
+/* These selected palettes intentionally stay inverse even while hovered. */
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor] body .call-display-root-v7 :where(
+  .call-theme-widget-v7 .call-theme-option-v7[aria-pressed="true"],
+  .call-fx-window-v7 .call-fx-segment-v7 button[aria-pressed="true"]
+) { --call-night-text-shadow:var(--call-night-inverse-shadow); }
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-fx-registration="true"][data-call-phosphor] body .call-display-root-v7 :is(button,input,textarea,select,option,a,span,p,b,strong,label,legend,h1,h2,h3,h4,small,summary,li,output) {
+  text-shadow:var(--call-night-text-shadow)!important;
+}
+
+/* Reader native-flat: shared material/ink, no SVG URL or second scene focus. */
+html:root[data-call-ios-flat="true"][data-call-reader-optics="v14"] { --call-ios-flat-filter:none; }
+html:root[data-call-ios-flat="true"][data-call-reader-optics="v14"][data-call-fx-registration="true"] { --call-ios-flat-filter:blur(.13px); }
+html:root[data-call-ios-flat="true"][data-call-reader-optics="v14"][data-call-theme="frost"] { --call-ios-flat-filter:blur(.22px); }
+html:root[data-call-ios-flat="true"][data-call-reader-optics="v14"][data-call-theme="dark"] { --call-ios-flat-filter:blur(.39px); }
+html:root[data-call-ios-flat="true"][data-call-reader-optics="v14"][data-call-theme] body .call-display-root-v7 {
+  filter:var(--call-ios-flat-filter)!important; -webkit-filter:var(--call-ios-flat-filter)!important;
+}
+html:root[data-call-ios-flat="true"][data-call-reader-optics="v14"][data-call-theme] body .call-display-scroll-v7 {
+  filter:none!important; -webkit-filter:none!important;
+}
+
+
+/* ============================================================================
+ * PIXEZ PULSE v4.0 — Exact Call/MagiReader Material Layers, Curvature Surround,
+ * Table-Cell Registration, and Clean Artwork Gallery Optical Isolation
+ * ============================================================================ */
+
+/* Physical screen surround & rounded CRT lens corners when curvature is ON */
+html:root[data-call-theme="light"] { --call-screen-surround:#080b0c; --call-bezel-reflection:166,189,193; }
+html:root[data-call-theme="paper"] { --call-screen-surround:#0d0b07; --call-bezel-reflection:204,180,119; }
+html:root[data-call-theme="green"] { --call-screen-surround:#060d09; --call-bezel-reflection:132,196,159; }
+html:root[data-call-theme="dark"] { --call-screen-surround:#000; --call-bezel-reflection:132,192,92; }
+html:root[data-call-theme="frost"] { --call-screen-surround:#000; --call-bezel-reflection:105,188,177; }
+
+html:root[data-call-theme][data-call-fx-curvature="true"],
+html:root[data-call-theme][data-call-fx-curvature="true"] body.call-screen-host-v7 {
+  background:var(--call-screen-surround)!important;
+}
+html:root[data-call-theme][data-call-fx-curvature="true"] body .call-display-root-v7 {
+  inset:0!important; border:0!important; box-shadow:none!important;
+  border-radius:clamp(22px,2.2vw,42px)/clamp(20px,3vh,34px)!important;
+  clip-path:inset(0 round clamp(22px,2.2vw,42px)/clamp(20px,3vh,34px))!important;
+}
+.call-display-root-v7 > .call-material-direct-v11 {
+  position:absolute; inset:0!important; z-index:5000; pointer-events:none;
+  display:none; border-radius:inherit; animation:none!important; will-change:auto!important;
+}
+.call-display-root-v7 > .call-fx-bezel-v7 {
+  position:absolute; inset:0; z-index:5001; pointer-events:none; display:none; border-radius:inherit;
+}
+html:root[data-call-theme][data-call-fx-curvature="true"] body .call-fx-bezel-v7 {
+  display:block!important; background:none!important; border:0!important; border-radius:inherit!important;
+  box-shadow:
+    inset 0 0 2px 1px rgba(0,0,0,.9),
+    inset 0 0 9px 3px rgba(0,0,0,.58),
+    inset 0 0 24px 4px rgba(0,0,0,.25),
+    inset 0 2px 3px rgba(var(--call-bezel-reflection),.1)!important;
+}
+html:root[data-call-theme="dark"][data-call-fx-noise="true"] body .call-fx-night-phosphor-v7 {
+  display:block!important;
+}
+html:root[data-call-theme="dark"][data-call-fx-scanlines="true"] body .call-fx-night-phosphor-v7 {
+  --call-reader-raster:repeating-linear-gradient(0deg,rgba(5,0,2,.52) 0 .6px,transparent .6px 2px)!important;
+}
+html:root[data-call-theme="dark"][data-call-fx-noise="true"] body .call-fx-scanlines-v7 {
+  display:none!important;
+}
+html:root[data-call-theme="dark"][data-call-fx-noise="true"] body .call-fx-night-grain-v7 {
+  display:block!important;
+}
+
+/* Frost film layers (exact Call/Reader recipe) */
+.call-reader-screen-v7 {
+  position:absolute; inset:0; z-index:5000; pointer-events:none; user-select:none;
+  overflow:hidden; border-radius:inherit; contain:strict;
+}
+.call-reader-screen-v7 > span {
+  position:absolute; inset:0; pointer-events:none; display:none;
+}
+html:root[data-call-theme="frost"] body .call-fx-frost-smudges-v7 {
+  display:block!important;
+  background:url('../textures/DirtHighContrast.png') center/cover no-repeat!important;
+}
+html:root[data-call-theme="frost"] body .call-fx-frost-glass-v7 {
+  display:block!important;
+  background:url('../textures/2k_BG_Texture.png') center/100% 100% no-repeat!important;
+  filter:grayscale(1)!important; mix-blend-mode:screen!important;
+}
+html:root[data-call-theme="frost"] body img.call-fx-frost-wear-v7 {
+  position:absolute; inset:0; z-index:5000; width:100%!important; height:100%!important;
+  max-width:none!important; object-fit:fill!important; pointer-events:none;
+  mix-blend-mode:screen!important; background:none!important;
+}
+html:root[data-call-glass-active="false"] body .call-fx-frost-wear-v7 { display:none!important; }
+.call-glass-refraction-v12 { display:none; }
+html:root[data-call-theme="frost"][data-call-glass-active="true"] body .call-glass-refraction-v12 {
+  display:block; position:absolute; inset:0; z-index:4999; pointer-events:none;
+  mask-image:url('../textures/frost-glass-scratches.png'); mask-mode:luminance;
+  mask-size:100% 100%; mask-repeat:no-repeat;
+  background:rgba(0,18,23,.62); transform:translate(-.7px,.4px);
+}
+
+/* Flat low-pass focus softness when curvature is OFF (exact theme-mode-v1.css lines 2997-3006) */
+html:root[data-call-theme] { --call-focus-radius:.18px; }
+html:root[data-call-theme="dark"] { --call-focus-radius:.39px; }
+html:root[data-call-theme="frost"] { --call-focus-radius:.32px; }
+html:root[data-call-fx-noise="false"] { --call-focus-radius:0px; }
+html:root[data-call-fx-noise="false"][data-call-fx-registration="true"] { --call-focus-radius:.13px; }
+html:root[data-call-theme][data-call-reader-optics="v14"][data-call-optics-active="false"][data-call-fx-registration="false"]:not([data-call-ios-flat="true"]) body .call-display-root-v7 {
+  --call-optical-pass:blur(var(--call-focus-radius));
+}
+html:root[data-call-theme="frost"][data-call-reader-optics="v14"][data-call-optics-active="false"]:not([data-call-ios-flat="true"]) body .call-display-scroll-v7 {
+  filter:blur(.32px) saturate(.96) contrast(.99)!important;
+}
+
+/* Extend exact Reader v14 size-sensitive text-shadow registration to table cells (td, th) */
+html:root[data-call-theme]:where(:not([data-call-theme="dark"]))[data-call-reader-optics="v14"][data-call-fx-registration="true"][data-call-phosphor] body .call-display-root-v7 :is(td,th) {
+  text-shadow:clamp(-1px,calc(1.7px - .17em),0px) 0 .008em var(--call-sized-lead),clamp(0px,calc(.2em - 2px),1.4px) 0 .008em var(--call-sized-trail)!important;
+}
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-fx-registration="true"][data-call-phosphor] body .call-display-root-v7 :is(td,th) {
+  text-shadow:var(--call-night-text-shadow)!important;
+}
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor] body .call-display-root-v7 :where(
+  .sub-tab.active, .cat-tab.active, .t-btn--primary, .t-btn--execute, .subfilter-chip, .t-count, .t-cselect__opt.is-selected
+) {
+  --call-night-text-shadow:var(--call-night-inverse-shadow);
+}
+html:root[data-call-theme="dark"][data-call-reader-optics="v14"][data-call-phosphor] body .call-display-root-v7 :where(
+  .ctrl-chip, .t-btn, .sub-tab, .cat-tab, .tag-preset, .tag-name-link, .danbooru-badge
+):where(:not(:disabled):is(:hover,:focus-visible)) {
+  --call-night-text-shadow:var(--call-night-white-shadow);
+}
+
+/* ARTWORK GALLERY OPTICAL ISOLATION:
+   While viewing inline Artwork Gallery tab, suspend viewport distortion, scanlines,
+   noise, and frost wear so artwork thumbnails are 100% pure and never covered by grids! */
+html:root[data-active-view="gallery"] body .call-display-root-v7 {
+  filter:none!important; -webkit-filter:none!important;
+}
+html:root[data-active-view="gallery"] body .call-display-scroll-v7 {
+  filter:none!important; -webkit-filter:none!important;
+}
+html:root[data-active-view="gallery"] body :is(
+  .call-reader-screen-v7,
+  .call-material-direct-v11,
+  .call-glass-refraction-v12,
+  .call-fx-frost-wear-v7
+) {
+  display:none!important;
+}

@@ -6,6 +6,14 @@ import { onRequestGet as download, onRequestHead as headDownload } from '../func
 const originalFetch = globalThis.fetch;
 
 const fixtures = {
+  'HiiragiNemu/pixez-pulse': {
+    tag_name:'v1.0.0', name:'PixEz Pulse test', published_at:'2026-11-24T00:00:00Z',
+    html_url:'https://example.test/pixiv',
+    assets:[
+      {id:51,name:'PixEz-Pulse-v1.0.0-android-release.apk',size:3,digest:'sha256:px-apk',content_type:'application/vnd.android.package-archive',url:'https://api.github.test/assets/51'},
+      {id:52,name:'pixtag-companion.user.js',size:4,digest:'sha256:px-js',content_type:'application/javascript',url:'https://api.github.test/assets/52'},
+    ],
+  },
   'HiiragiNemu/Bilibili-Follower-Snapshot': {
     tag_name:'v9.9.9', name:'Bilibili test', published_at:'2026-09-19T00:00:00Z',
     html_url:'https://example.test/bilibili',
@@ -122,6 +130,8 @@ try {
   const data = await metadata.json();
 
   assert.equal(data.source,'cloudflare-live');
+  assert.equal(data.projects.pixiv.tag,'v1.0.0');
+  assert.equal(data.projects.pixiv.assets.android.download,'./downloads/pixiv/android');
   assert.equal(data.projects.bilibili.tag,'v9.9.9');
   assert.equal(data.projects.bilibili.assets.android.download,'./downloads/bilibili/android');
   assert.equal(data.projects.bilibili.assets.userscript.name,'bilibili-follower-snapshot-v0.2.13.user.js');

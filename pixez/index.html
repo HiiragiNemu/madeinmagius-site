@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="paper" data-theme-bar-mode="top" data-pixel-font="false" data-crt-fx="true" data-lofi-fx="true" data-fx-curvature="true">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MadeInMagius // Pixiv 标签共现频次与语义分类</title>
+  <link rel="stylesheet" href="./styles.css?v=3.9" />
+</head>
+<body>
+  <!-- MAGIUS LINK Background Emblem Watermark (Exact magius-mark.svg + magius-link-wordmark.svg from magireco-call-search-cn) -->
+  <div class="call-brand-watermark-v8" aria-hidden="true">
+    <img class="call-brand-emblem-v8" src="./textures/magius-mark.svg" alt="" />
+    <img class="call-brand-wordmark-v8" src="./textures/magius-link-wordmark.svg" alt="" />
+  </div>
+
+  <!-- Physical Screen Material & Optical Layers (z-index: 60, pointer-events: none; artwork images sit at z-index: 80 above this layer) -->
+  <div class="call-reader-screen-v7" aria-hidden="true">
+    <span class="call-fx-day-grain-v7"></span>
+    <span class="call-fx-scanlines-v7"></span>
+    <span class="call-fx-night-phosphor-v7"></span>
+    <span class="call-fx-night-grain-v7"></span>
+    <span class="call-fx-frost-grain-v7"></span>
+    <span class="call-fx-frost-smudges-v7"></span>
+    <span class="call-fx-frost-glass-v7"></span>
+    <span class="call-fx-frost-wear-v7"></span>
+    <span class="call-fx-bezel-v7"></span>
+  </div>
+
+  <!-- Right-Side Floating Quick Action Rail (Exact port of call-jump-widget-v7 from magireco-call-search-cn) -->
+  <aside class="call-jump-widget-v7" id="quickJumpRail" aria-label="快捷导航与一键搜索悬浮栏">
+    <div class="call-jump-head-v7">
+      <button class="call-jump-grip-v7" id="quickRailGrip" type="button" title="拖动悬浮框位置；双击恢复默认位置">⋮⋮</button>
+      <button class="call-jump-collapse-v7" id="quickRailCollapseBtn" type="button" title="折叠/展开快捷栏">&lt;</button>
+    </div>
+    <div class="call-jump-actions-v7">
+      <button type="button" data-rail-action="top" title="回到顶部"><span class="call-rail-letter">↑</span></button>
+      <button type="button" data-rail-action="query" title="定位到搜索输入框"><span class="call-rail-letter">选</span></button>
+      <button type="button" data-rail-action="filter" title="定位到分类与清洗开关"><span class="call-rail-letter">筛</span></button>
+      <button type="button" data-rail-action="table" title="切换到共现排行榜"><span class="call-rail-letter">榜</span></button>
+      <button type="button" data-rail-action="search" title="立即执行采样搜索">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5"/></svg>
+      </button>
+      <button type="button" data-rail-action="clear" title="清空当前叠加必含筛选"><span class="call-rail-letter">×</span></button>
+      <button type="button" data-rail-action="network" title="切换到共现拓扑图"><span class="call-rail-letter">拓</span></button>
+      <button type="button" data-rail-action="gallery" title="切换到样本画廊"><span class="call-rail-letter">图</span></button>
+      <button type="button" data-rail-action="bottom" title="跳至页面底部"><span class="call-rail-letter">↓</span></button>
+    </div>
+  </aside>
+
+  <!-- Masthead:
+       Row 1: Dedicated Top Row (MadeInMagius + 我的其他工具和动态 + 使用说明)
+       Row 2: Theme & Appearance Dock (.call-theme-widget-v7, switchable between Top Docked & Draggable Floating!)
+       Row 3: Navigation & Function Toolbar -->
+  <header class="masthead">
+    <!-- Row 1: MadeInMagius + 我的其他工具和动态 + 使用说明 alone on the topmost row -->
+    <div class="masthead__top-row">
+      <div class="masthead__top-left">
+        <span aria-label="MadeInMagius" class="magi-madeinmagius-logo is-compact">
+          <span class="magi-madeinmagius-wordmark" aria-hidden="true">
+            <span class="magi-madeinmagius-text"><span>MadeIn</span><strong>Magius</strong></span>
+          </span>
+        </span>
+        <button class="ctrl-chip ctrl-chip--links" id="openAboutLinksBtn" type="button">我的其他工具和动态</button>
+      </div>
+      <div class="masthead__top-right">
+        <button class="ctrl-chip" id="openHelpGuideBtn" type="button">使用说明</button>
+      </div>
+    </div>
+
+    <!-- Row 2: Call-Site Theme & Appearance Bar (Dockable at Top or Draggable Floating) -->
+    <div class="masthead__theme-slot" id="themeBarTopSlot">
+      <div class="call-floating-widget-v7 call-theme-widget-v7" id="themeSwitcher" role="toolbar" aria-label="主题与画面设置">
+        <button class="call-floating-grip-v7 call-theme-grip-v7" id="themeWidgetGrip" type="button" title="拖动主题栏；双击恢复默认位置">
+          <span aria-hidden="true">⋮⋮</span>
+        </button>
+        <div class="call-theme-options-v7">
+          <button class="call-theme-option-v7" data-theme-choice="light" type="button" title="明亮" aria-label="切换为明亮主题" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>
+          </button>
+          <button class="call-theme-option-v7 active" data-theme-choice="paper" type="button" title="纸张 (默认)" aria-label="切换为纸张主题" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 5.5c3.3-.8 5.8-.1 8.5 1.5v11c-2.7-1.6-5.2-2.3-8.5-1.5zM20.5 5.5c-3.3-.8-5.8-.1-8.5 1.5v11c2.7-1.6 5.2-2.3 8.5-1.5z"/></svg>
+          </button>
+          <button class="call-theme-option-v7" data-theme-choice="eyecare" type="button" title="护眼" aria-label="切换为护眼主题" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19.5 4.5C12.7 4.5 7.2 7 5.4 12.2c-1 2.9.8 5.8 3.7 5.8 5.4 0 9.1-5.7 10.4-13.5Z"/><path d="M5 20c2.1-4.3 5.4-7.4 10.2-9.4"/></svg>
+          </button>
+          <button class="call-theme-option-v7" data-theme-choice="green" type="button" title="夜间 (绿磷/橙磷)" aria-label="切换为夜间主题" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.5 15.7A7.8 7.8 0 0 1 8.3 5.5 8 8 0 1 0 18.5 15.7Z"/></svg>
+          </button>
+          <button class="call-theme-option-v7" data-theme-choice="frost" type="button" title="冷辉" aria-label="切换为冷辉主题" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3H3v4M17 3h4v4M3 17v4h4M21 17v4h-4"/><path d="M8 8h8v8H8z"/></svg>
+          </button>
+        </div>
+        <button class="call-floating-utility-v7" id="openStyleConfigBtn" type="button" title="外观设置 / 画面与字体效果" aria-label="画面与字体效果" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h10M18 18h2"/><rect x="11" y="4.5" width="4" height="3"/><rect x="7" y="10.5" width="4" height="3"/><rect x="14" y="16.5" width="4" height="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Row 3: Compact View Switcher & Tools -->
+    <div class="masthead__toolbar">
+      <div class="subsystem-tabs">
+        <button class="sub-tab active" data-view-target="cooccurrenceView" type="button">共现排行</button>
+        <button class="sub-tab" data-view-target="artworksView" type="button">画廊(<span id="galleryTotalBadge">0</span>)</button>
+        <button class="sub-tab" data-view-target="networkView" type="button">拓扑图</button>
+      </div>
+      <div class="masthead__tools">
+        <button class="t-btn" id="openRulesModalBtn" type="button">词表</button>
+        <button class="t-btn" id="openReverseModalBtn" type="button">搜源</button>
+        <button class="t-btn" id="openBasketBtn" type="button">收集篮 <span class="t-count" id="basketBadge">0</span></button>
+        <button class="t-btn" id="openAuthModalBtn" type="button"><span id="headerAuthLabel">账号</span></button>
+        <button class="t-btn" id="openClientDownloadBtn" type="button">APK/油猴</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Floating Locked Filters Bar (display: contents on #subFiltersList so wrapping never leaves dead space!) -->
+  <div class="sticky-filter-bar hidden" id="activeSubFiltersBar">
+    <span class="sticky-filter-bar__label">叠加必含筛选:</span>
+    <div class="subfilters-list" id="subFiltersList"></div>
+    <button class="t-btn t-btn--sm t-btn--danger" id="clearAllSubFiltersBtn" type="button">清空全部</button>
+  </div>
+
+  <!-- Main Workspace Container -->
+  <main class="terminal-shell">
+    <!-- Compact Query Console -->
+    <section class="panel query-console" id="queryConsolePanel">
+      <div class="query-grid">
+        <!-- Row 1: Search Input + Clear + Execute on ONE compact horizontal row -->
+        <div class="query-search-row">
+          <div class="query-input-box">
+            <span class="query-prompt">&gt;</span>
+            <input
+              type="text"
+              id="tagSearchInput"
+              placeholder="输入 Pixiv 标签 (如 森亜るるか) 或粘贴 /search?q= 、/tags/ 完整链接..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button class="btn-clear" id="clearInputBtn" type="button" title="清空输入">清空</button>
+            <div class="autocomplete-dropdown hidden" id="autocompleteDropdown"></div>
+          </div>
+          <button class="t-btn t-btn--execute" id="analyzeBtn" type="button">开始采样</button>
+          <button class="t-btn t-btn--danger hidden" id="stopStreamBtn" type="button">停止翻页</button>
+        </div>
+
+        <!-- Row 2: Compact Inline Selects (Auto-upgraded to in-DOM CRT-covered dropdowns) + Quick Presets -->
+        <div class="query-params-inline">
+          <div class="inline-select-chip">
+            <span>深度</span>
+            <select id="pagesSelect" class="js-custom-select">
+              <option value="3" selected>3页</option>
+              <option value="5">5页</option>
+              <option value="10">10页</option>
+              <option value="25">25页</option>
+              <option value="50">50页</option>
+              <option value="100">100页</option>
+              <option value="ALL">全部页</option>
+            </select>
+          </div>
+          <div class="inline-select-chip">
+            <span>范围</span>
+            <select id="modeSelect" class="js-custom-select">
+              <option value="all" selected>全部年龄</option>
+              <option value="safe">全年龄</option>
+              <option value="r18">仅R-18</option>
+            </select>
+          </div>
+          <div class="inline-select-chip">
+            <span>匹配</span>
+            <select id="sModeSelect" class="js-custom-select">
+              <option value="s_tag" selected>部分一致</option>
+              <option value="s_tag_full">完全一致</option>
+              <option value="s_tc">标签+标题</option>
+            </select>
+          </div>
+          <div class="inline-select-chip">
+            <span>类型</span>
+            <select id="typeSelect" class="js-custom-select">
+              <option value="all" selected>全部作品</option>
+              <option value="illust_and_ugoira">插画+动图</option>
+              <option value="illust">仅插画</option>
+              <option value="manga">仅漫画</option>
+              <option value="ugoira">仅动图</option>
+            </select>
+          </div>
+          <div class="quick-tags-strip">
+            <span class="strip-label">预设:</span>
+            <button class="tag-preset" data-tag="森亜るるか" type="button">森亜るるか</button>
+            <button class="tag-preset" data-tag="https://www.pixiv.net/search?q=%E6%A3%AE%E4%BA%9C%E3%82%8B%E3%82%8B%E3%81%8B&s_mode=tag&type=artwork&r=1" type="button">搜索链接</button>
+            <button class="tag-preset" data-tag="ブルーアーカイブ" type="button">ブルーアーカイブ</button>
+            <button class="tag-preset" data-tag="原神" type="button">原神</button>
+            <button class="tag-preset" data-tag="葬送のフリーレン" type="button">芙莉莲</button>
+            <button class="tag-preset" data-tag="うごイラ" type="button">うごイラ</button>
+          </div>
+        </div>
+
+        <!-- Row 3: Compact Filter Switches -->
+        <div class="filter-switches-row" id="filterSwitchesRow">
+          <label class="check-node"><input type="checkbox" id="hideBookmarkTagCheck" checked /><span>隐藏*users入り</span></label>
+          <label class="check-node"><input type="checkbox" id="excludeAiWorksCheck" /><span>剔除AI作品</span></label>
+          <label class="check-node"><input type="checkbox" id="hideAiTagCheck" /><span>隐藏AI标签</span></label>
+          <label class="check-node"><input type="checkbox" id="hideMetaTagCheck" /><span>隐藏元标签</span></label>
+          <label class="check-node"><input type="checkbox" id="includePopularCheck" checked /><span>含热门</span></label>
+          <label class="threshold-node"><span>最低共现≥</span><input type="number" id="minCountInput" value="2" min="1" max="500" /></label>
+          <span class="panel-meta hidden" id="engineSourceIndicator"></span>
+        </div>
+      </div>
+
+      <!-- Streaming Progress Bar -->
+      <div class="progress-monitor hidden" id="progressBarWrap">
+        <div class="progress-monitor__row">
+          <span id="progressText">正在采样...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressBarFill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Compact Single-Row Telemetry Strip -->
+      <div class="telemetry-strip" id="statsDashboard">
+        <div class="telemetry-item">
+          <span class="telemetry-head">目标:</span>
+          <strong class="telemetry-val" id="statPrimaryTag">—</strong>
+          <span class="telemetry-sub" id="statTotalMatched">全站: —</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="telemetry-head">已采样:</span>
+          <strong class="telemetry-val" id="statSampledCount">0 作</strong>
+          <span class="telemetry-sub" id="statUniqueArtists">画师: 0</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="telemetry-head">共现Tag:</span>
+          <strong class="telemetry-val" id="statUniqueCoTags">0 个</strong>
+          <span class="telemetry-sub" id="statAvgTagsPerWork">可见: 0</span>
+        </div>
+        <div class="telemetry-item telemetry-item--accent">
+          <span class="telemetry-head">首位伴生:</span>
+          <strong class="telemetry-val" id="statTopCoTag">—</strong>
+          <span class="telemetry-sub" id="statTopCoRate">共现率: —</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="telemetry-head">非AI占比:</span>
+          <strong class="telemetry-val" id="statOriginalRate">—</strong>
+          <span class="telemetry-sub" id="statAiBreakdown">AI: —</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VIEW: CO-OCCURRENCE FREQUENCY & SEMANTIC CATEGORY RANKING           -->
+    <!-- =================================================================== -->
+    <div id="cooccurrenceView" class="view-container">
+      <!-- Unified Category Tabs + Table Controls Panel -->
+      <section class="panel table-panel" id="rankingTablePanel">
+        <div class="panel-title-bar">
+          <div class="category-tabs" id="categoryScopeTabs">
+            <button class="cat-tab active" data-cat-scope="all" type="button">
+              <span>全部</span><strong class="cat-tab__count" id="catCountAll">0</strong>
+            </button>
+            <button class="cat-tab" data-cat-scope="character" type="button">
+              <span>角色</span><strong class="cat-tab__count" id="catCountCharacter">0</strong>
+            </button>
+            <button class="cat-tab" data-cat-scope="attribute_xp" type="button">
+              <span>属性</span><strong class="cat-tab__count" id="catCountAttribute">0</strong>
+            </button>
+            <button class="cat-tab" data-cat-scope="series_ip" type="button">
+              <span>作品</span><strong class="cat-tab__count" id="catCountSeries">0</strong>
+            </button>
+            <button class="cat-tab" data-cat-scope="meta_general" type="button">
+              <span>元标签</span><strong class="cat-tab__count" id="catCountMeta">0</strong>
+            </button>
+            <button class="cat-tab" data-cat-scope="bookmark_milestone" type="button">
+              <span>收藏</span><strong class="cat-tab__count" id="catCountBookmark">0</strong>
+            </button>
+          </div>
+          <div class="table-controls">
+            <input type="text" id="tableFilterInput" class="t-input-sm" placeholder="筛选标签/译名..." />
+            <select id="tableSortSelect" class="t-select-sm js-custom-select">
+              <option value="count_desc">频次降序</option>
+              <option value="count_asc">频次升序</option>
+              <option value="artists_desc">画师数降序</option>
+              <option value="avg_bmk_desc">均收藏降序</option>
+            </select>
+            <button class="t-btn t-btn--sm" id="copyTopTagsBtn" type="button">复制前15</button>
+            <button class="t-btn t-btn--sm" id="exportCsvBtn" type="button">CSV</button>
+            <button class="t-btn t-btn--sm" id="exportJsonBtn" type="button">JSON</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="coTagTable">
+            <thead>
+              <tr>
+                <th class="col-rank">#</th>
+                <th class="col-tag">共现标签 / 译名</th>
+                <th class="col-cat">分类</th>
+                <th class="col-stat">频次 / 占比</th>
+                <th class="col-third">常伴标签</th>
+                <th class="col-act text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="coTagTableBody">
+              <tr><td colspan="6" class="empty-cell">等待采样数据...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Top 18 Frequency Distribution Bars -->
+      <section class="panel chart-panel">
+        <div class="panel-title-bar">
+          <span class="panel-index">前 18 高频共现分布 (<span id="activeCategoryLabel">全部有效标签</span>)</span>
+          <div class="legend-strip">
+            <span class="legend-chip"><i class="lg-box lg-char"></i>角色</span>
+            <span class="legend-chip"><i class="lg-box lg-attr"></i>属性</span>
+            <span class="legend-chip"><i class="lg-box lg-ip"></i>作品/IP</span>
+            <span class="legend-chip"><i class="lg-box lg-meta"></i>元标签</span>
+          </div>
+        </div>
+        <div class="bar-chart-grid" id="barChartContainer">
+          <div class="empty-placeholder">正在加载共现频次分布...</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- VIEW: ARTWORKS GALLERY & VIEWER                                     -->
+    <!-- =================================================================== -->
+    <div id="artworksView" class="view-container hidden">
+      <section class="panel gallery-panel">
+        <div class="panel-title-bar">
+          <div class="table-controls">
+            <input type="text" id="galleryTagFilterInput" class="t-input-sm" placeholder="筛选标签或画师..." />
+            <select id="galleryTypeFilterSelect" class="t-select-sm js-custom-select">
+              <option value="all">全部类型</option>
+              <option value="0">插画</option>
+              <option value="1">漫画</option>
+              <option value="2">动图</option>
+            </select>
+            <select id="gallerySortSelect" class="t-select-sm js-custom-select">
+              <option value="date_desc">最新投稿</option>
+              <option value="bmk_desc">收藏最高</option>
+              <option value="page_desc">多P页数</option>
+            </select>
+          </div>
+        </div>
+        <div class="artwork-grid" id="artworkGalleryGrid"></div>
+      </section>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- VIEW: CO-OCCURRENCE TOPOLOGY NETWORK (Exact Call-Search Architecture) -->
+    <!-- =================================================================== -->
+    <div id="networkView" class="view-container hidden">
+      <section class="panel network-panel">
+        <div class="canvas-stage" id="networkCanvasFrame">
+          <canvas id="networkCanvas" width="980" height="480"></canvas>
+          <div class="network-node-hud hidden" id="nodeDetailContent"></div>
+        </div>
+        <!-- Exact Bottom Control Bar from magireco-call-search-cn Screenshot 7 -->
+        <div class="network-bottom-controls">
+          <div class="network-ctrl-row">
+            <span>画布尺寸: 宽</span>
+            <input type="number" id="canvasWidthInput" class="net-num-input" value="100" min="30" max="2400" />
+            <select id="canvasWidthUnitSelect" class="t-select-sm js-custom-select">
+              <option value="%" selected>%</option>
+              <option value="px">px</option>
+            </select>
+            <span>× 高</span>
+            <input type="number" id="canvasHeightInput" class="net-num-input" value="480" min="240" max="1600" />
+            <span>px</span>
+            <button class="t-btn t-btn--sm" id="applyCanvasSizeBtn" type="button">设置</button>
+            <button class="t-btn t-btn--sm t-btn--primary" id="saveGraphImageBtn" type="button">保存为图片</button>
+            <button class="t-btn t-btn--sm" id="resetGraphZoomBtn" type="button">重置视图</button>
+          </div>
+          <div class="network-ctrl-row">
+            <span>显示:</span>
+            <label class="check-node"><input type="checkbox" id="graphShowAvatarCheck" checked /><span>角色头像气泡</span></label>
+            <label class="check-node"><input type="checkbox" id="graphShowJpCheck" checked /><span>日文</span></label>
+            <label class="check-node"><input type="checkbox" id="graphShowBooruCheck" checked /><span>罗马音/Booru</span></label>
+            <label class="check-node"><input type="checkbox" id="graphShowZhCheck" checked /><span>中文</span></label>
+            <label class="threshold-node">
+              <span>节点数</span>
+              <input type="range" id="graphNodeLimitRange" min="10" max="60" value="28" />
+              <strong id="graphNodeLimitVal">28</strong>
+            </label>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- FLOATING WINDOW: 我的其他工具和动态 (Exact port of AboutModal.tsx)      -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="aboutLinksModal">
+    <div class="modal-window magi-about-window" id="aboutLinksWindow">
+      <div class="magi-about-titlebar">
+        <div>
+          <h3>我的其他工具和动态</h3>
+        </div>
+        <div class="magi-about-win-ctrls">
+          <button class="magi-win-btn" id="minimizeAboutLinksBtn" type="button" title="折叠/展开">−</button>
+          <button class="magi-win-btn" id="closeAboutLinksBtn" type="button" title="关闭">×</button>
+        </div>
+      </div>
+      <div class="modal-content magi-about-body" id="aboutLinksBody">
+        <p class="magi-tool-attribution">使用本工具二创，请注明工具作者以及提供工具链接。</p>
+
+        <a class="magi-link-card" href="https://afdian.com/a/madeinmagius" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">赞</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">赞助支持 MADE IN MAGIUS</div>
+            <div class="magi-link-sub">爱发电 · MADE IN MAGIUS</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+
+        <a class="magi-link-card" href="https://magireader.pages.dev/" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">剧情</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">魔法纪录／Exedra 阅读网站</div>
+            <div class="magi-link-sub">魔法纪录与 Magia Exedra 中日双语剧情、语音 (magireader.pages.dev)</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+
+        <a class="magi-link-card" href="https://universal-adv-reader.pages.dev/apps/web" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">ADV</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">通用 ADV 阅读器</div>
+            <div class="magi-link-sub">其他作品的剧情阅读与中日对照</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+
+        <a class="magi-link-card" href="https://magireco-call-search-cn.pages.dev/" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">搜索</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">魔法少女称呼搜索与身高对比</div>
+            <div class="magi-link-sub">魔法纪录·Magia Exedra 角色称呼与出勤检索</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+
+        <a class="magi-link-card" href="https://madeinmagius-site.pages.dev/" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">下载</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">MADE IN MAGIUS 下载中心和教程网站</div>
+            <div class="magi-link-sub">客户端下载中心与使用教程</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+
+        <a class="magi-link-card" href="https://magiaexedralive2dviewer.pages.dev/" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">L2D</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">magia exedra 魔法纪录 l2d 查看器</div>
+            <div class="magi-link-sub">在线查看角色 Live2D 动态模型</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+
+        <a class="magi-link-card" href="https://magius3dviewer.pages.dev/" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">3D</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">MAGIA EXEDRA 3D 网站</div>
+            <div class="magi-link-sub">在线查看 MAGIA EXEDRA 3D 模型</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+
+        <a class="magi-link-card" href="https://exedra.wiki/wiki/Characters/zh" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">WIKI</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">MAGIA EXEDRA WIKI 中文化中…</div>
+            <div class="magi-link-sub">角色剧情、活动剧情与语音</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+
+        <a class="magi-link-card" href="https://space.bilibili.com/625821" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">B站</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">B站 MadeInMagius</div>
+            <div class="magi-link-sub">关注我的B站动态与教程</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+
+        <a class="magi-link-card" href="https://pd.qq.com/qqweb/qunpro/share?_wv=3&_wwv=128&appChannel=share&inviteCode=2oaXZG3lL1g&attaContentID=e5616861ea2047e3820bf63bb854aa8e&businessType=9&from=181074&biz=ka&mainSourceId=share&subSourceId=others&b=9" target="_blank" rel="noopener noreferrer">
+          <div class="magi-link-glyph">QQ</div>
+          <div class="magi-link-copy">
+            <div class="magi-link-title">联系作者 / 加入QQ交流群</div>
+            <div class="magi-link-sub">QQ：254489200 · 交流群：858083286</div>
+          </div>
+          <span class="magi-link-arrow">→</span>
+        </a>
+      </div>
+      <div class="magi-about-footer">Made with ♥ by MadeInMagius</div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: CO-TAG DEEP INSPECTOR                                        -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="inspectModal">
+    <div class="modal-window modal-window--xl">
+      <div class="modal-titlebar">
+        <div>
+          <h3 id="modalTitle">#TAG</h3>
+        </div>
+        <button class="btn-modal-close" id="closeModalBtn" type="button">[X] 关闭</button>
+      </div>
+      <div class="modal-content">
+        <div class="inspector-kpi-row" id="modalStatsRow"></div>
+        <div class="inspector-section">
+          <div class="inspector-section__head">当该标签出现时，最常同时伴随的第 3 标签 (点击可在主列表叠加必含筛选):</div>
+          <div class="third-tags-grid" id="modalThirdTags"></div>
+        </div>
+        <div class="inspector-section">
+          <div class="inspector-section__head">同时包含这两个标签的采样作品 (<span id="modalArtworkCount">0</span> 件 // 纯净原图无网格遮挡):</div>
+          <div class="artwork-grid artwork-grid--compact" id="modalArtworksGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: ARTWORK HD VIEWER & UGOIRA SYNTHESIZER                       -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="illustViewerModal">
+    <div class="modal-window modal-window--xl">
+      <div class="modal-titlebar">
+        <div>
+          <span class="modal-kicker" id="viewerMetaSubtitle">原图查看器</span>
+          <h3 id="viewerTitle">作品标题</h3>
+        </div>
+        <button class="btn-modal-close" id="closeIllustViewerBtn" type="button">[X] 关闭</button>
+      </div>
+      <div class="modal-content viewer-layout">
+        <div class="viewer-stage-col">
+          <div class="viewer-media-box clean-optical-media" id="viewerMediaViewport">
+            <img id="viewerMainImg" class="clean-optical-media" src="" alt="Artwork Preview" />
+            <canvas id="viewerUgoiraCanvas" class="clean-optical-media hidden"></canvas>
+            <div class="viewer-loading hidden" id="viewerLoadingOverlay">正在加载高清原图 / 合成 Ugoira 动图帧...</div>
+          </div>
+          <div class="viewer-bar" id="viewerPageControls">
+            <button class="t-btn t-btn--sm" id="viewerPrevPageBtn" type="button">&lt; 上一页</button>
+            <span id="viewerPageIndicator">1 / 1</span>
+            <button class="t-btn t-btn--sm" id="viewerNextPageBtn" type="button">下一页 &gt;</button>
+            <button class="t-btn t-btn--sm" id="viewerQualityToggleBtn" type="button">切换原图</button>
+          </div>
+          <div class="viewer-thumb-strip clean-optical-media" id="viewerThumbStrip"></div>
+        </div>
+        <div class="viewer-info-col">
+          <div class="viewer-meta-stats" id="viewerStatsBox"></div>
+          <div class="viewer-download-actions">
+            <a class="t-btn t-btn--primary" id="viewerDownloadCurrentBtn" href="#" download>下载当前页高清原图</a>
+            <a class="t-btn hidden" id="viewerDownloadUgoiraZipBtn" href="#" download>下载 Ugoira 动图帧 ZIP</a>
+            <button class="t-btn" id="viewerSauceNaoBtn" type="button">SauceNAO / Ascii2d 以图搜源</button>
+            <a class="t-btn" id="viewerOpenPixivBtn" href="#" target="_blank" rel="noopener">在 Pixiv 打开原网页 ↗</a>
+          </div>
+          <div class="viewer-subbox">
+            <div class="subbox-title">该作品包含的全部标签 (点击可切换分析目标):</div>
+            <div class="viewer-tags-list" id="viewerTagsList"></div>
+          </div>
+          <div class="viewer-subbox">
+            <div class="subbox-title">作品简介 / 说明:</div>
+            <div class="viewer-desc-box" id="viewerDescriptionBox"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- FLOATING DISPLAY CONFIG POPOVER (Exact replica of call-fx-window-v7)   -->
+  <!-- ===================================================================== -->
+  <section class="call-floating-widget-v7 call-fx-window-v7 hidden" id="styleConfigModal" role="dialog" aria-label="画面与字体效果">
+    <header class="call-fx-titlebar-v7" id="fxWindowTitlebar" title="拖动设置窗口">
+      <div class="call-fx-title-copy-v7">
+        <small>SYS://DISPLAY.CONFIG</small>
+        <strong>画面与字体效果</strong>
+      </div>
+      <button class="call-fx-close-v7" id="closeStyleConfigBtn" type="button" aria-label="关闭设置">×</button>
+    </header>
+    <div class="call-fx-body-v7">
+      <p class="call-fx-intro-v7">
+        当前主题：<strong id="fxCurrentThemeLabel">纸张</strong>。保留静态玻璃质感；无画面抖动、滚动扫描或动态噪点。设置按主题保存。（所有作品图片均已光学隔离）
+      </p>
+
+      <fieldset id="fxPhosphorFieldset">
+        <legend>夜间磷光</legend>
+        <div class="call-fx-segment-v7">
+          <button type="button" data-phosphor-choice="green" aria-pressed="true">绿磷光</button>
+          <button type="button" data-phosphor-choice="amber" aria-pressed="false">橙磷光</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>屏幕与字体效果</legend>
+        <label class="call-fx-toggle-row-v7">
+          <span>屏幕曲率模拟</span>
+          <input type="checkbox" id="toggleCurvatureCheck" checked />
+        </label>
+        <label class="call-fx-toggle-row-v7">
+          <span>扫描线</span>
+          <input type="checkbox" id="toggleCrtFxCheck" checked />
+        </label>
+        <label class="call-fx-toggle-row-v7">
+          <span>屏幕噪点</span>
+          <input type="checkbox" id="toggleNoiseFxCheck" checked />
+        </label>
+        <label class="call-fx-toggle-row-v7">
+          <span>像素字体</span>
+          <input type="checkbox" id="togglePixelFontCheck" />
+        </label>
+        <label class="call-fx-toggle-row-v7">
+          <span>静态色散与荧光描边</span>
+          <input type="checkbox" id="toggleLofiFxCheck" checked />
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>主题栏位置</legend>
+        <div class="call-fx-segment-v7">
+          <button type="button" data-themebar-mode="top" aria-pressed="true">顶部随页面滚动</button>
+          <button type="button" data-themebar-mode="floating" aria-pressed="false">可拖拽悬浮</button>
+        </div>
+      </fieldset>
+
+      <footer class="call-fx-footer-v7">
+        <button type="button" id="resetThemeDefaultsBtn">恢复本主题默认</button>
+        <button type="button" id="doneStyleConfigBtn">关闭</button>
+      </footer>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 4: USER MANUAL & FEATURE GUIDE                                  -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="helpGuideModal">
+    <div class="modal-window modal-window--lg">
+      <div class="modal-titlebar">
+        <div>
+          <h3>使用说明与各模块功能指南</h3>
+        </div>
+        <button class="btn-modal-close" id="closeHelpGuideBtn" type="button">[X] 关闭</button>
+      </div>
+      <div class="modal-content">
+        <div class="guide-grid">
+          <div class="guide-card">
+            <div class="subbox-title">支持哪些搜索格式？</div>
+            <p>顶部搜索框支持以下任意格式（直接粘贴即可自动提取主标签与年龄模式）：</p>
+            <ul>
+              <li><strong>纯标签名称</strong>：如 <code>森亜るるか</code>、<code>ブルーアーカイブ</code></li>
+              <li><strong>Pixiv 常规搜索页链接</strong>：如 <code>https://www.pixiv.net/search?q=森亜るるか&amp;s_mode=tag&amp;type=artwork&amp;r=1</code></li>
+              <li><strong>Pixiv 标签页链接</strong>：如 <code>https://www.pixiv.net/tags/ブルーアーカイブ/artworks</code></li>
+            </ul>
+          </div>
+          <div class="guide-card">
+            <div class="subbox-title">如何采样全部历史页面？</div>
+            <p>在搜索框下方的「深度」下拉框中，可选择 <code>3页</code>、<code>10页</code>、<code>25页</code>、<code>50页</code>、<code>100页</code>，或选择 <strong><code>ALL (迄今全部页)</code></strong>。</p>
+            <p>采样采用实时流式引擎，边翻页边更新排行榜；您可随时点击搜索框右侧的 <strong>「停止翻页」</strong> 锁定当前已采集样本。</p>
+          </div>
+          <div class="guide-card">
+            <div class="subbox-title">列表右侧 4 个操作按钮分别代表什么？</div>
+            <ul>
+              <li><strong><code>看图</code></strong>：弹窗查看同时包含「当前主标签 + 该共现标签」的全部作品缩略图，以及伴随的第 3 标签排行。</li>
+              <li><strong><code>+必含</code> / <code>✓已锁</code></strong>：在当前已采样的作品池中，要求作品<strong>必须同时包含该标签</strong>并重算排行。锁定后该行会<strong>置顶在表格第一行</strong>，且<strong>屏幕上方会出现跟随滚动的「叠加必含筛选」悬浮条</strong>，随时可点击取消。</li>
+              <li><strong><code>搜Tag</code></strong>：将该标签设为主搜索词，重新发起采样。</li>
+              <li><strong><code>+收集</code></strong>：将该标签加入顶部的「收集篮」，方便组合复制 Pixiv 搜索词或导出 <strong>Danbooru / NovelAI 英文绘图 Prompt</strong>。</li>
+            </ul>
+          </div>
+          <div class="guide-card">
+            <div class="subbox-title">Danbooru 语义分类与 R-18 登录说明</div>
+            <p>系统已实时对接 <strong>Danbooru (`danbooru.donmai.us`)</strong> 词库 API，自动将日文 Pixiv 标签识别为 <strong>角色</strong>、<strong>属性</strong>、<strong>作品/IP</strong>，并附带英文 Booru 词条（如 <code>howa_kurea</code>）。点击表格中的「分类」列也可手动改归类。</p>
+            <p>本终端支持<strong>免登录直连</strong>使用全部核心功能；若需解锁 R-18 搜索权限，可点击顶栏「Pixiv 账号」通过油猴脚本自动同步已登录的 Chrome 会话、粘贴 F12 控制台 `pixiv://` 回调行或填入 `PHPSESSID`。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 5: CUSTOM CATEGORY DICTIONARY RULES                             -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="rulesModal">
+    <div class="modal-window modal-window--lg">
+      <div class="modal-titlebar">
+        <div>
+          <h3>角色 / 属性 / 作品IP 强制分类词表规则</h3>
+        </div>
+        <button class="btn-modal-close" id="closeRulesModalBtn" type="button">[X] 关闭</button>
+      </div>
+      <div class="modal-content">
+        <p class="modal-note">
+          除了在排行榜表格中直接点击任意标签的「分类」列一键切换归类外，您也可以在下方批量填入自定义标签（用逗号或换行分隔），保存后立即对当前结果生效：
+        </p>
+        <div class="rules-grid">
+          <div class="rule-editor-box">
+            <label>角色 / 人物类 (CHARACTER) 强制词表:</label>
+            <textarea id="ruleCharTextarea" rows="5" placeholder="例如: 森亜るるか, 帆羽くれあ, キュアアルカナ・シャドウ, 十六夜ノノミ..."></textarea>
+          </div>
+          <div class="rule-editor-box">
+            <label>服装 / 身体特征 / 属性类 (ATTRIBUTE / XP) 强制词表:</label>
+            <textarea id="ruleAttrTextarea" rows="5" placeholder="例如: 白タイツ, 水着, メイド服, 百合, 足裏, ケモミミ..."></textarea>
+          </div>
+          <div class="rule-editor-box">
+            <label>作品 / IP / 企划简称 (SERIES / IP) 强制词表:</label>
+            <textarea id="ruleIpTextarea" rows="5" placeholder="例如: 名探偵プリキュア!, たんプリ, ブルーアーカイブ, ブルアカ..."></textarea>
+          </div>
+          <div class="rule-editor-box">
+            <label>元标签 / 形式 / 分级 (META / GENERAL) 强制词表:</label>
+            <textarea id="ruleMetaTextarea" rows="5" placeholder="例如: 漫画, 4コマ, 落書き, イラスト..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer-btns">
+          <button class="t-btn" id="resetUserRulesBtn" type="button">清空自定义词表</button>
+          <button class="t-btn t-btn--primary" id="saveUserRulesBtn" type="button">保存并立即重算分类排行</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 6: PIXIV LOGIN / CHROME BRIDGE / OAUTH / COOKIE                 -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="authModal">
+    <div class="modal-window modal-window--lg">
+      <div class="modal-titlebar">
+        <div>
+          <h3>连接 Pixiv 账号（支持油猴自动同步 Chrome 登录态 / Cookie / OAuth）</h3>
+        </div>
+        <button class="btn-modal-close" id="closeAuthModalBtn" type="button">[X] 关闭</button>
+      </div>
+      <div class="modal-content">
+        <div class="auth-status-banner" id="authStatusBanner">
+          <div id="authCurrentStatusBox">当前状态: 免登录直连模式 — 无需登录即可直接进行全量页面采样、分类排行与高清看图下载。</div>
+          <button class="t-btn t-btn--danger hidden" id="oauthLogoutBtn" type="button">退出当前账号</button>
+        </div>
+
+        <div class="auth-methods-grid">
+          <div class="auth-method-card">
+            <div class="subbox-title">方式 A // 已登录 Chrome 浏览器一键同步 / Cookie 直通（最省心 · 零空白页）</div>
+            <p class="modal-note">
+              如果您当前的 Chrome 浏览器已经登录了 Pixiv：<br/>
+              1. <strong>自动同步</strong>：安装本项目的 <a href="./downloads/pixtag-companion.user.js" target="_blank"><strong>v3.9 油猴脚本 (pixtag-companion.user.js)</strong></a> 后，脚本会自动将您 Chrome 已登录的 Pixiv 会话同步至本页面，无需任何手动操作。<br/>
+              2. <strong>手动填入 PHPSESSID</strong>：在已登录的 <code>pixiv.net</code> 页面按 <code>F12</code> &rarr; <code>Application (应用)</code> &rarr; <code>Cookies</code> 复制 <code>PHPSESSID</code> 填入下方即可持久化登录：
+            </p>
+            <div class="copy-input-row">
+              <input type="password" id="cookieInput" placeholder="粘贴已登录 Chrome 的 PHPSESSID 值..." />
+              <button class="t-btn t-btn--primary" id="saveCookieBtn" type="button">验证并保存登录</button>
+              <button class="t-btn" id="clearCookieBtn" type="button">清除</button>
+            </div>
+          </div>
+
+          <div class="auth-method-card">
+            <div class="subbox-title">方式 B // PixEz 官方 OAuth PKCE 登录或 Refresh Token</div>
+            <p class="modal-note">
+              点击下方「打开 Pixiv 官方 OAuth 授权页」，当页面变空白时按 <strong>F12 切到 Console</strong>，直接<strong>复制红色的 <code>Failed to launch 'pixiv://account/login?code=...'</code> 整行报错文本</strong>粘贴到下方输入框即可完成登录：
+            </p>
+            <button class="t-btn" id="startPixivOAuthBtn" type="button">打开 Pixiv 官方 OAuth 授权页 ↗</button>
+            <div class="copy-input-row">
+              <input type="text" id="oauthCodeInput" placeholder="粘贴 F12 Console 中的 Failed to launch 'pixiv://...code=...' 整行文本..." />
+              <button class="t-btn t-btn--primary" id="submitOAuthCodeBtn" type="button">完成 OAuth 登录</button>
+            </div>
+            <div class="copy-input-row" style="margin-top:4px;">
+              <input type="password" id="refreshTokenInput" placeholder="或直接输入已有的 PixEz / Pixiv Refresh Token..." />
+              <button class="t-btn" id="submitRefreshTokenBtn" type="button">Token 登录</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 7: REVERSE IMAGE SEARCH & ARTWORK ID PARSER                     -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="reverseModal">
+    <div class="modal-window modal-window--md">
+      <div class="modal-titlebar">
+        <div>
+          <h3>通过 Pixiv 作品 ID / 链接提取标签，或通过图片 URL 搜源</h3>
+        </div>
+        <button class="btn-modal-close" id="closeReverseModalBtn" type="button">[X] 关闭</button>
+      </div>
+      <div class="modal-content">
+        <div class="viewer-subbox">
+          <div class="subbox-title">PIXIV 作品 ID 或链接直接看图与提取全部 Tag</div>
+          <div class="copy-input-row">
+            <input type="text" id="directIllustIdInput" placeholder="例如: 118592341 或 https://www.pixiv.net/artworks/118592341" />
+            <button class="t-btn t-btn--primary" id="openDirectIllustBtn" type="button">打开高清查看器</button>
+          </div>
+        </div>
+        <div class="viewer-subbox">
+          <div class="subbox-title">以图搜源 (SauceNAO / Ascii2d)</div>
+          <div class="copy-input-row">
+            <input type="text" id="reverseImgUrlInput" placeholder="粘贴任意图片 URL 地址..." />
+            <button class="t-btn" id="jumpSauceNaoBtn" type="button">SauceNAO ↗</button>
+            <button class="t-btn" id="jumpAscii2dBtn" type="button">Ascii2d ↗</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 8: TAG BASKET & DANBOORU / NOVELAI PROMPT BUILDER               -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="basketModal">
+    <div class="modal-window modal-window--md">
+      <div class="modal-titlebar">
+        <div>
+          <h3>标签收集篮与 NovelAI 提示词导出</h3>
+        </div>
+        <button class="btn-modal-close" id="closeBasketModalBtn" type="button">[X] 关闭</button>
+      </div>
+      <div class="modal-content">
+        <div class="basket-tags-container" id="basketTagsList"></div>
+        <div class="viewer-subbox">
+          <div class="subbox-title">Pixiv 空格分隔组合搜索词 (AND 联合搜索):</div>
+          <div class="copy-input-row">
+            <input type="text" id="basketSpaceOutput" readonly />
+            <button class="t-btn t-btn--primary" id="copyBasketSpaceBtn" type="button">复制</button>
+          </div>
+        </div>
+        <div class="viewer-subbox">
+          <div class="subbox-title">Danbooru / NovelAI 英文绘图 Prompt (自动转换下划线为空格):</div>
+          <div class="copy-input-row">
+            <input type="text" id="basketDanbooruOutput" readonly placeholder="收集含有 Danbooru 词条的标签后自动生成英文 Prompt..." />
+            <button class="t-btn t-btn--primary" id="copyBasketDanbooruBtn" type="button">复制英文 Prompt</button>
+          </div>
+        </div>
+        <div class="modal-footer-btns">
+          <button class="t-btn t-btn--danger" id="clearBasketBtn" type="button">清空收集篮</button>
+          <a class="t-btn t-btn--primary" id="openBasketInPixivBtn" href="#" target="_blank" rel="noopener">在 Pixiv 搜索此组合 ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 9: CLIENT APK & USERSCRIPT DOWNLOADS                            -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="clientDownloadModal">
+    <div class="modal-window modal-window--lg">
+      <div class="modal-titlebar">
+        <div>
+          <h3>Flutter Android APK 客户端 / 油猴脚本 / Chrome 扩展</h3>
+        </div>
+        <button class="btn-modal-close" id="closeClientDownloadBtn" type="button">[X] 关闭</button>
+      </div>
+      <div class="modal-content">
+        <div class="client-grid">
+          <div class="client-box">
+            <div class="client-box__tag">油猴脚本 v3.8 (推荐)</div>
+            <h3>Pixiv 网页内嵌抽屉 + Chrome 登录态自动桥接脚本</h3>
+            <p>安装后不仅能在 <code>pixiv.net/tags/...</code> 与 <code>pixiv.net/search?q=...</code> 右侧直接展开档案风全量共现分析抽屉，还能<strong>自动把您当前已登录的 Chrome Pixiv 会话同步给本页面</strong>，并自动拦截 `post-redirect` 空白页。</p>
+            <div class="client-box__actions">
+              <button class="t-btn t-btn--primary" id="copyUserscriptSourceBtn" type="button">一键复制油猴脚本代码</button>
+              <a class="t-btn" href="./downloads/pixtag-companion.user.js" target="_blank">下载/安装 .user.js 脚本</a>
+            </div>
+          </div>
+          <div class="client-box">
+            <div class="client-box__tag">Android APK 客户端 &amp; 下载中心</div>
+            <h3>MadeInMagius PixEz Pulse Android 客户端 APK</h3>
+            <p>内置全量历史页面采样、角色/属性/作品独立分类统计、角色头像拓扑图与免代理直连看图，已同步交付至 MadeInMagius 下载中心。</p>
+            <div class="client-box__actions">
+              <a class="t-btn t-btn--primary" id="githubReleaseApkLink" href="https://madeinmagius-site.pages.dev/downloads/pixiv/android" target="_blank" rel="noopener">直接下载 Android APK ↗</a>
+              <a class="t-btn" id="githubRepoLink" href="https://madeinmagius-site.pages.dev/#pixiv" target="_blank" rel="noopener">前往 MadeInMagius 下载中心 ↗</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+  <script src="./app.js?v=3.9"></script>
+</body>
+</html>

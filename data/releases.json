@@ -139,6 +139,30 @@
           "browser_download_url": "https://github.com/HiiragiNemu/MagiaExedraTWTools/releases/download/tw-jp-tools-v1.4.3/MagiaExedraTWJPTools-v1.4.3.zip"
         }
       }
+    },
+    "pixiv": {
+      "tag": "v1.0.0",
+      "name": "MadeInMagius PixEz Pulse v1.0.0 — Pixiv 全量标签共现与分类客户端",
+      "published_at": "2026-11-23T17:10:46Z",
+      "release_url": "https://madeinmagius-site.pages.dev/#pixiv",
+      "assets": {
+        "android": {
+          "id": 785402037,
+          "name": "PixEz-Pulse-v1.0.0-android-release.apk",
+          "size": 52394816,
+          "digest": "sha256:71160501e3ed0b561296013ea2a4232b66e59370461e354ca600c0d82c9d5a1f",
+          "content_type": "application/vnd.android.package-archive",
+          "download": "./downloads/pixiv/android"
+        },
+        "userscript": {
+          "id": 785402031,
+          "name": "pixtag-companion.user.js",
+          "size": 25801,
+          "digest": "sha256:a811eb208814dbff5d3dd8701591d3b0d36322efb28e1e5b50564f2648a4175c",
+          "content_type": "application/javascript; charset=utf-8",
+          "download": "./downloads/pixiv/userscript"
+        }
+      }
     }
   }
 }

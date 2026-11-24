@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { PROGRAMS, HOME_WEBSITES, renderContent } from '../assets/content.js';
 
-assert.deepEqual(PROGRAMS.home.subs.map(s => s.id), ['welcome', 'magireco-private-server', 'universal-adv-reader', 'programs', 'reporting-records', 'contact']);
+assert.deepEqual(PROGRAMS.home.subs.map(s => s.id), ['welcome', 'magireco-private-server', 'universal-adv-reader', 'exedra-downloads', 'tw-mumu', 'tw-phone', 'jp-android', 'steam', 'tw-client-113', 'tw-mumu-en', 'tw-phone-en', 'integrity', 'troubleshoot', 'programs', 'reporting-records', 'contact']);
 assert.equal(PROGRAMS.home.subs[0].label, '魔法纪录相关网站');
 assert.equal(PROGRAMS.home.subs.find(s => s.id === 'programs').label, '资源比对与证据记录');
 assert.equal(HOME_WEBSITES.length, 4);

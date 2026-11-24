@@ -417,7 +417,7 @@ contentPanel.addEventListener('click', async event => {
     await navigator.clipboard.writeText(source);
 
     button.textContent = 'COPIED ✓';
-    statusLine.textContent = 'BILIBILI // CONSOLE SCRIPT COPIED';
+    statusLine.textContent = programId.toUpperCase() + ' // SCRIPT COPIED';
     setTimeout(() => {
       button.textContent = original;
       button.disabled = false;

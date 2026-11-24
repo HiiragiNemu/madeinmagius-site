@@ -21,9 +21,25 @@ export const PROGRAMS = {
     { id: 'welcome', label: '魔法纪录相关网站', note: '作品导航' },
     { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: '正式客户端 '+magirecoRelease.version },
     { id: 'universal-adv-reader', label: '通用 ADV 阅读网站', note: 'Narcissu / KANA' },
+    { id: 'exedra-downloads', label: 'DOWNLOADS', note: 'TW / JP / 工具' },
+    { id: 'tw-mumu', label: 'TW · WINDOWS / MUMU', note: '完整教程' },
+    { id: 'tw-phone', label: 'TW · ANDROID PHONE', note: '完整教程' },
+    { id: 'jp-android', label: 'JP · ANDROID / MUMU', note: '完整教程' },
+    { id: 'steam', label: 'STEAM WINDOWS', note: '安装与网络' },
+    { id: 'tw-client-113', label: 'TW CLIENT 1.1.3', note: '版本说明' },
+    { id: 'tw-mumu-en', label: 'TW · WINDOWS / MUMU (EN)', note: 'English guide' },
+    { id: 'tw-phone-en', label: 'TW · ANDROID PHONE (EN)', note: 'English guide' },
+    { id: 'integrity', label: 'INTEGRITY / HASHES', note: '校验与验证记录' },
+    { id: 'troubleshoot', label: 'TROUBLESHOOT', note: '常见问题' },
     { id: 'programs', label: '资源比对与证据记录', note: '报告' },
     { id: 'reporting-records', label: '事件截图与处理记录', note: '图集 / 来源' },
     { id: 'contact', label: 'CONTACT', note: '联系' }
+  ]},
+  pixiv: { subs: [
+    { id: 'android', label: 'ANDROID APK', note: '标签共现客户端' },
+    { id: 'userscript', label: 'USERSCRIPT', note: '一键复制 / 油猴' },
+    { id: 'webapp', label: 'WEB TERMINAL', note: '网页版入口' },
+    { id: 'pixiv-guide', label: 'USAGE', note: '完整使用说明' }
   ]},
   bilibili: { subs: [
     { id: 'android', label: 'ANDROID APK', note: '伴侣应用' },
@@ -243,7 +259,10 @@ function androidUpdateGuide(tag, project) {
   return '<p>首次安装或从旧版升级，请从本页下载正式 APK；升级时使用同签名覆盖安装，不要先卸载或清除数据。更新能力以实际安装的版本为准。</p>';
 }
 
+const EXEDRA_SUB_IDS = new Set(['exedra-downloads','tw-mumu','tw-phone','jp-android','steam','tw-client-113','tw-mumu-en','tw-phone-en','integrity','troubleshoot']);
+
 export function renderContent(programId, subId, data) {
+  if (programId === 'home' && EXEDRA_SUB_IDS.has(subId)) programId = 'exedra';
   if (programId === 'home') {
     if (subId === 'magireco-private-server') return magirecoClientHtml(data.magireco);
     if (subId === 'universal-adv-reader') return '<p class="content-kicker">UNIVERSAL ADV READER</p><h2>通用 ADV 阅读网站</h2>' +
@@ -454,6 +473,59 @@ export function renderContent(programId, subId, data) {
       (verification ? '<details class="terminal-details"><summary>VERIFICATION RECORD</summary><pre><code>' + escapeHtml(JSON.stringify(verification, null, 2)) + '</code></pre></details>' : '') +
       (sums ? '<details class="terminal-details"><summary>SHA256SUMS</summary><pre><code>' + escapeHtml(sums) + '</code></pre></details>' : '') +
       '</section>';
+  }
+
+  if (programId === 'pixiv') {
+    const project = data.releases?.projects?.pixiv;
+    const releaseTag = project?.tag || 'v1.0.0';
+    const scriptInstallUrl = serviceUrl('./downloads/pixtag-companion.user.js');
+    const scriptRawUrl = serviceUrl('./downloads/pixiv/userscript');
+    if (subId === 'android') {
+      return '<p class="content-kicker">PIXIV / PIXEZ PULSE / ' + escapeHtml(releaseTag) + '</p><h2>Pixiv 标签共现频次与语义分类客户端</h2>' +
+        '<p>以 Pixiv 标签全量历史共现频率、角色/属性/作品独立语义分类、角色头像气泡拓扑图为核心导向，支持免登录直连采样与高清原图/动图下载。</p>' +
+        '<div class="download-stack">' +
+        downloadCard(data, 'pixiv', 'android', 'PIXEZ PULSE ANDROID APK', 'Android 8.0+ 完整客户端 · 默认纸张主题', './downloads/pixiv/android') +
+        '<article class="download-card"><h3>TAMPERMONKEY 油猴脚本</h3><p>在 Pixiv (/tags/ 与 /search?q= 全格式链接) 右侧内嵌档案风全量共现抽屉，并自动将已登录 Chrome 会话同步给网页版终端。</p>' +
+        '<div class="quick-links">' +
+        '<button class="terminal-copy-button" type="button" data-copy-url="' + escapeHtml(scriptInstallUrl) + '" data-copy-fallback="' + escapeHtml(scriptRawUrl) + '">一键复制油猴脚本</button>' +
+        '<a class="download-button" href="' + escapeHtml(scriptInstallUrl) + '">安装到油猴</a>' +
+        '<a href="' + escapeHtml(scriptRawUrl) + '">下载脚本文件</a>' +
+        '</div></article>' +
+        '<article class="download-card"><h3>PIXEZ PULSE 网页版在线入口</h3><p>无需安装客户端，直接在浏览器使用全量历史页面采样、Danbooru 角色/属性/作品分类排行、角色头像气泡拓扑图与保存图片。</p>' +
+        '<p class="meta-line">madeinmagius-site.pages.dev/pixez/</p>' +
+        '<a class="download-button" href="./pixez/" target="_blank" rel="noopener noreferrer">打开网页版入口 ↗</a></article>' +
+        '</div>';
+    }
+    if (subId === 'userscript') {
+      return '<p class="content-kicker">PIXIV / USERSCRIPT</p><h2>油猴脚本一键复制与安装</h2>' +
+        '<p>适用于 Chrome、Edge、Firefox 及支持 Tampermonkey / Violentmonkey 的移动端浏览器。安装后可在 Pixiv 搜索页直接展开共现排行，并自动桥接 Chrome 登录态。</p>' +
+        '<div class="quick-links">' +
+        '<button class="terminal-copy-button" type="button" data-copy-url="' + escapeHtml(scriptInstallUrl) + '" data-copy-fallback="' + escapeHtml(scriptRawUrl) + '">一键复制完整油猴脚本</button>' +
+        '<a href="' + escapeHtml(scriptInstallUrl) + '" target="_blank" rel="noreferrer">打开脚本源码 ↗</a>' +
+        '</div>' +
+        '<div class="download-stack">' +
+        downloadCard(data, 'pixiv', 'userscript', 'PIXEZ PULSE USERSCRIPT', 'Tampermonkey 用户脚本 (.user.js)', './downloads/pixiv/userscript', './downloads/pixtag-companion.user.js') +
+        '</div>' +
+        '<ol><li>点击上方“一键复制完整油猴脚本”，打开 Tampermonkey 管理面板新建脚本粘贴保存；或直接点击“安装到油猴”。</li>' +
+        '<li>打开 Pixiv 任意标签页 (<code>pixiv.net/tags/...</code>) 或常规搜索页 (<code>pixiv.net/search?q=...</code>) 即可自动采样共现标签。</li>' +
+        '<li>同时打开本站网页版终端时，脚本会自动同步您已登录的 Chrome Pixiv 会话。</li></ol>';
+    }
+    if (subId === 'webapp') {
+      return '<p class="content-kicker">PIXIV / WEB TERMINAL</p><h2>PIXEZ PULSE 网页版在线终端</h2>' +
+        '<p>内置全量历史页面流式采样、角色/属性/作品独立分类统计、Danbooru 英文词条映射、角色头像气泡共现拓扑图（支持一键保存 PNG 图片）以及纸张/明亮/护眼/夜间/冷辉 5 套可固定/悬浮切换主题。</p>' +
+        '<div class="download-stack">' +
+        '<article class="download-card"><h3>PIXEZ PULSE WEB TERMINAL v3.9</h3>' +
+        '<p>支持纯标签、<code>/search?q=</code> 与 <code>/tags/</code> 全格式链接，作品图片与光学扫描线/网格严格隔离。</p>' +
+        '<p class="meta-line">./pixez/</p>' +
+        '<a class="download-button" href="./pixez/" target="_blank" rel="noopener noreferrer">打开网页版入口 ↗</a>' +
+        '</article></div>';
+    }
+    return '<p class="content-kicker">PIXIV / USAGE</p><h2>使用说明</h2>' +
+      '<h3>全格式链接与全量历史采样</h3>' +
+      '<ol><li>搜索框支持直接输入标签名（如 <code>森亜るるか</code>）或粘贴完整的 <code>https://www.pixiv.net/search?q=...</code> 与 <code>https://www.pixiv.net/tags/.../artworks</code> 链接。</li>' +
+      '<li>采样深度可选 <code>3页</code> 至 <code>100页</code> 或 <code>全部页</code>，实时流式翻页并计算共现频次、占比与独立画师数。</li>' +
+      '<li>支持切换仅看 <strong>角色</strong>、<strong>属性</strong>、<strong>作品</strong>、<strong>元标签</strong>，并在拓扑图中将角色节点渲染为角色头像气泡并导出 PNG 图片。</li></ol>' +
+      '<div class="quick-links"><a href="#pixiv/android">ANDROID APK</a><a href="#pixiv/userscript">USERSCRIPT</a><a href="./pixez/" target="_blank" rel="noopener noreferrer">WEB TERMINAL ↗</a></div>';
   }
 
   if (programId === 'exedra') {

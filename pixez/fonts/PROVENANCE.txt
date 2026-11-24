@@ -1,0 +1,3 @@
+Fusion Pixel Font 12px monospaced, release 2026.07.20.
+Upstream: https://github.com/TakWolf/fusion-pixel-font
+License: SIL Open Font License 1.1 (see OFL.txt).

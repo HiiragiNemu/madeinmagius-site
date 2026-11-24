@@ -5,7 +5,7 @@ import { onRequest } from '../functions/_middleware.js';
 
 const origin = 'https://madeinmagius-site.pages.dev';
 const snapshot = JSON.parse(await readFile(new URL('../data/releases.json', import.meta.url)));
-const cases = [['bilibili','android'],['bilibili','userscript'],['bilibili','console'],
+const cases = [['pixiv','android'],['pixiv','userscript'],['bilibili','android'],['bilibili','userscript'],['bilibili','console'],
   ['netease','android-full'],['netease','windows'],['netease','python'],['netease','netease-verify'],
   ['exedra','exedra-downloads'],['home','magireco-private-server'],['home','programs']];
 for (const hostname of ['madeinmagius-site.pages.dev','hiiraginemu.github.io']) {

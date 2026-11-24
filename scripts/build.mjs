@@ -62,7 +62,7 @@ for (const id of requiredDocIds) {
 for (const key of ['twManifest','jpManifest','twSums','jpSums','twVerification','jpVerification']) {
   if (!exedraIntegrity.files?.[key]?.content) throw new Error(`Missing Exedra integrity record: ${key}`);
 }
-for (const project of ['bilibili','netease','exedra']) {
+for (const project of ['bilibili','netease','exedra','pixiv']) {
   if (!releaseData.projects?.[project]) throw new Error(`Missing release project: ${project}`);
 }
 
@@ -77,6 +77,7 @@ await cp('index.html','dist/index.html');
 await cp('assets','dist/assets',{ recursive:true });
 await cp('data','dist/data',{ recursive:true });
 await cp('updates','dist/updates',{ recursive:true });
+if (existsSync('pixez')) await cp('pixez','dist/pixez',{ recursive:true });
 const assetVersions = await versionStaticAssets('dist');
 const sourceCommit = process.env.CF_PAGES_COMMIT_SHA || spawnSync('git', ['rev-parse','HEAD'], {encoding:'utf8'}).stdout?.trim() || 'unknown';
 await writeFile('dist/site-release.json', JSON.stringify({schema:'madeinmagius-site-release/v1',sourceCommit,builtAt:new Date().toISOString(),assetVersions},null,2)+'\n');
@@ -121,7 +122,7 @@ await writeFile('dist/_routes.json',JSON.stringify({
   exclude:['/assets/*','/data/*']
 },null,2)+'\n');
 
-for (const [route,hash] of [['tools/bilibili','bilibili'],['tools/netease','netease'],['tools/exedra','exedra'],['about','about']]) {
+for (const [route,hash] of [['tools/bilibili','bilibili'],['tools/netease','netease'],['tools/exedra','home/exedra-downloads'],['tools/pixiv','pixiv'],['about','about']]) {
   const dir=`dist/${route}`;
   await mkdir(dir,{recursive:true});
   await writeFile(`${dir}/index.html`,`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><script>location.replace('../../#${hash}')</script><a href="../../#${hash}">Open MadeInMagius Terminal</a>`);

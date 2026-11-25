@@ -549,10 +549,11 @@ export function renderContent(programId, subId, data) {
     const scriptInstallUrl = serviceUrl('./downloads/pixtag-companion.user.js');
     const scriptRawUrl = serviceUrl('./downloads/pixiv/userscript');
     if (subId === 'android') {
-      return '<p class="content-kicker">PIXIV / PIXEZ PULSE / ' + escapeHtml(releaseTag) + '</p><h2>Pixiv 标签共现频次与语义分类客户端</h2>' +
-        '<p>以 Pixiv 标签全量历史共现频率、角色/属性/作品独立语义分类、角色头像气泡拓扑图为核心导向，支持免登录直连采样与高清原图/动图下载。</p>' +
+      return '<p class="content-kicker">PIXIV / PIXEZ PULSE / ' + escapeHtml(releaseTag) + ' · GNU GPL v3.0</p><h2>PixEz Pulse — 基于开源 PixEz 的全量标签共现客户端</h2>' +
+        '<p>基于开源项目 <a href="https://github.com/Notsfsssf/pixez-flutter" target="_blank" rel="noopener noreferrer">Notsfsssf/pixez-flutter</a>（GNU GPL v3.0）修改，完整保留原生 Pixiv 登录（Chrome Custom Tab / 兼容代理 / Token）、ECH 网络直连、高清看图器与搜索联想，并集成全量标签共现排行、角色头像拓扑图、词表、搜源、收集篮与 CSV/JSON 导出。</p>' +
         '<div class="download-stack">' +
-        downloadCard(data, 'pixiv', 'android', 'PIXEZ PULSE ANDROID APK', 'Android 8.0+ 完整客户端 · 默认纸张主题', './downloads/pixiv/android') +
+        downloadCard(data, 'pixiv', 'android', 'PIXEZ PULSE ANDROID APK', 'Android Universal APK · 基于 PixEz 0.9.114 (GPL-3.0) · 默认纸张主题', './downloads/pixiv/android') +
+        downloadCard(data, 'pixiv', 'source', 'GPL-3.0 对应开源源码包 (.tar.gz)', '依 GNU GPL v3.0 第 5/6 条随安装包同渠道提供完整客户端对应源码、LICENSE 与 CHANGES.md 修改说明', './downloads/pixiv/source') +
         '<article class="download-card"><h3>TAMPERMONKEY 油猴脚本</h3><p>在 Pixiv (/tags/ 与 /search?q= 全格式链接) 右侧内嵌档案风全量共现抽屉，并自动将已登录 Chrome 会话同步给网页版终端。</p>' +
         '<div class="quick-links">' +
         '<button class="terminal-copy-button" type="button" data-copy-url="' + escapeHtml(scriptInstallUrl) + '" data-copy-fallback="' + escapeHtml(scriptRawUrl) + '">一键复制油猴脚本</button>' +
@@ -562,7 +563,8 @@ export function renderContent(programId, subId, data) {
         '<article class="download-card"><h3>PIXEZ PULSE 网页版在线入口</h3><p>无需安装客户端，直接在浏览器使用全量历史页面采样、Danbooru 角色/属性/作品分类排行、角色头像气泡拓扑图与保存图片。</p>' +
         '<p class="meta-line">madeinmagius-site.pages.dev/pixez/</p>' +
         '<a class="download-button" href="./pixez/" target="_blank" rel="noopener noreferrer">打开网页版入口 ↗</a></article>' +
-        '</div>';
+        '</div>' +
+        '<p class="meta-line">开源协议声明：Android 客户端及其对应源码整体依据 GNU GPL v3.0 授权（上游版权归 perol_notsf 及 PixEz 贡献者，修改部分版权归 MadeInMagius / HiiragiNemu）。二次分发须保留全部版权声明与 GPL-3.0 协议并提供对应源码。</p>';
     }
     if (subId === 'userscript') {
       return '<p class="content-kicker">PIXIV / USERSCRIPT</p><h2>油猴脚本一键复制与安装</h2>' +
@@ -582,15 +584,15 @@ export function renderContent(programId, subId, data) {
       return '<p class="content-kicker">PIXIV / WEB TERMINAL</p><h2>PIXEZ PULSE 网页版在线终端</h2>' +
         '<p>内置全量历史页面流式采样、角色/属性/作品独立分类统计、Danbooru 英文词条映射、角色头像气泡共现拓扑图（支持一键保存 PNG 图片）以及纸张/明亮/护眼/夜间/冷辉 5 套可固定/悬浮切换主题。</p>' +
         '<div class="download-stack">' +
-        '<article class="download-card"><h3>PIXEZ PULSE WEB TERMINAL v3.9</h3>' +
-        '<p>支持纯标签、<code>/search?q=</code> 与 <code>/tags/</code> 全格式链接，作品图片与光学扫描线/网格严格隔离。</p>' +
+        '<article class="download-card"><h3>PIXEZ PULSE WEB TERMINAL v4.1</h3>' +
+        '<p>支持纯标签、<code>/search?q=</code> 与 <code>/tags/</code> 全格式链接，内置 Pixiv 联想补全，作品图片与光学扫描线/网格严格隔离。</p>' +
         '<p class="meta-line">./pixez/</p>' +
         '<a class="download-button" href="./pixez/" target="_blank" rel="noopener noreferrer">打开网页版入口 ↗</a>' +
         '</article></div>';
     }
     return '<p class="content-kicker">PIXIV / USAGE</p><h2>使用说明</h2>' +
       '<h3>全格式链接与全量历史采样</h3>' +
-      '<ol><li>搜索框支持直接输入标签名（如 <code>森亜るるか</code>）或粘贴完整的 <code>https://www.pixiv.net/search?q=...</code> 与 <code>https://www.pixiv.net/tags/.../artworks</code> 链接。</li>' +
+      '<ol><li>搜索框支持直接输入标签名（如 <code>オリジナル</code>）或粘贴完整的 <code>https://www.pixiv.net/search?q=...</code> 与 <code>https://www.pixiv.net/tags/.../artworks</code> 链接，输入时自动展开 Pixiv 标签补全候选项。</li>' +
       '<li>采样深度可选 <code>3页</code> 至 <code>100页</code> 或 <code>全部页</code>，实时流式翻页并计算共现频次、占比与独立画师数。</li>' +
       '<li>支持切换仅看 <strong>角色</strong>、<strong>属性</strong>、<strong>作品</strong>、<strong>元标签</strong>，并在拓扑图中将角色节点渲染为角色头像气泡并导出 PNG 图片。</li></ol>' +
       '<div class="quick-links"><a href="#pixiv/android">ANDROID APK</a><a href="#pixiv/userscript">USERSCRIPT</a><a href="./pixez/" target="_blank" rel="noopener noreferrer">WEB TERMINAL ↗</a></div>';

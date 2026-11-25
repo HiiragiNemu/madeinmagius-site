@@ -48,8 +48,8 @@
       root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=4.1" />
-  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.1" />
+  <link rel="stylesheet" href="./styles.css?v=4.2" />
+  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.2" />
 </head>
 <body class="call-screen-host-v7">
   <!-- Single Bounded CRT Optical Viewport (Exact magireco-call-search-cn / MagiReader v14 architecture) -->
@@ -97,7 +97,12 @@
         <button class="t-btn" id="openRulesModalBtn" type="button">词表</button>
         <button class="t-btn" id="openReverseModalBtn" type="button">搜源</button>
         <button class="t-btn" id="openBasketBtn" type="button">收集篮 <span class="t-count" id="basketBadge">0</span></button>
-        <button class="t-btn" id="openAuthModalBtn" type="button"><span id="headerAuthLabel">账号</span></button>
+        <button class="t-btn t-btn--auth" id="openAuthModalBtn" type="button" title="Pixiv 账号与登录状态">
+          <img class="header-auth-avatar hidden" id="headerAuthAvatar" alt="" decoding="async" />
+          <span class="header-auth-dot hidden" id="headerAuthDot" aria-hidden="true"></span>
+          <span id="headerAuthLabel">账号</span>
+        </button>
+        <button class="t-btn t-btn--danger hidden" id="headerQuickLogoutBtn" type="button" title="退出当前 Pixiv 账号">退出</button>
         <button class="t-btn" id="openClientDownloadBtn" type="button">APK/油猴</button>
       </div>
     </div>
@@ -794,9 +799,28 @@
         <button class="btn-modal-close" id="closeAuthModalBtn" type="button">[X] 关闭</button>
       </div>
       <div class="modal-content">
+        <div class="auth-profile-card hidden" id="authProfileCard">
+          <div class="auth-profile-avatar-wrap">
+            <img class="auth-profile-avatar hidden" id="authProfileAvatar" alt="" decoding="async" />
+            <span class="auth-profile-avatar-fallback" id="authProfileAvatarFallback">P</span>
+          </div>
+          <div class="auth-profile-info">
+            <div class="auth-profile-name-row">
+              <strong id="authProfileName">Pixiv 用户</strong>
+              <span class="auth-mode-badge" id="authProfileModeBadge">已登录</span>
+              <span class="auth-mode-badge hidden" id="authProfileR18Badge">R-18 可用</span>
+            </div>
+            <div class="auth-profile-meta" id="authProfileMeta">UID: --</div>
+            <div class="auth-profile-actions">
+              <a class="t-btn t-btn--sm" id="authProfileHomeLink" href="https://www.pixiv.net/" target="_blank" rel="noopener noreferrer">Pixiv 主页 ↗</a>
+              <button class="t-btn t-btn--sm" id="refreshAuthProfileBtn" type="button">刷新资料</button>
+              <button class="t-btn t-btn--sm t-btn--danger" id="oauthLogoutBtn" type="button">退出登录</button>
+            </div>
+          </div>
+        </div>
+
         <div class="auth-status-banner" id="authStatusBanner">
           <div id="authCurrentStatusBox">当前状态: 免登录直连模式 — 可直接使用全部采样与看图功能。</div>
-          <button class="t-btn t-btn--danger hidden" id="oauthLogoutBtn" type="button">退出当前账号</button>
         </div>
 
         <div class="auth-method-card" id="autoAuthPrimaryCard">
@@ -943,6 +967,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.1"></script>
+  <script src="./app.js?v=4.2"></script>
 </body>
 </html>

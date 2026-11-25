@@ -189,7 +189,7 @@ export async function onRequest(context) {
   // 1. pximg Referer-bypass image proxy (/api/pixiv/pximg?url=... & /api/pixiv/image?url=...)
   if (subPath === 'pximg' || subPath === 'image') {
     const imgUrl = url.searchParams.get('url');
-    if (!imgUrl || !/^https:\/\/i\.pximg\.net\//i.test(imgUrl)) {
+    if (!imgUrl || !/^https:\/\/(i|s)\.pximg\.net\//i.test(imgUrl)) {
       return new Response('Invalid pximg URL', { status: 400, headers: cors });
     }
     const upstream = await fetchPximgWithFallback(imgUrl);
@@ -294,16 +294,33 @@ export async function onRequest(context) {
     const uidMatch = rawCookie.match(/(?:PHPSESSID=|^)(\d+)_/);
     const uid = uidMatch ? uidMatch[1] : 'PixivUser';
     let userName = body.userName || '';
-    if (!userName && /^\d+$/.test(uid) && cookieHeader) {
+    let userAccount = uid;
+    let profileImageUrl = '';
+    let isPremium = false;
+    if (/^\d+$/.test(uid) && cookieHeader) {
       const pj = await fetchJsonSafe(`https://www.pixiv.net/ajax/user/${uid}?lang=zh`, pixivHeaders(cookieHeader));
-      if (pj?.body?.name) userName = pj.body.name;
+      if (pj?.body) {
+        if (!userName && pj.body.name) userName = pj.body.name;
+        if (pj.body.account) userAccount = pj.body.account;
+        profileImageUrl = pj.body.imageBig || pj.body.image || '';
+        isPremium = Boolean(pj.body.premium);
+      }
     }
     return jsonResponse(
       {
         error: false,
         loggedIn: Boolean(cookieHeader),
         mode: cookieHeader ? 'cookie' : 'guest',
-        user: cookieHeader ? { id: uid, name: userName || `Pixiv用户 #${uid}`, account: uid } : null,
+        user: cookieHeader
+          ? {
+              id: uid,
+              name: userName || `Pixiv用户 #${uid}`,
+              account: userAccount,
+              profileImageUrl,
+              isPremium,
+              r18Verified: true,
+            }
+          : null,
       },
       200,
       request
@@ -355,10 +372,25 @@ export async function onRequest(context) {
         body: form.toString(),
       });
       const td = await tokenRes.json();
-      if (!tokenRes.ok || td.has_error || !td.access_token) {
+      const resp = td?.response || td;
+      if (!tokenRes.ok || td?.has_error || !resp?.access_token) {
         return jsonResponse({ error: true, message: td?.errors?.system?.message || 'Pixiv OAuth 验证失败' }, 400, request);
       }
-      return jsonResponse({ error: false, user: td.user || null, refreshToken: td.refresh_token || '' }, 200, request);
+      const u = resp.user || {};
+      const normalizedUser = {
+        id: String(u.id || ''),
+        name: u.name || 'Pixiv User',
+        account: u.account || '',
+        isPremium: Boolean(u.is_premium),
+        xRestrict: Number(u.x_restrict ?? 2),
+        r18Verified: Number(u.x_restrict ?? 2) > 0,
+        profileImageUrl:
+          u.profile_image_urls?.px_170x170 ||
+          u.profile_image_urls?.px_50x50 ||
+          u.profile_image_urls?.medium ||
+          '',
+      };
+      return jsonResponse({ error: false, user: normalizedUser, refreshToken: resp.refresh_token || '' }, 200, request);
     } catch (e) {
       return jsonResponse({ error: true, message: e.message || 'OAuth 请求失败' }, 502, request);
     }

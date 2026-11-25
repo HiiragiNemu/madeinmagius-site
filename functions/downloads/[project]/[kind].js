@@ -71,6 +71,7 @@ const PROJECTS = {
     mode: 'latest',
     kinds: {
       android: /\.apk$/i,
+      source: /-source\.tar\.gz$/i,
       userscript: /\.user\.js$/i,
     },
     staticAssetFallback: {

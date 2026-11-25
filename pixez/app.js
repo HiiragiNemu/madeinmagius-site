@@ -2044,6 +2044,71 @@
   // =========================================================================
   let oauthExchanging = false;
 
+  function persistCachedAuthUser(authObj) {
+    try {
+      if (authObj && authObj.loggedIn && authObj.user) {
+        localStorage.setItem('pixez_auth_user_v4', JSON.stringify(authObj));
+      } else {
+        localStorage.removeItem('pixez_auth_user_v4');
+      }
+    } catch (_) {}
+  }
+
+  function loadCachedAuthUser() {
+    try {
+      const raw = localStorage.getItem('pixez_auth_user_v4');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && parsed.loggedIn && parsed.user ? parsed : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function bindAvatarImg(imgEl, rawUrl, fallbackEl) {
+    if (!imgEl) return;
+    const url = String(rawUrl || '').trim();
+    if (!url) {
+      imgEl.classList.add('hidden');
+      imgEl.removeAttribute('src');
+      if (fallbackEl) fallbackEl.classList.remove('hidden');
+      return;
+    }
+    const proxied = /^https:\/\/(i|s)\.pximg\.net\//i.test(url) ? proxyImg(url) : url;
+    const mirror = /^https:\/\/i\.pximg\.net\//i.test(url)
+      ? url.replace(/^https:\/\/i\.pximg\.net\//i, 'https://i.pixiv.re/')
+      : '';
+    imgEl.dataset.fallbackStage = '0';
+    imgEl.onerror = () => {
+      if (imgEl.dataset.fallbackStage === '0' && mirror) {
+        imgEl.dataset.fallbackStage = '1';
+        imgEl.src = mirror;
+        return;
+      }
+      imgEl.classList.add('hidden');
+      if (fallbackEl) fallbackEl.classList.remove('hidden');
+    };
+    imgEl.onload = () => {
+      imgEl.classList.remove('hidden');
+      if (fallbackEl) fallbackEl.classList.add('hidden');
+    };
+    imgEl.src = proxied;
+  }
+
+  async function performAuthLogout() {
+    state.cookie = '';
+    state.refreshToken = '';
+    state.authStatus = { loggedIn: false, mode: 'guest', user: null };
+    localStorage.removeItem('pixez_cookie');
+    localStorage.removeItem('pixez_refresh_token_v4');
+    localStorage.removeItem('pixez_auth_user_v4');
+    if ($('cookieInput')) $('cookieInput').value = '';
+    if ($('refreshTokenInput')) $('refreshTokenInput').value = '';
+    await apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    updateAuthUI();
+    showToast('已退出 Pixiv 账号，当前切换为免登录直连模式');
+  }
+
   async function completeAutomatedOAuthCode(code) {
     if (!code || oauthExchanging) return;
     oauthExchanging = true;
@@ -2059,7 +2124,13 @@
         state.refreshToken = d.refreshToken;
         localStorage.setItem('pixez_refresh_token_v4', d.refreshToken);
       }
-      await checkAuthStatus();
+      if (d.user) {
+        state.authStatus = { loggedIn: true, mode: 'oauth', user: d.user };
+        persistCachedAuthUser(state.authStatus);
+        updateAuthUI();
+      } else {
+        await checkAuthStatus();
+      }
       $('authModal')?.classList.add('hidden');
       showToast(`已自动完成 Pixiv 登录${d.user?.name ? ': ' + d.user.name : ''}（后续访问将自动保持登录）`);
     } catch (err) {
@@ -2070,12 +2141,20 @@
   }
 
   async function checkAuthStatus() {
+    // Instantly hydrate cached user profile while verifying with backend
+    const cached = loadCachedAuthUser();
+    if (cached && (state.refreshToken || state.cookie) && !state.authStatus.loggedIn) {
+      state.authStatus = cached;
+      updateAuthUI();
+    }
     try {
       const resp = await apiFetch('/api/auth/status', {
         headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {}
       });
       const data = await resp.json();
-      state.authStatus = data;
+      if (data && data.loggedIn) {
+        state.authStatus = data;
+      }
 
       // Persistent Auto-Login: if server restarted or running on serverless Pages, silently restore via saved Refresh Token or Cookie!
       if (!data.loggedIn && state.refreshToken) {
@@ -2106,25 +2185,84 @@
             state.authStatus = cd;
           }
         } catch (_) {}
+      } else if (!data.loggedIn && !state.refreshToken && !state.cookie) {
+        state.authStatus = { loggedIn: false, mode: 'guest', user: null };
       }
 
+      persistCachedAuthUser(state.authStatus);
       updateAuthUI();
     } catch (_) {}
   }
 
   function updateAuthUI() {
-    const d = state.authStatus;
-    const isLogged = Boolean(d.loggedIn || state.cookie);
-    const userName = d.user?.name || d.user?.account || (state.cookie ? '已连接会话' : '');
+    const d = state.authStatus || {};
+    const isLogged = Boolean(d.loggedIn || (state.cookie && d.user));
+    const user = d.user || {};
+    const userName = user.name || user.account || (state.cookie ? 'Pixiv 账号' : '');
+    const uid = user.id && user.id !== 'cookie' && user.id !== 'PixivUser' ? String(user.id) : '';
+    const avatarUrl =
+      user.profileImageUrl ||
+      user.profile_image_urls?.px_170x170 ||
+      user.profile_image_urls?.px_50x50 ||
+      user.profile_image_urls?.medium ||
+      '';
+    const modeLabel = d.mode === 'oauth' ? 'PixEz OAuth' : d.mode === 'cookie' ? 'Chrome Cookie' : '已连接';
+
+    const authBtn = $('openAuthModalBtn');
+    const authDot = $('headerAuthDot');
+    const authAvatar = $('headerAuthAvatar');
+    const quickLogout = $('headerQuickLogoutBtn');
+    const profileCard = $('authProfileCard');
+    const statusBanner = $('authStatusBanner');
 
     if (isLogged) {
-      $('headerAuthLabel').textContent = `已登录: ${userName}`;
+      $('headerAuthLabel').textContent = userName || '已登录';
+      if (authBtn) {
+        authBtn.classList.add('is-logged-in');
+        authBtn.title = `已登录 Pixiv: ${userName}${uid ? ` (UID ${uid})` : ''} · 点击查看资料或退出`;
+      }
+      if (authDot) authDot.classList.remove('hidden');
+      if (quickLogout) quickLogout.classList.remove('hidden');
+      bindAvatarImg(authAvatar, avatarUrl, null);
+
+      if (profileCard) {
+        profileCard.classList.remove('hidden');
+        $('authProfileName').textContent = userName || 'Pixiv 用户';
+        $('authProfileModeBadge').textContent = modeLabel;
+        const r18Badge = $('authProfileR18Badge');
+        if (r18Badge) {
+          r18Badge.classList.toggle('hidden', !(user.r18Verified || Number(user.xRestrict || 0) > 0 || d.mode === 'oauth'));
+        }
+        const metaParts = [];
+        if (uid) metaParts.push(`UID: ${uid}`);
+        if (user.account && user.account !== uid) metaParts.push(`@${user.account}`);
+        if (user.isPremium) metaParts.push('Pixiv Premium');
+        $('authProfileMeta').textContent = metaParts.join(' · ') || '已保持持久会话，下次打开将自动登录';
+        const homeLink = $('authProfileHomeLink');
+        if (homeLink) {
+          homeLink.href = uid ? `https://www.pixiv.net/users/${encodeURIComponent(uid)}` : 'https://www.pixiv.net/';
+        }
+        const fallback = $('authProfileAvatarFallback');
+        if (fallback) fallback.textContent = (userName || 'P').slice(0, 1).toUpperCase();
+        bindAvatarImg($('authProfileAvatar'), avatarUrl, fallback);
+      }
+      if (statusBanner) statusBanner.classList.add('hidden');
       $('authCurrentStatusBox').textContent = `当前状态: 已连接 Pixiv 账号 (${userName}) — 后续打开将自动保持登录。`;
-      $('oauthLogoutBtn').classList.remove('hidden');
     } else {
       $('headerAuthLabel').textContent = '账号';
+      if (authBtn) {
+        authBtn.classList.remove('is-logged-in');
+        authBtn.title = 'Pixiv 账号与登录说明（当前免登录直连模式）';
+      }
+      if (authDot) authDot.classList.add('hidden');
+      if (authAvatar) {
+        authAvatar.classList.add('hidden');
+        authAvatar.removeAttribute('src');
+      }
+      if (quickLogout) quickLogout.classList.add('hidden');
+      if (profileCard) profileCard.classList.add('hidden');
+      if (statusBanner) statusBanner.classList.remove('hidden');
       $('authCurrentStatusBox').textContent = '当前状态: 免登录直连模式 — 可直接使用全部采样与看图功能。';
-      $('oauthLogoutBtn').classList.add('hidden');
     }
 
     if ($('bridgeStatusTitle')) {
@@ -2162,6 +2300,7 @@
           const d = await resp.json();
           if (resp.ok && !d.error && d.loggedIn) {
             state.authStatus = d;
+            persistCachedAuthUser(d);
             updateAuthUI();
             $('authModal')?.classList.add('hidden');
             showToast(`已自动同步 Chrome Pixiv 登录态${d.user?.name ? ': ' + d.user.name : ''}`);
@@ -2847,24 +2986,27 @@
           body: JSON.stringify({ cookie: cookieVal })
         });
         const d = await resp.json();
-        await checkAuthStatus();
-        showToast(d.message || 'Cookie 已保存');
+        if (resp.ok && !d.error && d.loggedIn) {
+          state.authStatus = d;
+          persistCachedAuthUser(d);
+          updateAuthUI();
+        } else {
+          await checkAuthStatus();
+        }
+        showToast(d.user?.name ? `已登录 Pixiv: ${d.user.name}` : (d.message || 'Cookie 已保存'));
       } catch (_) {
         updateAuthUI();
         showToast('Cookie 已保存在本地');
       }
     });
 
-    $('clearCookieBtn').addEventListener('click', async () => {
-      state.cookie = '';
-      localStorage.removeItem('pixez_cookie');
-      $('cookieInput').value = '';
-      await apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-      await checkAuthStatus();
-      showToast('已清除本地 Cookie');
-    });
+    $('clearCookieBtn').addEventListener('click', performAuthLogout);
 
     $('startPixivOAuthBtn').addEventListener('click', async () => {
+      if (!state.bridgeDetected) {
+        showToast('未检测到油猴 v4.0：纯网页无法拦截 pixiv:// 回调（跳到 post-redirect 会变白屏）。请先安装油猴脚本或使用 Android APK。', 5200);
+        return;
+      }
       try {
         const r = await apiFetch('/api/oauth/start');
         const d = await r.json();
@@ -2874,7 +3016,7 @@
           const left = Math.max(40, Math.round((screen.width - w) / 2));
           const top = Math.max(40, Math.round((screen.height - h) / 2));
           window.open(d.loginUrl, 'pixiv_oauth_popup', `width=${w},height=${h},left=${left},top=${top},noopener=no`);
-          showToast(state.bridgeDetected ? '已打开 Pixiv 授权窗口，点击「继续使用此账号」后将自动完成登录' : '已打开 Pixiv 授权窗口（建议安装/更新 v4.0 自动桥接脚本以实现免手动自动回传）', 4200);
+          showToast('已打开 Pixiv 授权窗口，点击「继续使用此账号」后将自动完成登录', 4200);
         }
       } catch (e) {
         showToast('无法生成 OAuth 链接');
@@ -2905,22 +3047,25 @@
           state.refreshToken = d.refreshToken;
           localStorage.setItem('pixez_refresh_token_v4', d.refreshToken);
         }
-        await checkAuthStatus();
+        if (d.user) {
+          state.authStatus = { loggedIn: true, mode: 'oauth', user: d.user };
+          persistCachedAuthUser(state.authStatus);
+          updateAuthUI();
+        } else {
+          await checkAuthStatus();
+        }
         $('authModal').classList.add('hidden');
-        showToast('Refresh Token 登录成功（后续将自动保持登录）');
+        showToast(`Refresh Token 登录成功${d.user?.name ? ': ' + d.user.name : ''}（后续将自动保持登录）`);
       } catch (err) {
         showToast(`错误: ${err.message}`);
       }
     });
 
-    $('oauthLogoutBtn').addEventListener('click', async () => {
-      state.cookie = '';
-      state.refreshToken = '';
-      localStorage.removeItem('pixez_cookie');
-      localStorage.removeItem('pixez_refresh_token_v4');
-      await apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    $('oauthLogoutBtn')?.addEventListener('click', performAuthLogout);
+    $('headerQuickLogoutBtn')?.addEventListener('click', performAuthLogout);
+    $('refreshAuthProfileBtn')?.addEventListener('click', async () => {
       await checkAuthStatus();
-      showToast('已退出登录');
+      showToast('已刷新账号资料');
     });
 
     // Reverse Search & Direct Artwork ID

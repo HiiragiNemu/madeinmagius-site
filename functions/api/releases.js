@@ -86,6 +86,13 @@ const PIXIV_FALLBACK_V100 = {
       content_type: 'application/vnd.android.package-archive',
       download: './downloads/pixiv/android',
     },
+    source: {
+      name: 'PixEz-Pulse-v1.0.0-source.tar.gz',
+      size: 13069736,
+      digest: 'sha256:1ff542fb56777784d0e8a6626fe59d6f52c3b584425722e47c67ac57393dc6fb',
+      content_type: 'application/gzip',
+      download: './downloads/pixiv/source',
+    },
     userscript: {
       id: 785402031,
       name: 'pixtag-companion.user.js',
@@ -105,6 +112,7 @@ const PROJECTS = {
     fallback: PIXIV_FALLBACK_V100,
     assets: {
       android: /\.apk$/i,
+      source: /-source\.tar\.gz$/i,
       userscript: /\.user\.js$/i,
     },
   },

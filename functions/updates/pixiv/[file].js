@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.1.0',
-  versionCode: 10010200,
+  version: '2.1.1',
+  versionCode: 10010210,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 54292295,
-  sha256: 'b7230024466f5bf79717d84b264ed910d69fd66a3c7c4f304df0b5c7821791c0',
+  size: 54690304,
+  sha256: '64b308f23a0bf8d7f2a1026023bbf1ff801e02664bdaeea2880d22f1ca304c65',
   releaseNotes:
-    'PixEz Pulse v2.1.0：新增应用内检查更新与一键安装、登录后原生 App API 完整 R-18/AI 采样、日期窗口分段突破上限、本机 1GB 分段缓存、8 站点采集、精度优先分类与原生搜索页共现整合。',
+    'PixEz Pulse v2.1.1：恢复并升级 MadeInMagius 专属翼枪脉冲图标、修复点击登录内置 WebView 空白页（默认拉起 Chrome Custom Tab / 系统浏览器完成 OAuth 自动跳回）、永久发布签名无损覆写升级。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

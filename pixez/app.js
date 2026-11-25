@@ -2339,7 +2339,7 @@
         if (!preflightInfo) {
           const infoQs = new URLSearchParams({ source, tag: parsed.tag, mode, s_mode: sMode, type });
           const infoCtrl = new AbortController();
-          const infoTimer = setTimeout(() => infoCtrl.abort(), 9500);
+          const infoTimer = setTimeout(() => infoCtrl.abort(), 13000);
           let ir;
           try {
             ir = await apiFetch(`/api/tag-info?${infoQs.toString()}`, {
@@ -2652,9 +2652,23 @@
         if (chunkHasMore && newlyAddedInChunk > 0 && (isAllMode || totalPagesScanned < requestedMaxPages)) {
           startPage = chunkNextPage;
           cursor = chunkNextCursor;
-        } else if (isAllMode && source === 'pixiv' && newlyAddedInChunk > 0 && (chunkHitOffsetCeiling || (lastEngine === 'PIXIV-OAUTH-APP-API' && chunkNextPage > 160) || (lastEngine === 'WEB-AJAX' && chunkNextPage >= 1000))) {
-          // Date-Window Segmentation: save checkpoint to 1GB IndexedDB cache and continue older date segment past 5,000!
-          const oldest = computeOldestDate();
+        } else if (
+          isAllMode &&
+          source === 'pixiv' &&
+          newlyAddedInChunk > 0 &&
+          (
+            chunkHitOffsetCeiling ||
+            (lastEngine === 'PIXIV-OAUTH-APP-API' && chunkNextPage > 160) ||
+            ((lastEngine === 'WEB-AJAX' || lastEngine === 'WEB-AJAX-MIRROR') &&
+              (chunkNextPage >= 1000 || (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts)))
+          )
+        ) {
+          // Date-Window Segmentation: save checkpoint to 1GB IndexedDB cache and continue older date segment!
+          let oldest = computeOldestDate();
+          if (oldest && oldest === activeEndDate) {
+            const prevTs = Date.parse(`${oldest}T00:00:00Z`) - 86400000;
+            if (Number.isFinite(prevTs)) oldest = new Date(prevTs).toISOString().slice(0, 10);
+          }
           if (oldest && oldest !== activeEndDate) {
             await checkpointToIndexedDb(true);
             activeEndDate = oldest;

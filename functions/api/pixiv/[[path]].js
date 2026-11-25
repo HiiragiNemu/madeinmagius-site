@@ -1024,7 +1024,7 @@ export async function onRequest(context) {
 
   // 0. Health / status endpoint
   if (subPath === 'status' || subPath === '') {
-    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.5' }, 200, request);
+    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.6' }, 200, request);
   }
 
   // 0B. Danbooru semantic taxonomy batch enrichment (/api/pixiv/danbooru/enrich)
@@ -1054,7 +1054,7 @@ export async function onRequest(context) {
 
     // Pixiv Strategy 1: Race Direct Pixiv Web AJAX & live PixivNow mirror (pixiv.js.org) for exact total count!
     const ajaxPath = `/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
-    const webRace = await fetchPixivWebAjaxRace(ajaxPath, cookie, '', 5500);
+    const webRace = await fetchPixivWebAjaxRace(ajaxPath, cookie, '', 9500);
     if (webRace && webRace.data && !webRace.data.error && webRace.data.body) {
       const block = webRace.data.body.illustManga || webRace.data.body.illust || webRace.data.body.manga || {};
       const totalPosts = Number(block.total || 0);
@@ -1078,19 +1078,9 @@ export async function onRequest(context) {
       );
     }
 
-    // Pixiv Strategy 2: Race Pixiv RPC + fast Pixiviz/Hibi App-API relays in parallel (strict 4.5s cap!)
+    // Pixiv Strategy 2: Fast Pixiviz/Hibi App-API relays (never use rpc/cps.php access_count, which is pageviews, not works!)
     const hibiMode = mapHibiSearchMode(s_mode);
-    const [rpcRace, appFallback] = await Promise.all([
-      fetchPixivWebAjaxRace(`/rpc/cps.php?keyword=${encodeURIComponent(tag)}&lang=zh`, cookie, '', 4000),
-      fetchAppApiFallbackSearch({ word: tag, mode: hibiMode, order: 'date_desc', page: 1 }),
-    ]);
-    let totalPosts = 0;
-    if (rpcRace?.data && Array.isArray(rpcRace.data.candidates)) {
-      const exact = rpcRace.data.candidates.find((c) => String(c.tag_name || '').toLowerCase() === tag.toLowerCase());
-      if (exact && Number(exact.access_count || 0) > 0) {
-        totalPosts = Number(exact.access_count);
-      }
-    }
+    const appFallback = await fetchAppApiFallbackSearch({ word: tag, mode: hibiMode, order: 'date_desc', page: 1 });
     if (!appFallback) {
       return jsonResponse(
         {
@@ -1106,25 +1096,22 @@ export async function onRequest(context) {
     }
     const firstCount = Array.isArray(appFallback.data?.illusts) ? appFallback.data.illusts.length : 0;
     const hasMoreThanOnePage = firstCount >= 28;
-    const estimatedPages = totalPosts > 0 ? Math.ceil(totalPosts / 30) : hasMoreThanOnePage ? 166 : firstCount > 0 ? 1 : 0;
+    const estimatedPages = hasMoreThanOnePage ? 166 : firstCount > 0 ? 1 : 0;
     return jsonResponse(
       {
         error: false,
         source: 'pixiv',
         engine: appFallback.engine,
         resolvedTag: tag,
-        totalPosts,
-        totalIsApproximate: totalPosts === 0 && hasMoreThanOnePage,
+        totalPosts: 0,
+        totalIsApproximate: hasMoreThanOnePage,
         pageSize: 30,
         estimatedPages,
         apiCeilingWorks: 5000,
         apiCeilingPages: 166,
-        note:
-          totalPosts > 0
-            ? `Pixiv 全站约 ${totalPosts.toLocaleString()} 件相关作品（云端边缘网关 ${appFallback.engine} 将自动多批次翻页采集）`
-            : hasMoreThanOnePage
-            ? `云端边缘网关（${appFallback.engine}）已连接 [${tag}]，将自动多批次持续翻页采样（支持本地 1GB 分段缓存）`
-            : `已探测 [${tag}] 首批共 ${firstCount} 件作品`,
+        note: hasMoreThanOnePage
+          ? `云端边缘网关（${appFallback.engine}）已连接 [${tag}]，将自动多批次持续翻页采样（支持本地 1GB 分段缓存）`
+          : `已探测 [${tag}] 首批共 ${firstCount} 件作品`,
       },
       200,
       request
@@ -1681,7 +1668,11 @@ export async function onRequest(context) {
 
           const dateSuffix = `${startDate ? `&scd=${encodeURIComponent(startDate)}` : ''}${endDate ? `&ecd=${encodeURIComponent(endDate)}` : ''}`;
           const firstDirectPath = `/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateSuffix}`;
-          const directRace = await fetchPixivWebAjaxRace(firstDirectPath, cookie, '', 5500);
+          let directRace = await fetchPixivWebAjaxRace(firstDirectPath, cookie, '', 9500);
+          if (!directRace && (endDate || startDate)) {
+            // Retry Web AJAX once when date-segmented (never fall back to date-unaware relays on ecd/scd!)
+            directRace = await fetchPixivWebAjaxRace(firstDirectPath, cookie, '', 9500);
+          }
           const firstDirect = directRace?.data;
           const activeWebOrigin = directRace?.origin || '';
           if (activeWebOrigin.includes('pixiv.js.org')) engine = 'WEB-AJAX-MIRROR';
@@ -1723,8 +1714,9 @@ export async function onRequest(context) {
             return added;
           };
 
+          let hitOffsetCeiling = false;
           if (firstDirect && !firstDirect.error && firstDirect.body) {
-            const maxChunkPages = chunkPagesParam > 0 ? Math.min(18, chunkPagesParam) : 18;
+            const maxChunkPages = chunkPagesParam > 0 ? Math.min(12, chunkPagesParam) : 12;
             const endTargetPage = isAll
               ? Math.min(1000, startPage + maxChunkPages - 1)
               : Math.min(parseInt(pagesParam, 10) || 3, startPage + maxChunkPages - 1);
@@ -1735,7 +1727,7 @@ export async function onRequest(context) {
                 `/ajax/search/artworks/${encodeURIComponent(popWord)}?word=${encodeURIComponent(popWord)}&order=date_d&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=s_tag&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`,
                 cookie,
                 activeWebOrigin,
-                5500
+                8000
               );
               const popFirst = popRace?.data;
               if (popFirst && !popFirst.error && popFirst.body && (popFirst.body.illustManga?.data || []).length > 0) {
@@ -1755,20 +1747,20 @@ export async function onRequest(context) {
             sendEvent('snapshot', { source: 'pixiv', primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
 
             let reachedEnd = artworks.length === 0;
-            const batchSize = 3;
+            const batchSize = 2;
             for (let pStart = startPage + 1; pStart <= endTargetPage && !reachedEnd; pStart += batchSize) {
               const pEnd = Math.min(endTargetPage, pStart + batchSize - 1);
               sendEvent('progress', {
                 currentPage: pStart,
                 totalPages: isAll && pixivTotal > 0 ? Math.min(1000, Math.ceil(pixivTotal / 60)) : endTargetPage,
                 totalMatches: pixivTotal,
-                message: `正在采样 [${tag}] 第 ${pStart}~${pEnd} 页 (本批 ${artworks.length} 作)...`,
+                message: `正在采样 [${tag}]${endDate ? ` [截止 ${endDate}]` : ''} 第 ${pStart}~${pEnd} 页 (本批 ${artworks.length} 作)...`,
               });
               const batchPromises = [];
               for (let p = pStart; p <= pEnd; p++) {
                 const apiPath = `/ajax/search/artworks/${encodeURIComponent(queryTagForFetch)}?word=${encodeURIComponent(queryTagForFetch)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${p}&s_mode=${encodeURIComponent(effSMode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateSuffix}`;
                 batchPromises.push(
-                  fetchPixivWebAjaxRace(apiPath, cookie, activeWebOrigin, 5500).then((r) => r?.data || null)
+                  fetchPixivWebAjaxRace(apiPath, cookie, activeWebOrigin, 8000).then((r) => r?.data || null)
                 );
               }
               const results = await Promise.all(batchPromises);
@@ -1787,6 +1779,13 @@ export async function onRequest(context) {
             }
             const maxWantedPage = isAll ? 1000 : parseInt(pagesParam, 10) || 3;
             hasMore = !reachedEnd && nextPage <= maxWantedPage && (pixivTotal === 0 || (nextPage - 1) * 60 < pixivTotal);
+            hitOffsetCeiling =
+              artworks.length > 0 &&
+              pixivTotal > 0 &&
+              (nextPage >= 999 || (reachedEnd && (nextPage - 1) * 60 < pixivTotal));
+          } else if (endDate || startDate) {
+            // Date-segmented request timed out cleanly — stop without falling back to date-unaware relay
+            hasMore = false;
           } else {
             // Fast App-API Relay fallback (races Pixiviz + HibiAPI with strict 4.5s timeouts!)
             engine = 'APP-API-RELAY';
@@ -1884,6 +1883,7 @@ export async function onRequest(context) {
             pagesScanned,
             engine,
             hasMore,
+            hitOffsetCeiling,
             oldestDate: oldestDate ? oldestDate.slice(0, 10) : '',
             nextPage,
             artworks,

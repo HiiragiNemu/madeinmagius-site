@@ -27,6 +27,64 @@
   const VISUAL_STORAGE_KEY = 'pixez_visual_v41';
   const RECENT_HISTORY_KEY = 'pixez_recent_searches_v1';
   const REMOTE_API_FALLBACK = 'https://madeinmagius-site.pages.dev/api/pixiv';
+  const SOURCE_META = {
+    pixiv: {
+      label: 'Pixiv',
+      placeholder: '输入 Pixiv 标签，或粘贴完整 Pixiv 标签页 / 搜索页链接...',
+      linkLabel: 'Pixiv ↗',
+      searchUrl: (q) => `https://www.pixiv.net/search?q=${encodeURIComponent(q)}&s_mode=tag&type=artwork`,
+      pageSize: 60
+    },
+    danbooru: {
+      label: 'Danbooru',
+      placeholder: '输入 Danbooru 标签或画师名（支持中日文自动映射，支持 posts/artists 链接）...',
+      linkLabel: 'Danbooru ↗',
+      searchUrl: (q) => `https://danbooru.donmai.us/posts?tags=${encodeURIComponent(q)}`,
+      pageSize: 100
+    },
+    sankaku: {
+      label: 'Sankaku',
+      placeholder: '输入 Sankaku Complex 标签（支持中日文自动映射与官方双语分类）...',
+      linkLabel: 'Sankaku ↗',
+      searchUrl: (q) => `https://beta.sankakucomplex.com/?tags=${encodeURIComponent(q)}`,
+      pageSize: 40
+    },
+    safebooru: {
+      label: 'Safebooru',
+      placeholder: '输入 Safebooru 标签（全年龄图站，支持中日文自动映射）...',
+      linkLabel: 'Safebooru ↗',
+      searchUrl: (q) => `https://safebooru.org/index.php?page=post&s=list&tags=${encodeURIComponent(q)}`,
+      pageSize: 100
+    },
+    yandere: {
+      label: 'Yande.re',
+      placeholder: '输入 Yande.re 标签（支持中日文自动映射）...',
+      linkLabel: 'Yande.re ↗',
+      searchUrl: (q) => `https://yande.re/post?tags=${encodeURIComponent(q)}`,
+      pageSize: 100
+    },
+    konachan: {
+      label: 'Konachan',
+      placeholder: '输入 Konachan 标签（支持中日文自动映射）...',
+      linkLabel: 'Konachan ↗',
+      searchUrl: (q) => `https://konachan.com/post?tags=${encodeURIComponent(q)}`,
+      pageSize: 100
+    },
+    zerochan: {
+      label: 'Zerochan',
+      placeholder: '输入 Zerochan 英文/罗马音规范标签（如 Original）或粘贴 Zerochan 链接...',
+      linkLabel: 'Zerochan ↗',
+      searchUrl: (q) => `https://www.zerochan.net/${encodeURIComponent(q)}`,
+      pageSize: 50
+    },
+    rule34: {
+      label: 'Rule34',
+      placeholder: '输入 Rule34 标签（需在「账号」高级设置中填入免费 api_key 与 user_id）...',
+      linkLabel: 'Rule34 ↗',
+      searchUrl: (q) => `https://rule34.xxx/index.php?page=post&s=list&tags=${encodeURIComponent(q)}`,
+      pageSize: 100
+    }
+  };
   const THEME_LABELS = {
     light: '明亮',
     paper: '纸张',
@@ -85,13 +143,26 @@
     visualEffects: initialVisual.effects,
     cookie: localStorage.getItem('pixez_cookie') || '',
     refreshToken: localStorage.getItem('pixez_refresh_token_v4') || '',
+    source: SOURCE_META[localStorage.getItem('pixez_source_v43')] ? localStorage.getItem('pixez_source_v43') : 'pixiv',
+    r34Key: localStorage.getItem('pixez_r34_key') || '',
+    r34Uid: localStorage.getItem('pixez_r34_uid') || '',
     bridgeDetected: false,
     bridgeVersion: '',
     authStatus: { loggedIn: false, user: null, mode: 'guest' },
     recentSearches: (() => {
       try {
         const arr = JSON.parse(localStorage.getItem(RECENT_HISTORY_KEY) || '[]');
-        return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string' && x.trim()).slice(0, 12) : [];
+        if (!Array.isArray(arr)) return [];
+        return arr
+          .map((x) => {
+            if (typeof x === 'string' && x.trim()) return { tag: x.trim(), source: 'pixiv' };
+            if (x && typeof x.tag === 'string' && x.tag.trim()) {
+              return { tag: x.tag.trim(), source: SOURCE_META[x.source] ? x.source : 'pixiv' };
+            }
+            return null;
+          })
+          .filter(Boolean)
+          .slice(0, 12);
       } catch (_) {
         return [];
       }
@@ -100,6 +171,9 @@
     rawDataset: null,
     activeCategoryScope: 'all',
     tableDisplayLimit: 160,
+    inspectorTag: '',
+    inspectorLimit: 36,
+    pendingPreflight: null,
     lockedSubTags: new Set(),
     basket: new Set(JSON.parse(localStorage.getItem('pixez_basket') || '[]')),
     userCategoryOverrides: JSON.parse(localStorage.getItem('pixez_cat_overrides') || '{}'),
@@ -206,7 +280,11 @@
 
   function directFallbackImg(url) {
     if (!url) return '';
-    return String(url).replace(/^https:\/\/i\.pximg\.net\//i, 'https://i.pixiv.re/');
+    const s = String(url);
+    if (/^https:\/\/i\.pximg\.net\//i.test(s)) {
+      return s.replace(/^https:\/\/i\.pximg\.net\//i, 'https://i.pixiv.re/');
+    }
+    return s;
   }
 
   function downloadImgUrl(url, filename) {
@@ -434,11 +512,11 @@
   }
 
   // =========================================================================
-  // 2. PIXIV URL & TAG PARSER
+  // 2. MULTI-SITE URL & TAG PARSER
   // =========================================================================
   function parseUserQueryInput(raw) {
     const trimmed = String(raw || '').trim();
-    if (!trimmed) return { tag: '', mode: null, sMode: null, type: null };
+    if (!trimmed) return { tag: '', source: null, mode: null, sMode: null, type: null };
 
     if (/^https?:\/\/(www\.)?pixiv\.net\//i.test(trimmed) || trimmed.startsWith('pixiv.net/')) {
       try {
@@ -451,7 +529,7 @@
           let mode = null;
           if (u.searchParams.get('mode') === 'r18') mode = 'r18';
           else if (u.searchParams.get('mode') === 'safe') mode = 'safe';
-          return { tag: decodedTag, mode, sMode: null, type: null };
+          return { tag: decodedTag, source: 'pixiv', mode, sMode: null, type: null };
         }
 
         if (u.pathname.startsWith('/search')) {
@@ -466,49 +544,135 @@
           if (u.searchParams.get('mode') === 'r18' || u.searchParams.get('r18') === '1') mode = 'r18';
           else if (u.searchParams.get('mode') === 'safe') mode = 'safe';
 
-          return { tag: q || trimmed, mode, sMode, type: null };
+          return { tag: q || trimmed, source: 'pixiv', mode, sMode, type: null };
         }
       } catch (_) {}
     }
 
-    return { tag: trimmed, mode: null, sMode: null, type: null };
+    if (/^https?:\/\//i.test(trimmed)) {
+      try {
+        const u = new URL(trimmed);
+        const h = u.hostname.toLowerCase();
+        if (h.includes('danbooru.donmai.us')) {
+          const q = u.searchParams.get('tags') || u.searchParams.get('search[any_name_matches]') || u.searchParams.get('search[name_matches]') || '';
+          return { tag: q.trim() || trimmed, source: 'danbooru', mode: null, sMode: null, type: null };
+        }
+        if (h.includes('sankakucomplex.com')) {
+          const q = u.searchParams.get('tags') || '';
+          return { tag: q.trim() || trimmed, source: 'sankaku', mode: null, sMode: null, type: null };
+        }
+        if (h.includes('safebooru.org')) {
+          const q = u.searchParams.get('tags') || '';
+          return { tag: q.trim() || trimmed, source: 'safebooru', mode: null, sMode: null, type: null };
+        }
+        if (h.includes('yande.re')) {
+          const q = u.searchParams.get('tags') || '';
+          return { tag: q.trim() || trimmed, source: 'yandere', mode: null, sMode: null, type: null };
+        }
+        if (h.includes('konachan.')) {
+          const q = u.searchParams.get('tags') || '';
+          return { tag: q.trim() || trimmed, source: 'konachan', mode: null, sMode: null, type: null };
+        }
+        if (h.includes('zerochan.net')) {
+          const seg = u.pathname.replace(/^\/+|\/+$/g, '').split('/')[0] || '';
+          return { tag: decodeURIComponent(seg.replace(/\+/g, ' ')) || trimmed, source: 'zerochan', mode: null, sMode: null, type: null };
+        }
+        if (h.includes('rule34.xxx')) {
+          const q = u.searchParams.get('tags') || '';
+          return { tag: q.trim() || trimmed, source: 'rule34', mode: null, sMode: null, type: null };
+        }
+      } catch (_) {}
+    }
+
+    return { tag: trimmed, source: null, mode: null, sMode: null, type: null };
   }
 
   // =========================================================================
-  // 3. SEMANTIC CATEGORY CLASSIFIER (Danbooru Ontology + User Rules + Heuristics)
+  // 3. SEMANTIC CATEGORY CLASSIFIER (Native Booru + Danbooru Ontology + Positive Heuristics)
   // =========================================================================
   const SERIES_SET = new Set([
-    '東方Project', '東方', 'VOCALOID', 'Fate/GrandOrder', 'FGO',
-    'アークナイツ', '明日方舟', 'アズールレーン', '艦これ', '艦隊これくしょん',
-    'ウマ娘', 'ウマ娘プリティーダービー', 'ホロライブ', 'hololive', 'にじさんじ',
-    'アイドルマスター', 'ラブライブ!', 'ラブライブ', '崩壊:スターレイル', '崩壊スターレイル',
-    'ゼンレスゾーンゼロ', '鳴潮', '勝利の女神:NIKKE', 'NIKKE'
+    '東方project', '東方', 'touhou', 'vocaloid', 'ボーカロイド', 'ボカロ', 'プロセカ',
+    'fate/grandorder', 'fate/staynight', 'fate/zero', 'fgo', 'fate',
+    'ブルーアーカイブ', 'ブルアカ', 'bluearchive', '블루아카이브', '원신', '명일방주', '原神', 'genshinimpact', 'genshin',
+    'コイカツ', 'コイカツ!', 'koikatsu',
+    'アークナイツ', '明日方舟', 'arknights', 'アズールレーン', 'アズレン', 'azurlane',
+    '艦これ', '艦隊これくしょん', 'ウマ娘', 'ウマ娘プリティーダービー',
+    'ホロライブ', 'hololive', 'にじさんじ', 'ぶいすぽっ!',
+    'アイドルマスター', '学マス', '学園アイドルマスター', 'シャニマス', 'デレマス', 'ミリシタ',
+    'ラブライブ!', 'ラブライブ', '崩壊:スターレイル', '崩壊スターレイル', 'スターレイル', '崩壊3rd',
+    'ゼンレスゾーンゼロ', 'ゼンゼロ', 'zzz', '鳴潮', 'wutheringwaves',
+    '勝利の女神:nikke', 'nikke', 'ポケモン', 'ポケットモンスター', 'pokemon',
+    'プリキュア', '名探偵プリキュア!', '名探偵プリキュア', 'たんプリ', 'たんプリ!', 'たんぷり',
+    '魔法少女まどか☆マギカ', 'まどマギ', 'マギアレコード', 'マギレコ', 'マギアレコード魔法少女まどか☆マギカ外伝', '魔法少女まどか☆マギカ外伝', 'ワルプルギスの廻天', 'まどドラ', 'マギアエクセドラ', 'magiaexedra',
+    'チェンソーマン', '呪術廻戦', '鬼滅の刃', 'ぼっち・ざ・ろっく!', 'ぼざろ',
+    'リコリス・リコイル', 'リコリコ', '推しの子', 'ダンダダン', 'ガンダム', 'エヴァンゲリオン',
+    'グランブルーファンタジー', 'グラブル', 'プリコネr', 'ヘブバン', 'limbuscompany',
+    'ぐだぐだぷにぷにウォーズ!'
   ]);
 
   const ATTR_SET = new Set([
-    '白タイツ', '黒タイツ', 'タイツ', 'ストッキング', 'ニーソ', 'ニーソックス', 'オーバーニー', 'ガーターベルト',
-    '水着', 'ビキニ', 'スク水', '競泳水着', '制服', 'セーラー服', 'ブレザー', 'メイド', 'メイド服', 'バニーガール',
+    '白タイツ', '黒タイツ', '黒スト', '白スト', 'タイツ', 'ストッキング', 'ニーソ', 'ニーソックス', 'オーバーニー', 'ガーターベルト',
+    '水着', 'ビキニ', 'スク水', '競泳水着', '制服', 'セーラー服', 'ブレザー', 'メイド', 'メイド服', 'バニーガール', 'バニー',
     'チャイナドレス', '体操服', 'ブルマ', '巫女', 'シスター', 'ナース', '私服', 'ドレス', 'ウェディングドレス',
-    '着物', '浴衣', 'パーカー', '水手服', '眼鏡', 'メガネ', 'サングラス', '眼帯', 'ケモミミ', '猫耳', 'ネコミミ', '狐耳', 'ウサ耳',
+    '着物', '浴衣', 'パーカー', '水手服', '眼鏡', 'メガネ', 'サングラス', '眼帯', 'ケモミミ', '猫耳', 'ネコミミ', '狐耳', 'ウサ耳', '獣耳',
     '角', '翼', '尻尾', 'ヘイロー', 'ツインテール', 'ポニーテール', 'ショートヘア', 'ロングヘア', 'ボブカット', '三つ編み',
     '白髪', '銀髪', '金髪', '黒髪', 'ピンク髪', '青髪', '赤髪', 'オッドアイ', '赤目', '青目', 'ジト目',
-    '巨乳', '爆乳', '貧乳', 'ちっぱい', '微乳', 'ロリ', 'お姉さん', '少女', '美少女', '女の子', '男の子', '男の娘',
+    '巨乳', '爆乳', '貧乳', 'ちっぱい', '微乳', 'ロリ', 'loli', '幼女', 'お姉さん', '少女', '美少女', '女の子', '男の子', '男の娘',
     '足裏', '素足', '裸足', '足指', '脚', '美脚', '太もも', 'ふともも', '魅惑のふともも', '絶対領域',
     'おっぱい', '魅惑の谷間', '谷間', 'お尻', '尻', '尻神様', '腋', 'へそ', 'お腹', '腹筋', '背中', 'うなじ',
-    '百合', 'キス', 'ハグ', '手繋ぎ', '泣き顔', '笑顔', '赤面', '照れ', 'ドヤ顔', 'ハート目', '触手', '拘束', '催眠', '悪堕ち'
+    '百合', 'gl', 'bl', 'キス', 'ハグ', '手繋ぎ', '泣き顔', '笑顔', '赤面', '照れ', 'ドヤ顔', 'ハート目',
+    '触手', '拘束', '緊縛', '催眠', '洗脳', '悪堕ち', '闇堕ち',
+    '全裸', '半裸', '裸', '下脱ぎ', '上脱ぎ', '中出し', 'ふたなり', 'futanari', 'ntr', '寝取られ', 'くぱぁ', 'ぶっかけ',
+    'パイズリ', 'フェラ', '手コキ', '足コキ', '潮吹き', '母乳', '妊娠', '妊婦', '女体化', 'tsf', 'パンチラ', '胸チラ',
+    '変身', '変身前後', 'アイス', 'アイスがすき', 'ポッキーゲーム', '黒キュア', '白キュア',
+    '第一再臨', '第二再臨', '第三再臨', '最終再臨', '霊衣',
+    'フォーリナー', 'セイバー', 'アーチャー', 'ランサー', 'ライダー', 'キャスター', 'アサシン', 'バーサーカー',
+    'ルーラー', 'アヴェンジャー', 'アルターエゴ', 'ムーンキャンサー', 'プリテンダー', 'ビースト',
+    '1girl', '2girls', 'solo', 'nude', 'completely_naked', 'big_breasts', 'small_breasts', 'creampie', 'bondage', 'cuckold'
   ]);
 
   const META_SET = new Set([
-    'R-18', 'R-18G', 'NSFW', 'オリジナル', '創作', '一次創作', '二次創作', '漫画', 'マンガ', '4コマ',
-    'イラスト', '落書き', 'らくがき', 'ドット絵', 'デフォルメ', 'SD', 'ちびキャラ', 'Live2D', '3DCG',
-    'GIF', 'ugoira', '風景', '背景', '厚塗り', '線画', 'モノクロ', 'skeb', 'commission', '立ち絵'
+    'r-18', 'r18', 'r-18g', 'nsfw', 'sfw',
+    'オリジナル', 'オリジナルキャラクター', 'オリジナルキャラ', 'oc', 'original', 'originalcharacter',
+    '創作', '一次創作', '二次創作', '版権', '漫画', 'マンガ', '4コマ', '4コマ漫画', 'comic', 'manga',
+    'イラスト', '落書き', 'らくがき', '練習', '絵', 'illustration', 'art', 'drawing', 'sketch', 'fanart', 'animestyle', 'digitalart',
+    'ドット絵', 'pixelart', 'デフォルメ', 'sd', 'ちびキャラ', 'live2d', '3dcg', 'mmd',
+    'gif', 'ugoira', 'うごイラ', '動畫', '動画', 'animation',
+    '模写', '原画', 'デジタル', 'アナログ', '厚塗り', '水彩', '線画', 'モノクロ', 'monochrome', 'greyscale',
+    '風景', '背景', 'skeb', 'commission', 'リクエスト', '立ち絵',
+    'アニメ', 'ゲーム', '誕生日', '生誕祭', '誕生祭', '周年', '記念', 'ポッキーの日', 'ワンドロ', '企画', 'お題箱', 'ネタバレ',
+    'highres', 'absurdres', 'commentary', 'commentary_request', 'translated', 'translation_request', 'bad_id', 'bad_pixiv_id'
   ]);
 
-  const AI_SET = new Set(['AI生成', 'AIイラスト', 'AI-generated', 'AIart', 'AI作品', 'AI', 'NovelAI', 'StableDiffusion']);
+  const AI_SET = new Set([
+    'ai生成', 'aiイラスト', 'ai-generated', 'ai_generated', 'aiart', 'ai作品', 'ai', 'novelai', 'stablediffusion', 'stable_diffusion'
+  ]);
 
-  function classifyTagClient(tag, serverCategory = null) {
+  const NON_CHAR_WORDS = new Set([
+    '女の子', '男の子', '落書き', '立ち絵', '後ろ姿', '横顔', '寝顔', '笑顔', '泣き顔',
+    '水着姿', '制服姿', '下着姿', '素足', '裸足', '片目隠れ', '腹チラ', 'パンチラ', '胸チラ',
+    '腋見せ', '振り返り', '上目遣い', '見返り', 'お姉さん', 'お姫様抱っこ', 'お団子ヘア',
+    '三つ編み', '二の腕', '食い込み', '寝そべり', '寝取られ', '悪堕ち', '闇堕ち', '女体化',
+    '着衣巨乳', '競泳水着', '体操服', '巫女服', 'メイド服', 'セーラー服', 'チャイナ服',
+    '厚塗り', '線画', '水彩画', '鉛筆画', '背景画', '概念礼装', '二次創作', '一次創作',
+    '誕生日', '生誕祭', '記念日', 'お題箱', '無断転載禁止', 'デジタル', 'アナログ', 'ナルトス',
+    '下脱ぎ', '上脱ぎ', '中出し', '舌出し', '潮吹き', '変身前後', '模写', '原画', '動畫', '動画', 'うごイラ',
+    'ポッキーの日', 'ポッキーゲーム', 'ぶっかけ', 'くぱぁ', '緊縛', '全裸', '半裸', 'ふたなり',
+    '第一再臨', '第二再臨', '第三再臨', '最終再臨', '黒キュア', '白キュア', 'アイス'
+  ]);
+
+  const CLASS_OR_NON_CHAR_BASE_RE = /^(フォーリナー|セイバー|アーチャー|ランサー|ライダー|キャスター|アサシン|バーサーカー|ルーラー|アヴェンジャー|アルターエゴ|ムーンキャンサー|プリテンダー|ビースト|水着|制服|メイド|衣装|霊衣|概念礼装|ネタバレ|漫画|イラスト|落書き)$/i;
+
+  const GENERIC_EN_FIRST_WORD = new Set([
+    'original', 'completely', 'ice', 'stage', 'black', 'white', 'blue', 'red', 'green', 'pink', 'dark', 'light',
+    'school', 'swim', 'high', 'long', 'short', 'big', 'small', 'open', 'closed', 'first', 'second', 'third',
+    'final', 'happy', 'sad', 'new', 'old', 'full', 'half', 'mini', 'super', 'ultra', 'digital', 'anime'
+  ]);
+
+  function classifyTagClient(tag, translation = '', serverCategory = null) {
     const clean = String(tag || '').trim();
     if (!clean) return 'meta_general';
+    const lower = clean.toLowerCase();
 
     if (state.userCategoryOverrides[clean]) return state.userCategoryOverrides[clean];
     for (const cat of CATEGORY_CYCLE) {
@@ -518,16 +682,35 @@
     }
 
     if (/^\d+users入り$/i.test(clean) || /users入り$/i.test(clean)) return 'bookmark_milestone';
-    if (AI_SET.has(clean) || /^AI[生成イラスト]/i.test(clean)) return 'ai_meta';
-    if (META_SET.has(clean)) return 'meta_general';
+    if (AI_SET.has(lower) || /^ai[生成イラスト]/i.test(clean)) return 'ai_meta';
 
+    // Authoritative native category from Danbooru / Sankaku / Yande.re / Konachan
+    const nativeCat = state.rawDataset?.nativeTagCategories?.[clean];
+    if (nativeCat && ['character', 'attribute_xp', 'series_ip', 'meta_general', 'bookmark_milestone', 'ai_meta'].includes(nativeCat)) {
+      return nativeCat;
+    }
+
+    // Authoritative Danbooru Ontology enrichment cache
     const dbEntry = state.danbooruCache[clean] || (state.rawDataset?.danbooruMap && state.rawDataset.danbooruMap[clean]);
     if (dbEntry && dbEntry.category) return dbEntry.category;
 
-    if (SERIES_SET.has(clean) || /東方|艦これ|ホロライブ|ウマ娘|FGO|スターレイル|アークナイツ|アズールレーン|アイドルマスター|ラブライブ|Project|シリーズ/i.test(clean)) {
+    if (META_SET.has(lower) || /(生誕祭|誕生祭|記念日|の日|ワンドロ)\d*$/i.test(clean)) {
+      return 'meta_general';
+    }
+
+    if (
+      SERIES_SET.has(lower) ||
+      /(プリキュア[!♪♡♥]?|ぷりきゅあ[!♪]?|東方|艦これ|ホロライブ|ウマ娘|FGO|スターレイル|ゾーンゼロ|アークナイツ|アズールレーン|アイドルマスター|ラブライブ[!]*|ブルーアーカイブ|ブルアカ|Project|アーカイブ|シリーズ|コイカツ[!！]?|ウォーズ[!！]?)$/i.test(clean) ||
+      /^[ァ-ヴぁ-ん]{2,3}(プリ|ぷり)[!！]?$/.test(clean)
+    ) {
       return 'series_ip';
     }
-    if (ATTR_SET.has(clean) || /(タイツ|ストッキング|ニーソ|水着|ビキニ|制服|メイド|バニー|ドレス|服|着|耳|髪|目|眼|乳|胸|尻|足|脚|もも|腋|腹|へそ|顔|涙|笑|娘|少女|ロリ|姉|百合|キス|メガネ|眼鏡|リボン|帽)$/.test(clean)) {
+
+    if (
+      ATTR_SET.has(lower) ||
+      (/(タイツ|ストッキング|ニーソ|水着|ビキニ|制服|メイド|バニー|ドレス|服|着|耳|髪|目|眼|乳|胸|尻|足|脚|もも|腋|腹|へそ|顔|涙|笑|娘|少女|ロリ|姉|百合|キス|メガネ|眼鏡|リボン|帽|脱ぎ|出し|再臨|緊縛|拘束|ゲーム|ブローチ)$/.test(clean) &&
+        !/^キュア/.test(clean))
+    ) {
       return 'attribute_xp';
     }
 
@@ -535,7 +718,41 @@
       return serverCategory;
     }
 
-    return 'character';
+    // Positive-evidence-ONLY Character Heuristics (NEVER default unknown tags to 'character'!)
+    if (/^(キュア|仮面ライダー|ウルトラマン)[ァ-ヴー・]+/.test(clean)) return 'character';
+
+    const parenMatch = clean.match(/^([^()（）]{2,15})[(（]([^()（）]{1,18})[)）]$/);
+    if (parenMatch) {
+      const baseName = parenMatch[1].trim();
+      if (!CLASS_OR_NON_CHAR_BASE_RE.test(baseName) && !ATTR_SET.has(baseName.toLowerCase()) && !META_SET.has(baseName.toLowerCase())) {
+        return 'character';
+      }
+      return 'attribute_xp';
+    }
+
+    if (/^[ァ-ヴー]{2,10}・[ァ-ヴー]{2,10}$/.test(clean) && !NON_CHAR_WORDS.has(lower)) {
+      return 'character';
+    }
+
+    const tr = String(translation || state.rawDataset?.translations?.[clean] || state.rawDataset?.tagTranslations?.[clean] || '').trim();
+    if (tr) {
+      if (/^Cure\s+[A-Z]/i.test(tr) || /^[A-Z][a-z]{2,}\/[A-Z][a-z]{2,}$/.test(tr)) {
+        return 'character';
+      }
+      const twoCap = tr.match(/^([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})$/);
+      if (twoCap && !GENERIC_EN_FIRST_WORD.has(twoCap[1].toLowerCase()) && !GENERIC_EN_FIRST_WORD.has(twoCap[2].toLowerCase())) {
+        return 'character';
+      }
+    }
+
+    if (!NON_CHAR_WORDS.has(lower) && /^[一-龥々ヶノ]{1,3}[ぁ-んー]{2,5}$/.test(clean)) {
+      return 'character';
+    }
+    if (!NON_CHAR_WORDS.has(lower) && /^[一-龥々ヶノ]{1,3}[ァ-ヴー]{2,6}$/.test(clean)) {
+      return 'character';
+    }
+
+    return 'attribute_xp';
   }
 
   function cycleTagCategory(tag) {
@@ -633,7 +850,7 @@
       const isLocked = state.lockedSubTags.has(item.tag);
       if (!isLocked && item.count < minCount) continue;
 
-      const cat = classifyTagClient(item.tag);
+      const cat = classifyTagClient(item.tag, item.translation);
       if (!isLocked) {
         if (hideBookmarkTags && cat === 'bookmark_milestone') continue;
         if (hideAiTags && cat === 'ai_meta') continue;
@@ -755,13 +972,20 @@
     if (!ds) return;
 
     const primaryTag = ds.primaryTag || ds.meta?.queryTag || '';
-    const totalMatches = ds.pixivTotal ?? ds.meta?.totalMatches ?? activeWorks.length;
+    const srcMeta = SOURCE_META[ds.source || state.source] || SOURCE_META.pixiv;
+    const totalMatches = Number(ds.pixivTotal ?? ds.meta?.totalMatches ?? 0);
     const pagesScanned = ds.pagesScanned ?? ds.meta?.pagesFetched ?? 1;
 
     const lockedArr = Array.from(state.lockedSubTags);
     const titleStr = lockedArr.length > 0 ? `${primaryTag} + ${lockedArr.join('+')}` : primaryTag;
-    $('statPrimaryTag').textContent = titleStr;
-    $('statTotalMatched').textContent = `(全站 ${Number(totalMatches).toLocaleString()})`;
+    $('statPrimaryTag').textContent = `[${srcMeta.label}] ${titleStr}`;
+    if (totalMatches > 0) {
+      $('statTotalMatched').textContent = `(全站 ${totalMatches.toLocaleString()})`;
+    } else if (ds.hasMore) {
+      $('statTotalMatched').textContent = `(全站 ${activeWorks.length.toLocaleString()}+ 续翻中)`;
+    } else {
+      $('statTotalMatched').textContent = `(已采 ${activeWorks.length.toLocaleString()})`;
+    }
 
     const uniqueArtists = new Set(activeWorks.map((w) => w.userId).filter(Boolean)).size;
     $('statSampledCount').textContent = `${activeWorks.length} 作`;
@@ -782,11 +1006,16 @@
       $('statTopCoRate').textContent = '—';
     }
 
+    const allPool = ds.artworks || [];
+    const poolAiCount = allPool.filter((w) => w.isAi).length;
+    const excludeAi = $('excludeAiWorksCheck')?.checked;
     const aiWorksCount = activeWorks.filter((w) => w.isAi).length;
     const origCount = activeWorks.length - aiWorksCount;
     const origRate = activeWorks.length > 0 ? ((origCount / activeWorks.length) * 100).toFixed(1) : '100.0';
     $('statOriginalRate').textContent = `${origRate}% 手绘`;
-    $('statAiBreakdown').textContent = `(AI ${aiWorksCount}作)`;
+    $('statAiBreakdown').textContent = excludeAi && poolAiCount > 0
+      ? `(已剔除 AI ${poolAiCount}作)`
+      : `(AI ${aiWorksCount}作)`;
 
     $('galleryTotalBadge').textContent = activeWorks.length;
   }
@@ -997,8 +1226,34 @@
   }
 
   // =========================================================================
-  // 6. ARTWORKS GALLERY & OPTICAL ISOLATED VIEWER
+  // 6. ARTWORKS GALLERY, SORTING & OPTICAL ISOLATED VIEWER
   // =========================================================================
+  function artworkTimeKey(w) {
+    if (w && w.createDate) {
+      const ts = Date.parse(w.createDate);
+      if (Number.isFinite(ts) && ts > 0) return ts;
+    }
+    const raw = String((w && (w.externalId || w.id)) || '');
+    const digits = raw.replace(/\D+/g, '');
+    return digits ? Number(digits) : 0;
+  }
+
+  function artworkPopKey(w) {
+    return Number((w && (w.bookmarkCount ?? w.totalBookmarks ?? w.score)) || 0);
+  }
+
+  function sortArtworksList(list, sortBy = 'date_desc') {
+    const arr = [...(list || [])];
+    arr.sort((a, b) => {
+      if (sortBy === 'date_asc') return artworkTimeKey(a) - artworkTimeKey(b);
+      if (sortBy === 'bmk_desc') return artworkPopKey(b) - artworkPopKey(a) || artworkTimeKey(b) - artworkTimeKey(a);
+      if (sortBy === 'bmk_asc') return artworkPopKey(a) - artworkPopKey(b) || artworkTimeKey(a) - artworkTimeKey(b);
+      if (sortBy === 'page_desc') return (b.pageCount || 1) - (a.pageCount || 1) || artworkPopKey(b) - artworkPopKey(a);
+      return artworkTimeKey(b) - artworkTimeKey(a);
+    });
+    return arr;
+  }
+
   function createArtworkCardHtml(w, highlightTags = [], eager = false) {
     const hiSet = new Set(highlightTags.map((t) => t.toLowerCase()));
     const badges = [];
@@ -1022,6 +1277,11 @@
       })
       .join('');
 
+    const srcKey = w.source || state.rawDataset?.source || 'pixiv';
+    const srcMeta = SOURCE_META[srcKey] || SOURCE_META.pixiv;
+    const extUrl = w.externalUrl || `https://www.pixiv.net/artworks/${encodeURIComponent(w.id)}`;
+    const popLabel = srcKey === 'pixiv' ? '收藏' : '热度';
+
     return `
       <article class="artwork-card" data-illust-id="${escapeHtml(w.id)}">
         <div class="artwork-thumb-box clean-optical-media" data-open-viewer="${escapeHtml(w.id)}">
@@ -1030,11 +1290,11 @@
         </div>
         <div class="artwork-meta">
           <div class="artwork-title" data-open-viewer="${escapeHtml(w.id)}" title="${escapeHtml(w.title)}">${escapeHtml(w.title || '无题')}</div>
-          <div class="artwork-artist">${escapeHtml(w.userName || 'Pixiv Artist')} · 收藏 ${Number(w.bookmarkCount || 0).toLocaleString()}</div>
+          <div class="artwork-artist">${escapeHtml(w.userName || srcMeta.label)} · ${popLabel} ${artworkPopKey(w).toLocaleString()}</div>
           <div class="artwork-tags-mini">${miniTags}</div>
           <div class="artwork-card-actions">
             <button class="t-btn t-btn--sm t-btn--primary" data-open-viewer="${escapeHtml(w.id)}" type="button">看高清原图</button>
-            <a class="t-btn t-btn--sm" href="https://www.pixiv.net/artworks/${encodeURIComponent(w.id)}" target="_blank" rel="noopener">Pixiv ↗</a>
+            <a class="t-btn t-btn--sm" href="${escapeHtml(extUrl)}" target="_blank" rel="noopener">${srcMeta.linkLabel}</a>
           </div>
         </div>
       </article>
@@ -1086,11 +1346,7 @@
       return true;
     });
 
-    list = [...list].sort((a, b) => {
-      if (sortBy === 'bmk_desc') return (b.bookmarkCount || 0) - (a.bookmarkCount || 0);
-      if (sortBy === 'page_desc') return (b.pageCount || 1) - (a.pageCount || 1);
-      return (Number(b.id) || 0) - (Number(a.id) || 0);
-    });
+    list = sortArtworksList(list, sortBy);
 
     if (list.length === 0) {
       grid.innerHTML = `<div class="empty-placeholder">暂无匹配的作品样本</div>`;
@@ -1098,16 +1354,57 @@
     }
 
     const hiTags = [state.rawDataset?.primaryTag || '', ...Array.from(state.lockedSubTags)];
-    grid.innerHTML = list.slice(0, 60).map((w, idx) => createArtworkCardHtml(w, hiTags, idx < 12)).join('');
+    grid.innerHTML = list.slice(0, 80).map((w, idx) => createArtworkCardHtml(w, hiTags, idx < 12)).join('');
     bindArtworkCardEvents(grid);
   }
 
   // =========================================================================
-  // 7. DEEP INSPECTOR MODAL
+  // 7. DEEP INSPECTOR MODAL (WITH FULL SORTING: TIME ASC/DESC, POPULARITY ASC/DESC, PAGES)
   // =========================================================================
+  function renderInspectorArtworks() {
+    const tag = state.inspectorTag;
+    if (!tag || !state.rawDataset) return;
+    const sortBy = $('modalArtworksSortSelect')?.value || 'date_desc';
+    const typeFilter = $('modalArtworksTypeSelect')?.value || 'all';
+
+    let matchingWorks = (state.filteredArtworks || []).filter((w) => {
+      if (!(w.tags || []).includes(tag)) return false;
+      if (typeFilter !== 'all' && String(w.illustType) !== typeFilter) return false;
+      return true;
+    });
+    matchingWorks = sortArtworksList(matchingWorks, sortBy);
+    $('modalArtworkCount').textContent = matchingWorks.length;
+
+    const worksGrid = $('modalArtworksGrid');
+    const shown = matchingWorks.slice(0, state.inspectorLimit);
+    if (shown.length === 0) {
+      worksGrid.innerHTML = `<div class="empty-placeholder">当前筛选条件下暂无作品</div>`;
+    } else {
+      worksGrid.innerHTML = shown
+        .map((w, idx) => createArtworkCardHtml(w, [state.rawDataset.primaryTag, tag], idx < 8))
+        .join('');
+      bindArtworkCardEvents(worksGrid);
+    }
+
+    const moreWrap = $('modalArtworksMoreWrap');
+    const moreBtn = $('modalArtworksLoadMoreBtn');
+    if (moreWrap && moreBtn) {
+      const rem = matchingWorks.length - shown.length;
+      if (rem > 0) {
+        moreWrap.classList.remove('hidden');
+        moreBtn.textContent = `加载更多作品 (还有 ${rem} 件)`;
+      } else {
+        moreWrap.classList.add('hidden');
+      }
+    }
+  }
+
   function openInspectorModal(tag) {
     const item = state.computedCoTags.find((r) => r.tag === tag);
     if (!item || !state.rawDataset) return;
+
+    state.inspectorTag = tag;
+    state.inspectorLimit = 36;
 
     const modal = $('inspectModal');
     const trText = item.translation ? ` (${item.translation})` : '';
@@ -1132,9 +1429,6 @@
         <strong class="ins-stat-val">${CATEGORY_META[item.category]?.label || '其他'}</strong>
       </div>
     `;
-
-    const matchingWorks = (state.filteredArtworks || []).filter((w) => (w.tags || []).includes(tag));
-    $('modalArtworkCount').textContent = matchingWorks.length;
 
     const thirdContainer = $('modalThirdTags');
     if (item.thirdTags && item.thirdTags.length > 0) {
@@ -1164,18 +1458,12 @@
       thirdContainer.innerHTML = `<span style="color:var(--t-muted)">暂无显著的三阶伴生标签</span>`;
     }
 
-    const worksGrid = $('modalArtworksGrid');
-    worksGrid.innerHTML = matchingWorks
-      .slice(0, 24)
-      .map((w) => createArtworkCardHtml(w, [state.rawDataset.primaryTag, tag]))
-      .join('');
-    bindArtworkCardEvents(worksGrid);
-
+    renderInspectorArtworks();
     modal.classList.remove('hidden');
   }
 
   // =========================================================================
-  // 8. HD ARTWORK VIEWER & UGOIRA ANIMATION SYNTHESIZER
+  // 8. HD ARTWORK VIEWER & UGOIRA ANIMATION SYNTHESIZER (PIXIV + MULTI-BOORU)
   // =========================================================================
   function stopUgoiraTimer() {
     if (state.viewer.ugoiraTimer) {
@@ -1199,25 +1487,60 @@
     canvas.classList.add('hidden');
 
     try {
-      const resp = await apiFetch(`/api/illust/detail?id=${encodeURIComponent(illustId)}`, {
-        headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {}
-      });
-      const rawJson = await resp.json();
-      if (!resp.ok || rawJson.error) throw new Error(rawJson.message || rawJson.error || '加载作品详情失败');
-      const json = rawJson.data || rawJson;
+      const localWork = (state.rawDataset?.artworks || []).find((w) => String(w.id) === String(illustId));
+      const isBooruWork = Boolean(localWork && localWork.source && localWork.source !== 'pixiv');
+      let json = null;
 
+      if (isBooruWork) {
+        const reg = localWork.regularUrl || localWork.originalUrl || localWork.thumbUrl || '';
+        const orig = localWork.originalUrl || reg;
+        json = {
+          id: localWork.externalId || localWork.id,
+          source: localWork.source,
+          externalUrl: localWork.externalUrl || '#',
+          title: localWork.title || `${localWork.source} #${localWork.externalId || localWork.id}`,
+          description: `来源站点: ${(SOURCE_META[localWork.source] || {}).label || localWork.source}`,
+          userName: localWork.userName || localWork.source,
+          userId: localWork.userId || '',
+          width: localWork.width || 0,
+          height: localWork.height || 0,
+          pageCount: localWork.pageCount || 1,
+          illustType: localWork.illustType || 0,
+          isAi: Boolean(localWork.isAi),
+          bookmarkCount: artworkPopKey(localWork),
+          viewCount: 0,
+          thumbUrl: localWork.thumbUrl || reg,
+          regularUrl: reg,
+          originalUrl: orig,
+          tags: localWork.tags || [],
+          pages: [{ thumb: localWork.thumbUrl || reg, regular: reg, large: reg, original: orig }]
+        };
+      } else {
+        const resp = await apiFetch(`/api/illust/detail?id=${encodeURIComponent(illustId)}`, {
+          headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {}
+        });
+        const rawJson = await resp.json();
+        if (!resp.ok || rawJson.error) throw new Error(rawJson.message || rawJson.error || '加载作品详情失败');
+        json = rawJson.data || rawJson;
+        json.source = 'pixiv';
+        json.externalUrl = `https://www.pixiv.net/artworks/${encodeURIComponent(json.id)}`;
+      }
+
+      const srcMeta = SOURCE_META[json.source || 'pixiv'] || SOURCE_META.pixiv;
       state.viewer.illust = json;
       state.viewer.pageIndex = 0;
       state.viewer.useOriginal = false;
 
       $('viewerTitle').textContent = json.title || `Artwork #${json.id}`;
-      $('viewerMetaSubtitle').textContent = `ID: ${json.id} // ARTIST: ${json.userName || 'Unknown'} // ${json.width}×${json.height}`;
-      $('viewerOpenPixivBtn').href = `https://www.pixiv.net/artworks/${encodeURIComponent(json.id)}`;
+      const dimText = json.width && json.height ? ` // ${json.width}×${json.height}` : '';
+      $('viewerMetaSubtitle').textContent = `[${srcMeta.label}] ID: ${json.id} // ARTIST: ${json.userName || 'Unknown'}${dimText}`;
+      $('viewerOpenPixivBtn').href = json.externalUrl || `https://www.pixiv.net/artworks/${encodeURIComponent(json.id)}`;
+      $('viewerOpenPixivBtn').textContent = `在 ${srcMeta.label} 打开原网页 ↗`;
 
       $('viewerStatsBox').innerHTML = `
-        <div class="ins-stat-box"><span class="ins-stat-label">收藏数</span><strong class="ins-stat-val">★ ${Number(json.totalBookmarks ?? json.bookmarkCount ?? 0).toLocaleString()}</strong></div>
+        <div class="ins-stat-box"><span class="ins-stat-label">${json.source === 'pixiv' ? '收藏数' : '热度/评分'}</span><strong class="ins-stat-val">★ ${Number(json.totalBookmarks ?? json.bookmarkCount ?? 0).toLocaleString()}</strong></div>
         <div class="ins-stat-box"><span class="ins-stat-label">浏览量</span><strong class="ins-stat-val">${Number(json.totalView ?? json.viewCount ?? 0).toLocaleString()}</strong></div>
-        <div class="ins-stat-box"><span class="ins-stat-label">页数 / 类型</span><strong class="ins-stat-val">${json.pageCount || 1}P / ${json.illustType === 2 ? '动图' : '插画'}</strong></div>
+        <div class="ins-stat-box"><span class="ins-stat-label">页数 / 类型</span><strong class="ins-stat-val">${json.pageCount || 1}P / ${json.illustType === 2 ? '动图/视频' : '插画'}</strong></div>
         <div class="ins-stat-box"><span class="ins-stat-label">AI 标记</span><strong class="ins-stat-val">${json.isAi ? 'AI 生成' : '非 AI 手绘'}</strong></div>
       `;
 
@@ -1258,7 +1581,7 @@
         thumbStrip.innerHTML = '';
       }
 
-      if (json.illustType === 2) {
+      if (json.source === 'pixiv' && json.illustType === 2) {
         await playUgoiraInViewer(json.id);
       } else {
         $('viewerDownloadUgoiraZipBtn').classList.add('hidden');
@@ -1373,9 +1696,58 @@
   }
 
   // =========================================================================
-  // 9. STREAMING FULL-HISTORY SAMPLING ENGINE
+  // 9. PRE-FLIGHT TOTAL COUNT + MULTI-CHUNK STREAMING SAMPLING ENGINE (v4.3)
   // =========================================================================
-  async function executeAnalysis(overrideQuery) {
+  function hidePreflightBanner() {
+    state.pendingPreflight = null;
+    $('preflightNoticeBar')?.classList.add('hidden');
+    $('preflightConfirmActions')?.classList.add('hidden');
+  }
+
+  function showPreflightBanner(text, needsConfirm = false) {
+    const bar = $('preflightNoticeBar');
+    const textEl = $('preflightNoticeText');
+    const acts = $('preflightConfirmActions');
+    if (!bar || !textEl) return;
+    textEl.textContent = text;
+    bar.classList.remove('hidden');
+    if (acts) acts.classList.toggle('hidden', !needsConfirm);
+  }
+
+  async function enrichTopTagsViaDanbooru(works, primaryTag) {
+    const counts = new Map();
+    const normPrimary = String(primaryTag || '').toLowerCase();
+    for (const w of works) {
+      for (const t of w.tags || []) {
+        if (!t || t.toLowerCase() === normPrimary || /\d+users入り$/i.test(t) || /\s/.test(t)) continue;
+        if (state.danbooruCache[t] || state.rawDataset?.nativeTagCategories?.[t]) continue;
+        counts.set(t, (counts.get(t) || 0) + 1);
+      }
+    }
+    const topUncached = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 60)
+      .map(([t]) => t);
+    if (!topUncached.length) return;
+    try {
+      const r = await apiFetch('/api/danbooru/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: topUncached })
+      });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d && d.danbooruMap && Object.keys(d.danbooruMap).length > 0) {
+        Object.assign(state.danbooruCache, d.danbooruMap);
+        if (state.rawDataset) {
+          state.rawDataset.danbooruMap = { ...(state.rawDataset.danbooruMap || {}), ...d.danbooruMap };
+        }
+        recomputeAndRender();
+      }
+    } catch (_) {}
+  }
+
+  async function executeAnalysis(overrideQuery, opts = {}) {
     if (state.activeStreamAbort) {
       state.activeStreamAbort.abort();
       state.activeStreamAbort = null;
@@ -1384,18 +1756,35 @@
     const rawInput = overrideQuery !== undefined ? overrideQuery : $('tagSearchInput').value;
     const parsed = parseUserQueryInput(rawInput);
     if (!parsed.tag) {
-      showToast('请输入 Pixiv 标签或粘贴搜索链接');
+      showToast('请输入标签或粘贴图站链接');
       return;
     }
 
+    if (parsed.source && SOURCE_META[parsed.source]) {
+      state.source = parsed.source;
+      localStorage.setItem('pixez_source_v43', state.source);
+      if ($('sourceSelect')) $('sourceSelect').value = state.source;
+      applySourceUI();
+    } else if (opts.source && SOURCE_META[opts.source]) {
+      state.source = opts.source;
+      localStorage.setItem('pixez_source_v43', state.source);
+      if ($('sourceSelect')) $('sourceSelect').value = state.source;
+      applySourceUI();
+    }
+
+    const source = state.source || 'pixiv';
+    const srcMeta = SOURCE_META[source] || SOURCE_META.pixiv;
+
     $('tagSearchInput').value = parsed.tag;
-    recordRecentSearch(parsed.tag);
+    recordRecentSearch(parsed.tag, source);
     if (parsed.mode) $('modeSelect').value = parsed.mode;
     if (parsed.sMode) $('sModeSelect').value = parsed.sMode;
     syncCustomSelects();
     hideAutocomplete();
 
-    const pages = $('pagesSelect').value;
+    const pages = opts.overridePages || $('pagesSelect').value;
+    const isAllMode = String(pages).toUpperCase() === 'ALL';
+    const order = $('orderSelect')?.value || 'date_d';
     const mode = $('modeSelect').value;
     const sMode = $('sModeSelect').value;
     const type = $('typeSelect').value;
@@ -1408,96 +1797,242 @@
     const stopBtn = $('stopStreamBtn');
     const analyzeBtn = $('analyzeBtn');
 
+    const commonHeaders = {};
+    if (state.cookie) commonHeaders['X-Pixiv-Cookie'] = state.cookie;
+    if (state.r34Key) commonHeaders['X-R34-Key'] = state.r34Key;
+    if (state.r34Uid) commonHeaders['X-R34-Uid'] = state.r34Uid;
+
+    // Step 1: Pre-flight tag total count lookup BEFORE running progress bar!
+    let preflightInfo = opts.preflightInfo || null;
+    if (!preflightInfo) {
+      showPreflightBanner(`正在探测 [${srcMeta.label}] 标签 [${parsed.tag}] 的全站作品总数...`, false);
+      try {
+        const infoQs = new URLSearchParams({ source, tag: parsed.tag, mode, s_mode: sMode, type });
+        const ir = await apiFetch(`/api/tag-info?${infoQs.toString()}`, { headers: commonHeaders });
+        const idata = await ir.json().catch(() => null);
+        if (idata && idata.error) {
+          showPreflightBanner(idata.message || '无法连接目标数据源', false);
+          if (idata.needsAuth) {
+            showToast(idata.message, 4500);
+            $('authModal')?.classList.remove('hidden');
+          }
+          return;
+        }
+        preflightInfo = idata || null;
+      } catch (_) {}
+    }
+
+    if (preflightInfo) {
+      const totalPosts = Number(preflightInfo.totalPosts || 0);
+      const estPages = Number(preflightInfo.estimatedPages || 0);
+      const bannerNote =
+        preflightInfo.note ||
+        (totalPosts > 0
+          ? `[${srcMeta.label}] 标签 [${preflightInfo.resolvedTag || parsed.tag}] 全站共 ${totalPosts.toLocaleString()} 件作品 (约 ${estPages.toLocaleString()} 页)`
+          : `[${srcMeta.label}] 已连接 [${preflightInfo.resolvedTag || parsed.tag}]`);
+
+      const isHugeAll =
+        isAllMode &&
+        !opts.skipConfirm &&
+        (totalPosts > 2400 || estPages > 40 || Boolean(preflightInfo.totalIsApproximate));
+
+      if (isHugeAll) {
+        state.pendingPreflight = { tag: parsed.tag, source, preflightInfo };
+        showPreflightBanner(
+          `${bannerNote} —— 当前选择了「全部页」，完整采集耗时较长（过程中可随时点击「停止翻页」锁定样本），请确认采集深度：`,
+          true
+        );
+        return;
+      }
+      showPreflightBanner(bannerNote, false);
+    }
+
+    // Step 2: Start Multi-Chunk Streaming Sampling!
     progressWrap.classList.remove('hidden');
     stopBtn.classList.remove('hidden');
     analyzeBtn.disabled = true;
-    progressText.textContent = `正在连接 Pixiv 采样 [${parsed.tag}]...`;
-    progressPct.textContent = '5%';
-    progressFill.style.width = '5%';
+    progressText.textContent = `正在连接 ${srcMeta.label} 采样 [${parsed.tag}]...`;
+    progressPct.textContent = '3%';
+    progressFill.style.width = '3%';
 
     const abortCtrl = new AbortController();
     state.activeStreamAbort = abortCtrl;
 
-    const qs = new URLSearchParams({
-      tag: parsed.tag,
-      pages,
-      mode,
-      s_mode: sMode,
-      type,
-      includePopular: includePopular ? '1' : '0'
-    });
+    const accumWorks = new Map();
+    const accumTrans = {};
+    const accumNativeCats = {};
+    const accumDanbooru = {};
+    let totalPagesScanned = 0;
+    let knownTotalPosts = Number(preflightInfo?.totalPosts || 0);
+    let primaryResolvedTag = preflightInfo?.resolvedTag || parsed.tag;
+    let lastEngine = `${srcMeta.label.toUpperCase()}-API`;
+
+    const requestedMaxPages = isAllMode ? 1000 : Math.max(1, parseInt(pages, 10) || 3);
+    const chunkSize = source === 'pixiv' ? 24 : 10;
+    let startPage = 1;
+    let cursor = '';
+    let hasMore = true;
+    let chunkIndex = 0;
+    let lastSnapshotRenderAt = 0;
+
+    const flushDataset = (forceRender = false, stillHasMore = false) => {
+      const worksArr = Array.from(accumWorks.values());
+      state.rawDataset = {
+        source,
+        primaryTag: primaryResolvedTag,
+        pixivTotal: knownTotalPosts,
+        pagesScanned: totalPagesScanned,
+        engine: lastEngine,
+        hasMore: stillHasMore,
+        artworks: worksArr,
+        translations: accumTrans,
+        nativeTagCategories: accumNativeCats,
+        danbooruMap: accumDanbooru
+      };
+      $('engineSourceIndicator').textContent = `${lastEngine} · ${totalPagesScanned}P`;
+      const now = Date.now();
+      if (forceRender || now - lastSnapshotRenderAt >= 420) {
+        lastSnapshotRenderAt = now;
+        if (forceRender) state.tableDisplayLimit = 160;
+        recomputeAndRender();
+      }
+    };
 
     try {
-      const resp = await apiFetch(`/api/analyze-stream?${qs.toString()}`, {
-        headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {},
-        signal: abortCtrl.signal
-      });
+      while (hasMore && !abortCtrl.signal.aborted && chunkIndex < 120) {
+        chunkIndex++;
+        const qs = new URLSearchParams({
+          source,
+          tag: primaryResolvedTag,
+          pages,
+          order,
+          startPage: String(startPage),
+          chunkPages: String(chunkSize),
+          cursor,
+          mode,
+          s_mode: sMode,
+          type,
+          includePopular: includePopular ? '1' : '0'
+        });
 
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const resp = await apiFetch(`/api/analyze-stream?${qs.toString()}`, {
+          headers: commonHeaders,
+          signal: abortCtrl.signal
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
-      let lastSnapshotRenderAt = 0;
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let chunkHasMore = false;
+        let chunkNextPage = startPage;
+        let chunkNextCursor = '';
+        let chunkPagesDone = 0;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
 
-        const parts = buffer.split('\n\n');
-        buffer = parts.pop() || '';
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() || '';
 
-        for (const block of parts) {
-          const lines = block.split('\n');
-          let eventType = 'message';
-          let dataStr = '';
-          for (const line of lines) {
-            if (line.startsWith('event:')) eventType = line.slice(6).trim();
-            else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
-          }
-          if (!dataStr) continue;
-
-          try {
-            const payload = JSON.parse(dataStr);
-            if (eventType === 'progress') {
-              const pct = payload.percent || (payload.totalPages ? Math.min(95, Math.round((payload.currentPage / payload.totalPages) * 95)) : 45);
-              progressText.textContent = payload.message || `正在采样第 ${payload.currentPage || payload.page || 1} 页...`;
-              progressPct.textContent = `${pct}%`;
-              progressFill.style.width = `${pct}%`;
-            } else if (eventType === 'snapshot' || eventType === 'complete') {
-              const ds = payload.data || payload;
-              if (ds.danbooruMap) {
-                Object.assign(state.danbooruCache, ds.danbooruMap);
-              }
-              ds.primaryTag = ds.primaryTag || ds.meta?.queryTag || parsed.tag;
-              ds.pagesScanned = ds.pagesScanned || ds.meta?.pagesFetched || 1;
-              ds.pixivTotal = ds.pixivTotal ?? ds.meta?.totalMatches ?? (ds.artworks || []).length;
-              ds.engine = ds.engine || ds.meta?.engine || 'WEB-AJAX';
-              state.rawDataset = ds;
-              $('engineSourceIndicator').textContent = `${ds.engine} · ${ds.pagesScanned}P`;
-
-              const now = Date.now();
-              if (eventType === 'complete' || now - lastSnapshotRenderAt >= 420) {
-                lastSnapshotRenderAt = now;
-                if (eventType === 'complete') state.tableDisplayLimit = 160;
-                recomputeAndRender();
-              }
-
-              if (eventType === 'complete') {
-                progressFill.style.width = '100%';
-                progressPct.textContent = '100%';
-                progressText.textContent = `完成 [${ds.primaryTag}] 采样 (${(ds.artworks || []).length} 件作品)`;
-              }
-            } else if (eventType === 'error') {
-              showToast(`采样提示: ${payload.message || '请求异常'}`);
+          for (const block of parts) {
+            const lines = block.split('\n');
+            let eventType = 'message';
+            let dataStr = '';
+            for (const line of lines) {
+              if (line.startsWith('event:')) eventType = line.slice(6).trim();
+              else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
             }
-          } catch (_) {}
+            if (!dataStr) continue;
+
+            try {
+              const payload = JSON.parse(dataStr);
+              if (eventType === 'progress') {
+                if (payload.totalMatches && Number(payload.totalMatches) > knownTotalPosts) {
+                  knownTotalPosts = Number(payload.totalMatches);
+                }
+                const ceilingWorks = Number(preflightInfo?.apiCeilingWorks || 60000);
+                const targetWorks = isAllMode
+                  ? (knownTotalPosts > 0 ? Math.min(knownTotalPosts, ceilingWorks) : Math.max(accumWorks.size + 300, 1200))
+                  : Math.min(knownTotalPosts > 0 ? knownTotalPosts : requestedMaxPages * srcMeta.pageSize, requestedMaxPages * srcMeta.pageSize);
+                const curWorks = Math.max(accumWorks.size, Number(payload.sampledArtworks || 0));
+                const pct = targetWorks > 0
+                  ? Math.min(96, Math.max(4, Math.round((curWorks / targetWorks) * 96)))
+                  : (payload.totalPages ? Math.min(95, Math.round((payload.currentPage / payload.totalPages) * 95)) : 35);
+                progressText.textContent =
+                  knownTotalPosts > 0
+                    ? `[${srcMeta.label}] 第 ${payload.currentPage || startPage} 页 · 已采集 ${curWorks.toLocaleString()} / ${knownTotalPosts.toLocaleString()} 件作品`
+                    : (payload.message || `[${srcMeta.label}] 正在采集第 ${payload.currentPage || startPage} 页 (已采 ${curWorks.toLocaleString()} 作)...`);
+                progressPct.textContent = `${pct}%`;
+                progressFill.style.width = `${pct}%`;
+              } else if (eventType === 'snapshot' || eventType === 'complete') {
+                const ds = payload.data || payload;
+                if (ds.danbooruMap) {
+                  Object.assign(state.danbooruCache, ds.danbooruMap);
+                  Object.assign(accumDanbooru, ds.danbooruMap);
+                }
+                if (ds.nativeTagCategories) Object.assign(accumNativeCats, ds.nativeTagCategories);
+                if (ds.translations || ds.tagTranslations) Object.assign(accumTrans, ds.translations || ds.tagTranslations);
+                if (ds.primaryTag || ds.meta?.queryTag) primaryResolvedTag = ds.primaryTag || ds.meta?.queryTag;
+                if (ds.engine || ds.meta?.engine) lastEngine = ds.engine || ds.meta?.engine;
+                const dsTotal = Number(ds.pixivTotal ?? ds.meta?.totalMatches ?? 0);
+                if (dsTotal > knownTotalPosts) knownTotalPosts = dsTotal;
+
+                for (const w of ds.artworks || []) {
+                  if (w && w.id) accumWorks.set(String(w.id), w);
+                }
+
+                if (eventType === 'complete') {
+                  chunkPagesDone = Number(ds.pagesScanned || ds.meta?.pagesFetched || 1);
+                  chunkHasMore = Boolean(payload.hasMore ?? ds.hasMore);
+                  chunkNextPage = Number(payload.nextPage || ds.nextPage || (startPage + chunkPagesDone));
+                  chunkNextCursor = String(payload.nextCursor || ds.nextCursor || '');
+                  totalPagesScanned += chunkPagesDone;
+                  flushDataset(true, chunkHasMore);
+                } else {
+                  const snapPages = Number(ds.pagesScanned || ds.meta?.pagesFetched || 1);
+                  totalPagesScanned = Math.max(totalPagesScanned, snapPages);
+                  flushDataset(false, true);
+                }
+              } else if (eventType === 'error') {
+                showToast(`采样提示: ${payload.message || '请求异常'}`);
+                chunkHasMore = false;
+              }
+            } catch (_) {}
+          }
         }
+
+        if (!chunkHasMore) {
+          hasMore = false;
+        } else if (!isAllMode && totalPagesScanned >= requestedMaxPages) {
+          hasMore = false;
+        } else if (chunkNextPage <= startPage && !chunkNextCursor) {
+          hasMore = false;
+        } else {
+          startPage = chunkNextPage;
+          cursor = chunkNextCursor;
+        }
+      }
+
+      flushDataset(true, false);
+      progressFill.style.width = '100%';
+      progressPct.textContent = '100%';
+      const finalCount = accumWorks.size;
+      progressText.textContent =
+        knownTotalPosts > 0
+          ? `完成 [${srcMeta.label}] [${primaryResolvedTag}] 采样：已采集 ${finalCount.toLocaleString()} 件 (全站共 ${knownTotalPosts.toLocaleString()} 件 / ${totalPagesScanned} 页)`
+          : `完成 [${srcMeta.label}] [${primaryResolvedTag}] 采样：共 ${finalCount.toLocaleString()} 件作品 (${totalPagesScanned} 页)`;
+
+      // Auto-enrich Pixiv / Safebooru / Zerochan / Rule34 top tags via Danbooru semantic wiki
+      if (['pixiv', 'safebooru', 'zerochan', 'rule34'].includes(source) && finalCount > 0) {
+        enrichTopTagsViaDanbooru(Array.from(accumWorks.values()), primaryResolvedTag);
       }
     } catch (err) {
       if (err.name === 'AbortError') {
-        showToast('已停止翻页并锁定当前已采集样本');
+        flushDataset(true, false);
+        showToast(`已停止翻页并锁定当前已采集的 ${accumWorks.size.toLocaleString()} 件样本`);
       } else {
         showToast(`采样中断: ${err.message}`);
       }
@@ -1505,7 +2040,7 @@
       state.activeStreamAbort = null;
       analyzeBtn.disabled = false;
       stopBtn.classList.add('hidden');
-      setTimeout(() => progressWrap.classList.add('hidden'), 1200);
+      setTimeout(() => progressWrap.classList.add('hidden'), 1800);
     }
   }
 
@@ -2029,7 +2564,9 @@
 
     const spaceJoined = arr.join(' ');
     $('basketSpaceOutput').value = spaceJoined;
-    $('openBasketInPixivBtn').href = `https://www.pixiv.net/search?q=${encodeURIComponent(spaceJoined)}&s_mode=tag&type=artwork`;
+    const srcMeta = SOURCE_META[state.source] || SOURCE_META.pixiv;
+    $('openBasketInPixivBtn').href = srcMeta.searchUrl(spaceJoined);
+    $('openBasketInPixivBtn').textContent = `在 ${srcMeta.label} 搜索此组合 ↗`;
 
     const booruPrompts = arr.map((t) => {
       const db = state.danbooruCache[t] || (state.rawDataset?.danbooruMap && state.rawDataset.danbooruMap[t]);
@@ -2394,10 +2931,32 @@
   let acItems = [];
   let acActiveIndex = -1;
 
+  function applySourceUI() {
+    const srcMeta = SOURCE_META[state.source] || SOURCE_META.pixiv;
+    const isPixiv = state.source === 'pixiv';
+    if ($('tagSearchInput')) $('tagSearchInput').placeholder = srcMeta.placeholder;
+    if ($('sModeSelectChip')) $('sModeSelectChip').classList.toggle('hidden', !isPixiv);
+    if ($('typeSelectChip')) $('typeSelectChip').classList.toggle('hidden', !isPixiv);
+    if ($('includePopularWrap')) $('includePopularWrap').classList.toggle('hidden', !isPixiv);
+    if ($('sourceSelect') && $('sourceSelect').value !== state.source) {
+      $('sourceSelect').value = state.source;
+    }
+    syncCustomSelects();
+  }
+
   function persistRecentSearches() {
     try {
       localStorage.setItem(RECENT_HISTORY_KEY, JSON.stringify(state.recentSearches));
     } catch (_) {}
+  }
+
+  function removeRecentSearch(idx) {
+    if (idx < 0 || idx >= state.recentSearches.length) return;
+    const removed = state.recentSearches[idx];
+    state.recentSearches.splice(idx, 1);
+    persistRecentSearches();
+    renderRecentSearches();
+    if (removed) showToast(`已删除最近搜索: ${removed.tag}`);
   }
 
   function renderRecentSearches() {
@@ -2411,25 +2970,38 @@
     }
     strip.classList.remove('hidden');
     list.innerHTML = state.recentSearches
-      .map(
-        (tag) =>
-          `<button class="tag-preset history-chip" data-history-tag="${escapeHtml(tag)}" type="button" title="搜索 ${escapeHtml(tag)}">${escapeHtml(tag)}</button>`
-      )
+      .map((item, idx) => {
+        const tag = item.tag;
+        const src = item.source || 'pixiv';
+        const prefix = src !== 'pixiv' ? `[${(SOURCE_META[src] || {}).label || src}] ` : '';
+        return `<span class="history-chip-wrap"><button class="tag-preset history-chip" data-history-idx="${idx}" type="button" title="搜索 ${escapeHtml(prefix + tag)}">${escapeHtml(prefix + tag)}</button><button class="history-chip__del" data-del-history-idx="${idx}" type="button" title="删除此条记录" aria-label="删除 ${escapeHtml(tag)}">×</button></span>`;
+      })
       .join('');
-    list.querySelectorAll('[data-history-tag]').forEach((btn) => {
+    list.querySelectorAll('[data-history-idx]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const t = btn.dataset.historyTag;
-        $('tagSearchInput').value = t;
+        const item = state.recentSearches[parseInt(btn.dataset.historyIdx, 10)];
+        if (!item) return;
+        $('tagSearchInput').value = item.tag;
         state.lockedSubTags.clear();
-        executeAnalysis(t);
+        executeAnalysis(item.tag, { source: item.source || 'pixiv' });
+      });
+    });
+    list.querySelectorAll('[data-del-history-idx]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeRecentSearch(parseInt(btn.dataset.delHistoryIdx, 10));
       });
     });
   }
 
-  function recordRecentSearch(tag) {
+  function recordRecentSearch(tag, source = state.source || 'pixiv') {
     const clean = String(tag || '').trim();
     if (!clean) return;
-    state.recentSearches = [clean, ...state.recentSearches.filter((x) => x !== clean)].slice(0, 12);
+    const src = SOURCE_META[source] ? source : 'pixiv';
+    state.recentSearches = [
+      { tag: clean, source: src },
+      ...state.recentSearches.filter((x) => !(x.tag === clean && (x.source || 'pixiv') === src))
+    ].slice(0, 12);
     persistRecentSearches();
     renderRecentSearches();
   }
@@ -2440,7 +3012,7 @@
       localStorage.removeItem(RECENT_HISTORY_KEY);
     } catch (_) {}
     renderRecentSearches();
-    showToast('已清空本地搜索历史');
+    showToast('已清空全部本地搜索历史');
   }
 
   function hideAutocomplete() {
@@ -2485,7 +3057,8 @@
       .map((c) => ({
         tag_name: String(c.tag_name || c.name || '').trim(),
         tag_translation: String(c.tag_translation || c.translated_name || '').trim(),
-        access_count: c.access_count || ''
+        access_count: c.access_count || '',
+        category: c.category || ''
       }))
       .filter((c) => c.tag_name)
       .slice(0, 10);
@@ -2504,11 +3077,14 @@
           c.tag_translation && c.tag_translation.toLowerCase() !== c.tag_name.toLowerCase()
             ? `<span class="ac-item__trans">${escapeHtml(c.tag_translation)}</span>`
             : '';
+        const catMeta = c.category && CATEGORY_META[c.category] ? CATEGORY_META[c.category] : null;
+        const catHtml = catMeta ? `<span class="ac-item__cat ac-item__cat--${c.category}">${catMeta.short}</span>` : '';
         const metaStr = formatAccessCount(c.access_count);
         const metaHtml = metaStr ? `<span class="ac-item__meta">${escapeHtml(metaStr)}</span>` : '';
         return `
           <div class="ac-item" role="option" aria-selected="false" data-ac-idx="${idx}" data-ac="${escapeHtml(c.tag_name)}">
             <div class="ac-item__main">
+              ${catHtml}
               <span class="ac-item__tag">${escapeHtml(c.tag_name)}</span>
               ${transHtml}
             </div>
@@ -2551,7 +3127,8 @@
       acAbort = ctrl;
       try {
         const headers = state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {};
-        const r = await apiFetch(`/api/pixiv/autocomplete?q=${encodeURIComponent(q)}`, {
+        const src = state.source || 'pixiv';
+        const r = await apiFetch(`/api/pixiv/autocomplete?source=${encodeURIComponent(src)}&q=${encodeURIComponent(q)}`, {
           headers,
           signal: ctrl.signal
         });
@@ -2672,7 +3249,67 @@
       });
     });
 
-    // Query Console
+    // Query Console & Multi-Site Source Switcher
+    if ($('sourceSelect')) {
+      $('sourceSelect').value = state.source;
+      $('sourceSelect').addEventListener('change', (e) => {
+        const nextSrc = e.target.value;
+        state.source = SOURCE_META[nextSrc] ? nextSrc : 'pixiv';
+        localStorage.setItem('pixez_source_v43', state.source);
+        applySourceUI();
+        hideAutocomplete();
+        hidePreflightBanner();
+        showToast(`已切换数据源: ${(SOURCE_META[state.source] || SOURCE_META.pixiv).label}`);
+      });
+    }
+
+    // Pre-flight Confirmation Actions
+    const runPendingPreflight = (overridePages = null) => {
+      const p = state.pendingPreflight;
+      if (!p) return;
+      if (overridePages && $('pagesSelect')) {
+        $('pagesSelect').value = overridePages;
+        syncCustomSelects();
+      }
+      state.pendingPreflight = null;
+      executeAnalysis(p.tag, {
+        source: p.source,
+        overridePages: overridePages || 'ALL',
+        skipConfirm: true,
+        preflightInfo: p.preflightInfo
+      });
+    };
+    $('preflightConfirmAllBtn')?.addEventListener('click', () => runPendingPreflight('ALL'));
+    $('preflightCap25Btn')?.addEventListener('click', () => runPendingPreflight('25'));
+    $('preflightCap50Btn')?.addEventListener('click', () => runPendingPreflight('50'));
+    $('preflightCap100Btn')?.addEventListener('click', () => runPendingPreflight('100'));
+    $('preflightCancelBtn')?.addEventListener('click', hidePreflightBanner);
+
+    // Tag Inspector Sort, Type Filter & Load More
+    $('modalArtworksSortSelect')?.addEventListener('change', () => {
+      state.inspectorLimit = 36;
+      renderInspectorArtworks();
+    });
+    $('modalArtworksTypeSelect')?.addEventListener('change', () => {
+      state.inspectorLimit = 36;
+      renderInspectorArtworks();
+    });
+    $('modalArtworksLoadMoreBtn')?.addEventListener('click', () => {
+      state.inspectorLimit += 48;
+      renderInspectorArtworks();
+    });
+
+    // Optional Rule34 Credentials
+    if ($('r34ApiKeyInput')) $('r34ApiKeyInput').value = state.r34Key;
+    if ($('r34UserIdInput')) $('r34UserIdInput').value = state.r34Uid;
+    $('saveR34CredsBtn')?.addEventListener('click', () => {
+      state.r34Key = ($('r34ApiKeyInput')?.value || '').trim();
+      state.r34Uid = ($('r34UserIdInput')?.value || '').trim();
+      localStorage.setItem('pixez_r34_key', state.r34Key);
+      localStorage.setItem('pixez_r34_uid', state.r34Uid);
+      showToast(state.r34Key && state.r34Uid ? '已保存 Rule34 API 凭据' : '已清空 Rule34 API 凭据');
+    });
+
     $('analyzeBtn').addEventListener('click', () => executeAnalysis());
     $('stopStreamBtn').addEventListener('click', () => {
       if (state.activeStreamAbort) state.activeStreamAbort.abort();
@@ -3110,6 +3747,7 @@
   initOpticalScrollbar();
   saveBasket();
   initCustomSelects();
+  applySourceUI();
   initQuickJumpRail();
   initEvents();
   renderRecentSearches();

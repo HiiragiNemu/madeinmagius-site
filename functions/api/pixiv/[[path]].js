@@ -1,10 +1,15 @@
 // Serverless Cloudflare Pages Function for PixEz Pulse Web Terminal (/api/pixiv/*)
-// Supports CORS for hiiraginemu.github.io, madeinmagius-site.pages.dev & localhost,
-// and seamlessly falls back to HibiAPI when Cloudflare Workers egress encounters Pixiv WAF HTML.
+// v4.3: Multi-Site (Pixiv + Danbooru + Sankaku + Safebooru + Yande.re + Konachan + Zerochan + Rule34),
+// Pre-flight /tag-info total count, Multi-chunk pagination past 750 works, and live /danbooru/enrich.
 
 const DEFAULT_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const BOORU_UA = 'PixEzPulse/4.3 (MultiBooruTagAnalyzer; MadeInMagius)';
+const ZEROCHAN_UA = 'PixEzPulse - MadeInMagius';
 const HIBI_BASE = 'https://hibiapi.getloli.com/api/pixiv';
+
+const ALLOWED_IMAGE_HOST_RE =
+  /^https:\/\/(i\.pximg\.net|s\.pximg\.net|cdn\.donmai\.us|v\.sankakucomplex\.com|s\.sankakucomplex\.com|cs\.sankakucomplex\.com|safebooru\.org|files\.yande\.re|assets\.yande\.re|konachan\.com|konachan\.net|s[0-9]*\.zerochan\.net|static\.zerochan\.net|api-cdn\.rule34\.xxx|us\.rule34\.xxx|wimg\.rule34\.xxx)\//i;
 
 const GENERIC_TRANSLATIONS = {
   'オリジナル': '原创',
@@ -50,7 +55,7 @@ function buildCorsHeaders(request) {
   return {
     'Access-Control-Allow-Origin': resolveAllowedOrigin(request),
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Pixiv-Cookie, X-Pixiv-Token',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Pixiv-Cookie, X-Pixiv-Token, X-R34-Key, X-R34-Uid',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -89,31 +94,796 @@ function hibiHeaders() {
   };
 }
 
-async function fetchJsonSafe(url, headers) {
+function refererForImageUrl(url) {
+  if (/pximg\.net/i.test(url)) return 'https://www.pixiv.net/';
+  if (/donmai\.us/i.test(url)) return 'https://danbooru.donmai.us/';
+  if (/sankakucomplex\.com/i.test(url)) return 'https://beta.sankakucomplex.com/';
+  if (/zerochan\.net/i.test(url)) return 'https://www.zerochan.net/';
+  if (/yande\.re/i.test(url)) return 'https://yande.re/';
+  if (/konachan\.(com|net)/i.test(url)) return 'https://konachan.com/';
+  if (/safebooru\.org/i.test(url)) return 'https://safebooru.org/';
+  if (/rule34\.xxx/i.test(url)) return 'https://rule34.xxx/';
+  return '';
+}
+
+async function fetchJsonSafe(url, headers = {}) {
   try {
     const res = await fetch(url, { headers });
     const ct = (res.headers.get('content-type') || '').toLowerCase();
-    if (!res.ok || !ct.includes('json')) return null;
-    return await res.json();
+    if (!res.ok) return null;
+    if (ct.includes('json')) return await res.json();
+    const txt = await res.text();
+    try {
+      return JSON.parse(txt);
+    } catch {
+      return null;
+    }
   } catch {
     return null;
   }
 }
 
-async function fetchPximgWithFallback(imgUrl) {
-  const upstream = await fetch(imgUrl, {
-    headers: {
-      'User-Agent': DEFAULT_UA,
-      Referer: 'https://www.pixiv.net/',
-    },
-  }).catch(() => null);
+async function fetchTextSafe(url, headers = {}) {
+  try {
+    const res = await fetch(url, { headers });
+    const text = await res.text();
+    return { ok: res.ok, status: res.status, text };
+  } catch {
+    return { ok: false, status: 0, text: '' };
+  }
+}
+
+async function fetchImageWithFallback(imgUrl) {
+  const h = { 'User-Agent': DEFAULT_UA };
+  const ref = refererForImageUrl(imgUrl);
+  if (ref) h.Referer = ref;
+  const upstream = await fetch(imgUrl, { headers: h }).catch(() => null);
   if (upstream && upstream.ok) return upstream;
 
-  const mirrorUrl = imgUrl.replace(/^https:\/\/i\.pximg\.net\//i, 'https://i.pixiv.re/');
-  const mirrorRes = await fetch(mirrorUrl, {
-    headers: { 'User-Agent': DEFAULT_UA },
-  }).catch(() => null);
-  return mirrorRes || upstream;
+  if (/^https:\/\/i\.pximg\.net\//i.test(imgUrl)) {
+    const mirrorUrl = imgUrl.replace(/^https:\/\/i\.pximg\.net\//i, 'https://i.pixiv.re/');
+    const mirrorRes = await fetch(mirrorUrl, { headers: { 'User-Agent': DEFAULT_UA } }).catch(() => null);
+    if (mirrorRes && mirrorRes.ok) return mirrorRes;
+  }
+  return upstream;
+}
+
+function mapBooruCatCode(code) {
+  const n = Number(code);
+  if (n === 4) return 'character';
+  if (n === 3) return 'series_ip';
+  if (n === 1 || n === 5 || n === 8 || n === 9) return 'meta_general';
+  return 'attribute_xp';
+}
+
+function mapRatingToXRestrict(rating) {
+  const r = String(rating || '').toLowerCase();
+  if (r === 'e' || r === 'explicit') return 1;
+  return 0;
+}
+
+function matchesBooruAgeMode(xRestrict, rating, mode) {
+  const r = String(rating || '').toLowerCase();
+  if (mode === 'safe') return xRestrict === 0 && r !== 'e' && r !== 'explicit' && r !== 'q' && r !== 'questionable';
+  if (mode === 'r18') return xRestrict > 0 || r === 'e' || r === 'explicit';
+  return true;
+}
+
+function parseZerochanJson(rawText) {
+  if (!rawText) return null;
+  let cleaned = rawText.trim();
+  if (cleaned.startsWith('{ {')) cleaned = cleaned.slice(2).trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const idx = cleaned.indexOf('{"items"');
+    if (idx >= 0) {
+      try {
+        return JSON.parse(cleaned.slice(idx));
+      } catch {}
+    }
+    return null;
+  }
+}
+
+function parseSourceUrlInput(source, rawInput) {
+  const trimmed = String(rawInput || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const u = new URL(trimmed);
+      const q = u.searchParams.get('tags') || u.searchParams.get('q') || u.searchParams.get('search[name_matches]');
+      if (q) return q.trim();
+      if (/zerochan\.net/i.test(u.hostname)) {
+        const seg = u.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
+        if (seg) return decodeURIComponent(seg.replace(/\+/g, ' '));
+      }
+      if (/danbooru\.donmai\.us/i.test(u.hostname) && u.pathname.startsWith('/artists')) {
+        const nameParam = u.searchParams.get('search[any_name_matches]') || u.searchParams.get('search[name_matches]');
+        if (nameParam) return nameParam.trim();
+      }
+    } catch {}
+  }
+  return trimmed;
+}
+
+async function resolveNonAsciiToBooruTag(rawTag) {
+  const t = String(rawTag || '').trim();
+  if (!t || /^[\x00-\x7F]+$/.test(t)) {
+    return { tag: t.replace(/\s+/g, '_'), original: t, resolvedFromCjk: false };
+  }
+  const items = await fetchJsonSafe(
+    `https://danbooru.donmai.us/wiki_pages.json?search[other_names_match]=${encodeURIComponent(t)}&limit=5&only=title,other_names,tag[name,category,post_count]`,
+    { 'User-Agent': BOORU_UA, Accept: 'application/json' }
+  );
+  if (Array.isArray(items) && items.length > 0) {
+    const sorted = items
+      .filter((x) => x && x.title)
+      .sort((a, b) => Number(b.tag?.post_count || 0) - Number(a.tag?.post_count || 0));
+    if (sorted[0]?.title) {
+      return { tag: sorted[0].title, original: t, resolvedFromCjk: true };
+    }
+  }
+  return { tag: t, original: t, resolvedFromCjk: false };
+}
+
+async function batchEnrichWithDanbooru(tagsList) {
+  const cleanTags = [];
+  for (const raw of Array.isArray(tagsList) ? tagsList : []) {
+    const t = String(raw || '').trim();
+    if (!t || /\d+users入り$/i.test(t) || /\s/.test(t)) continue;
+    if (!cleanTags.includes(t)) cleanTags.push(t);
+  }
+  const toQuery = cleanTags.slice(0, 60);
+  const out = {};
+  const CHUNK = 20;
+  for (let i = 0; i < toQuery.length; i += CHUNK) {
+    const chunk = toQuery.slice(i, i + CHUNK);
+    const params = new URLSearchParams({
+      'search[other_names_include_any]': chunk.join(' '),
+      limit: '100',
+      only: 'title,other_names,tag[name,category,post_count]',
+    });
+    const items = await fetchJsonSafe(`https://danbooru.donmai.us/wiki_pages.json?${params.toString()}`, {
+      'User-Agent': BOORU_UA,
+      Accept: 'application/json',
+    });
+    if (!Array.isArray(items)) continue;
+    for (const pixTag of chunk) {
+      const lowerPix = pixTag.toLowerCase();
+      let best = null;
+      for (const item of items) {
+        const others = Array.isArray(item.other_names) ? item.other_names : [];
+        const matchOther = others.some((n) => String(n).toLowerCase() === lowerPix);
+        const matchTitle = String(item.title || '').toLowerCase() === lowerPix;
+        if (matchOther || matchTitle) {
+          const pc = Number(item.tag?.post_count || 0);
+          if (!best || pc > best.postCount) {
+            best = {
+              danbooruTag: item.title || item.tag?.name || '',
+              category: mapBooruCatCode(item.tag?.category ?? 0),
+              postCount: pc,
+            };
+          }
+        }
+      }
+      if (best && best.danbooruTag) {
+        out[pixTag] = best;
+      }
+    }
+  }
+  return out;
+}
+
+async function fetchBooruAutocomplete(source, kw) {
+  const bh = { 'User-Agent': BOORU_UA, Accept: 'application/json' };
+  if (source === 'danbooru') {
+    const out = [];
+    if (/[^\x00-\x7F]/.test(kw)) {
+      const [wiki, artists] = await Promise.all([
+        fetchJsonSafe(
+          `https://danbooru.donmai.us/wiki_pages.json?search[other_names_match]=${encodeURIComponent(kw + '*')}&limit=8&only=title,other_names,tag[name,category,post_count]`,
+          bh
+        ),
+        fetchJsonSafe(
+          `https://danbooru.donmai.us/artists.json?search[any_name_matches]=${encodeURIComponent(kw + '*')}&limit=5`,
+          bh
+        ),
+      ]);
+      if (Array.isArray(wiki)) {
+        for (const w of wiki) {
+          if (!w?.title) continue;
+          const alias = Array.isArray(w.other_names) ? w.other_names.find((n) => /[^\x00-\x7F]/.test(n)) || '' : '';
+          out.push({
+            tag_name: w.title,
+            tag_translation: alias || w.title.replace(/_/g, ' '),
+            access_count: Number(w.tag?.post_count || 0),
+            category: mapBooruCatCode(w.tag?.category ?? 0),
+            type: 'danbooru_wiki',
+          });
+        }
+      }
+      if (Array.isArray(artists)) {
+        for (const a of artists) {
+          if (!a?.name || out.some((x) => x.tag_name === a.name)) continue;
+          out.push({
+            tag_name: a.name,
+            tag_translation: `画师: ${(a.other_names || []).slice(0, 2).join(' / ') || a.name}`,
+            access_count: 0,
+            category: 'meta_general',
+            type: 'danbooru_artist',
+          });
+        }
+      }
+      if (out.length > 0) return out.slice(0, 12);
+    }
+    const list = await fetchJsonSafe(
+      `https://danbooru.donmai.us/autocomplete.json?search[query]=${encodeURIComponent(kw)}&search[type]=tag_query&limit=12`,
+      bh
+    );
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter((x) => x && x.value)
+      .map((x) => ({
+        tag_name: x.value,
+        tag_translation: x.antecedent ? `${x.label} (${x.antecedent})` : x.label || '',
+        access_count: Number(x.post_count || 0),
+        category: mapBooruCatCode(x.category ?? 0),
+        type: 'danbooru',
+      }));
+  }
+  if (source === 'sankaku') {
+    const list = await fetchJsonSafe(
+      `https://sankakuapi.com/tags/autosuggestCreating?tag=${encodeURIComponent(kw)}`,
+      { 'User-Agent': BOORU_UA, Accept: 'application/vnd.sankaku.api+json;v=2' }
+    );
+    if (!Array.isArray(list)) return [];
+    return list
+      .slice(0, 12)
+      .map((t) => ({
+        tag_name: t.tagName || t.name || '',
+        tag_translation: t.name_ja || t.name_en || '',
+        access_count: Number(t.post_count || t.count || 0),
+        category: mapBooruCatCode(t.type ?? 0),
+        type: 'sankaku',
+      }))
+      .filter((c) => c.tag_name);
+  }
+  if (source === 'safebooru') {
+    const list = await fetchJsonSafe(`https://safebooru.org/autocomplete.php?q=${encodeURIComponent(kw)}`, bh);
+    if (!Array.isArray(list)) return [];
+    return list
+      .slice(0, 12)
+      .map((item) => {
+        const m = String(item.label || '').match(/\((\d+)\)\s*$/);
+        return { tag_name: item.value || '', tag_translation: '', access_count: m ? Number(m[1]) : 0, type: 'safebooru' };
+      })
+      .filter((c) => c.tag_name);
+  }
+  if (source === 'yandere' || source === 'konachan') {
+    const host = source === 'yandere' ? 'yande.re' : 'konachan.com';
+    const list = await fetchJsonSafe(`https://${host}/tag.json?name=${encodeURIComponent(kw)}&order=count&limit=12`, bh);
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((t) => ({
+        tag_name: t.name || '',
+        tag_translation: '',
+        access_count: Number(t.count || 0),
+        category: mapBooruCatCode(t.type ?? 0),
+        type: source,
+      }))
+      .filter((c) => c.tag_name);
+  }
+  if (source === 'rule34') {
+    const list = await fetchJsonSafe(`https://ac.rule34.xxx/autocomplete.php?q=${encodeURIComponent(kw)}`, bh);
+    if (!Array.isArray(list)) return [];
+    return list
+      .slice(0, 12)
+      .map((item) => {
+        const m = String(item.label || '').match(/\((\d+)\)\s*$/);
+        return {
+          tag_name: item.value || '',
+          tag_translation: item.type || '',
+          access_count: m ? Number(m[1]) : 0,
+          type: 'rule34',
+        };
+      })
+      .filter((c) => c.tag_name);
+  }
+  if (source === 'zerochan') {
+    const list = await fetchJsonSafe(
+      `https://danbooru.donmai.us/autocomplete.json?search[query]=${encodeURIComponent(kw)}&search[type]=tag_query&limit=10`,
+      bh
+    );
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((x) => ({
+        tag_name: (x.label || x.value || '').replace(/_/g, ' '),
+        tag_translation: x.value || '',
+        access_count: Number(x.post_count || 0),
+        type: 'zerochan',
+      }))
+      .filter((c) => c.tag_name);
+  }
+  return [];
+}
+
+async function fetchBooruTagInfo({ source, tag: rawTag, mode = 'all', r34Key = '', r34Uid = '' }) {
+  const cleaned = parseSourceUrlInput(source, rawTag);
+  if (!cleaned) return { error: true, message: '请输入标签' };
+  const bh = { 'User-Agent': BOORU_UA, Accept: 'application/json' };
+
+  if (source === 'danbooru') {
+    const resolved = await resolveNonAsciiToBooruTag(cleaned);
+    let queryTag = resolved.tag;
+    if (mode === 'safe' && !/rating:/i.test(queryTag)) queryTag += ' rating:g';
+    else if (mode === 'r18' && !/rating:/i.test(queryTag)) queryTag += ' rating:e';
+    const d = await fetchJsonSafe(`https://danbooru.donmai.us/counts/posts.json?tags=${encodeURIComponent(queryTag)}`, bh);
+    const totalPosts = Number(d?.counts?.posts || 0);
+    return {
+      error: false,
+      source: 'danbooru',
+      resolvedTag: resolved.tag,
+      resolvedFromCjk: resolved.resolvedFromCjk,
+      totalPosts,
+      pageSize: 100,
+      estimatedPages: totalPosts > 0 ? Math.ceil(totalPosts / 100) : 0,
+      apiCeilingWorks: 100000,
+      note: resolved.resolvedFromCjk
+        ? `已通过 Danbooru Wiki 自动将 [${cleaned}] 映射为 [${resolved.tag}]；全站共 ${totalPosts.toLocaleString()} 件作品（每页 100 件，官方原生角色/作品/属性/画师分类）`
+        : `Danbooru 全站共 ${totalPosts.toLocaleString()} 件作品（每页 100 件，官方原生角色/作品/属性/画师分类）`,
+    };
+  }
+  if (source === 'sankaku') {
+    const resolved = await resolveNonAsciiToBooruTag(cleaned);
+    const list = await fetchJsonSafe(
+      `https://sankakuapi.com/tags/autosuggestCreating?tag=${encodeURIComponent(resolved.tag)}`,
+      { 'User-Agent': BOORU_UA, Accept: 'application/vnd.sankaku.api+json;v=2' }
+    );
+    let totalPosts = 0;
+    if (Array.isArray(list)) {
+      const exact = list.find((x) => String(x.tagName || x.name || '').toLowerCase() === resolved.tag.toLowerCase()) || list[0];
+      totalPosts = Number(exact?.post_count || exact?.count || 0);
+    }
+    return {
+      error: false,
+      source: 'sankaku',
+      resolvedTag: resolved.tag,
+      resolvedFromCjk: resolved.resolvedFromCjk,
+      totalPosts,
+      pageSize: 40,
+      estimatedPages: totalPosts > 0 ? Math.ceil(totalPosts / 40) : 0,
+      apiCeilingWorks: 20000,
+      note: `Sankaku Complex 全站约 ${totalPosts.toLocaleString()} 件作品（每页 40 件，原生双语分类与 Keyset 深度翻页）`,
+    };
+  }
+  if (source === 'safebooru') {
+    const resolved = await resolveNonAsciiToBooruTag(cleaned);
+    const r = await fetchTextSafe(
+      `https://safebooru.org/index.php?page=dapi&s=post&q=index&limit=1&tags=${encodeURIComponent(resolved.tag)}`,
+      { 'User-Agent': BOORU_UA }
+    );
+    const m = r.text.match(/count="(\d+)"/i);
+    const totalPosts = m ? Number(m[1]) : 0;
+    return {
+      error: false,
+      source: 'safebooru',
+      resolvedTag: resolved.tag,
+      resolvedFromCjk: resolved.resolvedFromCjk,
+      totalPosts,
+      pageSize: 100,
+      estimatedPages: totalPosts > 0 ? Math.ceil(totalPosts / 100) : 0,
+      apiCeilingWorks: 20000,
+      note: `Safebooru 全站共 ${totalPosts.toLocaleString()} 件全年龄作品（每页 100 件）`,
+    };
+  }
+  if (source === 'yandere' || source === 'konachan') {
+    const host = source === 'yandere' ? 'yande.re' : 'konachan.com';
+    const label = source === 'yandere' ? 'Yande.re' : 'Konachan';
+    const resolved = await resolveNonAsciiToBooruTag(cleaned);
+    const r = await fetchTextSafe(`https://${host}/post/index.xml?tags=${encodeURIComponent(resolved.tag)}&limit=1`, {
+      'User-Agent': BOORU_UA,
+    });
+    const m = r.text.match(/count="(\d+)"/i);
+    const totalPosts = m ? Number(m[1]) : 0;
+    return {
+      error: false,
+      source,
+      resolvedTag: resolved.tag,
+      resolvedFromCjk: resolved.resolvedFromCjk,
+      totalPosts,
+      pageSize: 100,
+      estimatedPages: totalPosts > 0 ? Math.ceil(totalPosts / 100) : 0,
+      apiCeilingWorks: 50000,
+      note: `${label} 全站共 ${totalPosts.toLocaleString()} 件作品（每页 100 件）`,
+    };
+  }
+  if (source === 'zerochan') {
+    const zTag = cleaned.replace(/_/g, ' ');
+    const r = await fetchTextSafe(`https://www.zerochan.net/${encodeURIComponent(zTag)}?json&l=1&p=1`, {
+      'User-Agent': ZEROCHAN_UA,
+    });
+    const parsed = parseZerochanJson(r.text);
+    const hasItems = Boolean(parsed && Array.isArray(parsed.items) && parsed.items.length > 0);
+    return {
+      error: false,
+      source: 'zerochan',
+      resolvedTag: zTag,
+      totalPosts: 0,
+      pageSize: 50,
+      estimatedPages: 0,
+      apiCeilingWorks: 5000,
+      note: hasItems
+        ? `Zerochan 已连接 [${zTag}]（接口不返回总件数，将按每页 50 件持续翻页直到末页）`
+        : `Zerochan 暂未找到 [${zTag}] 的条目，建议输入英文规范名（如 Original）`,
+    };
+  }
+  if (source === 'rule34') {
+    const resolved = await resolveNonAsciiToBooruTag(cleaned);
+    if (!r34Key || !r34Uid) {
+      return {
+        error: true,
+        source: 'rule34',
+        resolvedTag: resolved.tag,
+        needsAuth: true,
+        message: 'Rule34 官方 API 现已要求免费 api_key 与 user_id（请在「账号」弹窗高级设置中填入）。',
+      };
+    }
+    const r = await fetchTextSafe(
+      `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&limit=1&tags=${encodeURIComponent(resolved.tag)}&api_key=${encodeURIComponent(r34Key)}&user_id=${encodeURIComponent(r34Uid)}`,
+      { 'User-Agent': BOORU_UA }
+    );
+    const m = r.text.match(/count="(\d+)"/i);
+    const totalPosts = m ? Number(m[1]) : 0;
+    return {
+      error: false,
+      source: 'rule34',
+      resolvedTag: resolved.tag,
+      totalPosts,
+      pageSize: 100,
+      estimatedPages: totalPosts > 0 ? Math.ceil(totalPosts / 100) : 0,
+      apiCeilingWorks: 20000,
+      note: `Rule34 全站共 ${totalPosts.toLocaleString()} 件作品（每页 100 件）`,
+    };
+  }
+  return { error: true, message: `未知数据源: ${source}` };
+}
+
+async function fetchBooruChunk({ source, tag: rawTag, startPage = 1, chunkPages = 10, cursor = '', mode = 'all', order = 'date_d', r34Key = '', r34Uid = '', onProgress }) {
+  const cleaned = parseSourceUrlInput(source, rawTag);
+  const resolved = source === 'zerochan' ? { tag: cleaned.replace(/_/g, ' '), resolvedFromCjk: false } : await resolveNonAsciiToBooruTag(cleaned);
+  const queryTag = resolved.tag;
+  const bh = { 'User-Agent': BOORU_UA, Accept: 'application/json' };
+
+  const artworks = [];
+  const seenIds = new Set();
+  const nativeTagCategories = {};
+  const translations = {};
+  let totalPosts = 0;
+  let pagesScanned = 0;
+  let hasMore = false;
+  let nextPage = startPage;
+  let nextCursor = '';
+
+  if (source === 'danbooru') {
+    let apiTags = queryTag;
+    if (mode === 'safe' && !/rating:/i.test(apiTags)) apiTags += ' rating:g';
+    else if (mode === 'r18' && !/rating:/i.test(apiTags)) apiTags += ' rating:e';
+    const countTags = apiTags;
+    if (order === 'popular_d' && !/order:/i.test(apiTags)) apiTags += ' order:favcount';
+    else if (order === 'date' && !/order:/i.test(apiTags)) apiTags += ' order:id_asc';
+
+    if (startPage === 1) {
+      const cnt = await fetchJsonSafe(`https://danbooru.donmai.us/counts/posts.json?tags=${encodeURIComponent(countTags)}`, bh);
+      totalPosts = Number(cnt?.counts?.posts || 0);
+    }
+
+    const batchSize = 3;
+    let reachedEnd = false;
+    for (let offset = 0; offset < chunkPages && !reachedEnd; offset += batchSize) {
+      const batch = [];
+      for (let k = 0; k < batchSize && offset + k < chunkPages; k++) batch.push(startPage + offset + k);
+      onProgress?.({ currentPage: batch[0], sampledInChunk: artworks.length, totalPosts });
+      const results = await Promise.all(
+        batch.map((p) =>
+          fetchJsonSafe(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(apiTags)}&limit=100&page=${p}`, bh).then((data) => ({ p, data }))
+        )
+      );
+      for (const { p, data } of results) {
+        if (!Array.isArray(data) || data.length === 0) {
+          reachedEnd = true;
+          continue;
+        }
+        pagesScanned++;
+        nextPage = Math.max(nextPage, p + 1);
+        for (const item of data) {
+          if (!item || !item.id) continue;
+          const id = String(item.id);
+          if (seenIds.has(id)) continue;
+          seenIds.add(id);
+          const charTags = String(item.tag_string_character || '').split(/\s+/).filter(Boolean);
+          const copyTags = String(item.tag_string_copyright || '').split(/\s+/).filter(Boolean);
+          const genTags = String(item.tag_string_general || '').split(/\s+/).filter(Boolean);
+          const artistTags = String(item.tag_string_artist || '').split(/\s+/).filter(Boolean);
+          const metaTags = String(item.tag_string_meta || '').split(/\s+/).filter(Boolean);
+          for (const t of charTags) nativeTagCategories[t] = 'character';
+          for (const t of copyTags) nativeTagCategories[t] = 'series_ip';
+          for (const t of genTags) if (!nativeTagCategories[t]) nativeTagCategories[t] = 'attribute_xp';
+          for (const t of artistTags) nativeTagCategories[t] = 'meta_general';
+          for (const t of metaTags) nativeTagCategories[t] = 'meta_general';
+          const allTags = [...new Set([...charTags, ...copyTags, ...genTags, ...artistTags, ...metaTags])];
+          const thumb = item.preview_file_url || item.large_file_url || item.file_url || '';
+          artworks.push({
+            id: `db_${id}`,
+            externalId: id,
+            source: 'danbooru',
+            externalUrl: `https://danbooru.donmai.us/posts/${id}`,
+            title: charTags[0] ? charTags[0].replace(/_/g, ' ') : `Danbooru #${id}`,
+            tags: allTags,
+            userId: artistTags[0] || String(item.uploader_id || ''),
+            userName: artistTags.join(', ') || `Uploader #${item.uploader_id || ''}`,
+            thumbUrl: thumb,
+            regularUrl: item.large_file_url || item.file_url || thumb,
+            originalUrl: item.file_url || item.large_file_url || thumb,
+            pageCount: 1,
+            illustType: item.file_ext === 'mp4' || item.file_ext === 'webm' ? 2 : 0,
+            xRestrict: mapRatingToXRestrict(item.rating),
+            isAi: allTags.some((t) => /^ai[-_]?generated$/i.test(t)),
+            bookmarkCount: Number(item.fav_count || item.score || 0),
+          });
+        }
+        if (data.length < 95) reachedEnd = true;
+      }
+    }
+    hasMore = !reachedEnd && nextPage <= 1000 && (totalPosts === 0 || (nextPage - 1) * 100 < totalPosts);
+  } else if (source === 'sankaku') {
+    let skTags = queryTag;
+    if (order === 'popular_d' && !/order:/i.test(skTags)) skTags += ' order:popular';
+    else if (order === 'date' && !/order:/i.test(skTags)) skTags += ' order:id_asc';
+    let cur = cursor;
+    let reachedEnd = false;
+    for (let i = 0; i < chunkPages && !reachedEnd; i++) {
+      const pNum = startPage + i;
+      onProgress?.({ currentPage: pNum, sampledInChunk: artworks.length, totalPosts });
+      const apiUrl = cur
+        ? `https://sankakuapi.com/posts/keyset?tags=${encodeURIComponent(skTags)}&limit=40&next=${encodeURIComponent(cur)}`
+        : `https://sankakuapi.com/posts/keyset?tags=${encodeURIComponent(skTags)}&limit=40`;
+      const data = await fetchJsonSafe(apiUrl, { 'User-Agent': BOORU_UA, Accept: 'application/vnd.sankaku.api+json;v=2' });
+      const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : null;
+      if (!list || list.length === 0) {
+        reachedEnd = true;
+        break;
+      }
+      pagesScanned++;
+      nextPage = pNum + 1;
+      cur = data?.meta?.next || '';
+      nextCursor = cur;
+      for (const item of list) {
+        if (!item || !item.id) continue;
+        const id = String(item.id);
+        if (seenIds.has(id)) continue;
+        const xRestrict = mapRatingToXRestrict(item.rating);
+        if (!matchesBooruAgeMode(xRestrict, item.rating, mode)) continue;
+        seenIds.add(id);
+        const tags = [];
+        let artistName = item.author?.name || '';
+        if (Array.isArray(item.tags)) {
+          for (const tObj of item.tags) {
+            const tName = tObj?.tagName || tObj?.name || '';
+            if (!tName) continue;
+            tags.push(tName);
+            nativeTagCategories[tName] = mapBooruCatCode(tObj.type ?? 0);
+            if (tObj.name_ja && tObj.name_ja !== tName) translations[tName] = tObj.name_ja;
+            else if (tObj.name_en && tObj.name_en !== tName) translations[tName] = tObj.name_en;
+            if (Number(tObj.type) === 1 && !artistName) artistName = tObj.name_en || tName;
+          }
+        }
+        artworks.push({
+          id: `sk_${id}`,
+          externalId: id,
+          source: 'sankaku',
+          externalUrl: `https://beta.sankakucomplex.com/post/show/${id}`,
+          title: `Sankaku #${id}`,
+          tags,
+          userId: String(item.author?.id || ''),
+          userName: artistName || 'Sankaku',
+          thumbUrl: item.preview_url || item.sample_url || '',
+          regularUrl: item.sample_url || item.file_url || item.preview_url || '',
+          originalUrl: item.file_url || item.sample_url || '',
+          pageCount: 1,
+          illustType: String(item.file_type || '').startsWith('video/') ? 2 : 0,
+          xRestrict,
+          isAi: Boolean(item.has_ai_derivatives) || tags.some((t) => /ai_generated|novelai|stable_diffusion/i.test(t)),
+          bookmarkCount: Number(item.fav_count || item.total_score || 0),
+        });
+      }
+      if (!cur) reachedEnd = true;
+    }
+    hasMore = !reachedEnd && Boolean(nextCursor);
+  } else if (source === 'safebooru' || source === 'rule34') {
+    if (source === 'rule34' && (!r34Key || !r34Uid)) {
+      throw new Error('Rule34 需要提供免费的 api_key 与 user_id');
+    }
+    const base = source === 'safebooru' ? 'https://safebooru.org' : 'https://api.rule34.xxx';
+    const authQ = source === 'rule34' ? `&api_key=${encodeURIComponent(r34Key)}&user_id=${encodeURIComponent(r34Uid)}` : '';
+    let gelTags = queryTag;
+    if (order === 'popular_d' && !/sort:/i.test(gelTags)) gelTags += ' sort:score:desc';
+    else if (order === 'date' && !/sort:/i.test(gelTags)) gelTags += ' sort:id:asc';
+    if (startPage === 1) {
+      const cntRes = await fetchTextSafe(`${base}/index.php?page=dapi&s=post&q=index&limit=1&tags=${encodeURIComponent(queryTag)}${authQ}`, { 'User-Agent': BOORU_UA });
+      const m = cntRes.text.match(/count="(\d+)"/i);
+      if (m) totalPosts = Number(m[1]);
+    }
+    const batchSize = 3;
+    let reachedEnd = false;
+    for (let offset = 0; offset < chunkPages && !reachedEnd; offset += batchSize) {
+      const batch = [];
+      for (let k = 0; k < batchSize && offset + k < chunkPages; k++) batch.push(startPage + offset + k);
+      onProgress?.({ currentPage: batch[0], sampledInChunk: artworks.length, totalPosts });
+      const results = await Promise.all(
+        batch.map((p) =>
+          fetchJsonSafe(`${base}/index.php?page=dapi&s=post&q=index&json=1&limit=100&pid=${p - 1}&tags=${encodeURIComponent(gelTags)}${authQ}`, bh).then((data) => ({ p, data }))
+        )
+      );
+      for (const { p, data } of results) {
+        if (!Array.isArray(data) || data.length === 0) {
+          reachedEnd = true;
+          continue;
+        }
+        pagesScanned++;
+        nextPage = Math.max(nextPage, p + 1);
+        for (const item of data) {
+          const id = String(item.id || '');
+          if (!id || seenIds.has(id)) continue;
+          const xRestrict = source === 'rule34' ? 1 : mapRatingToXRestrict(item.rating);
+          if (!matchesBooruAgeMode(xRestrict, item.rating, mode)) continue;
+          seenIds.add(id);
+          const tags = String(item.tags || '').split(/\s+/).filter(Boolean);
+          artworks.push({
+            id: `${source}_${id}`,
+            externalId: id,
+            source,
+            externalUrl:
+              source === 'safebooru'
+                ? `https://safebooru.org/index.php?page=post&s=view&id=${id}`
+                : `https://rule34.xxx/index.php?page=post&s=view&id=${id}`,
+            title: `${source === 'safebooru' ? 'Safebooru' : 'Rule34'} #${id}`,
+            tags,
+            userId: String(item.owner || ''),
+            userName: String(item.owner || source),
+            thumbUrl: item.preview_url || item.sample_url || item.file_url || '',
+            regularUrl: item.sample_url || item.file_url || item.preview_url || '',
+            originalUrl: item.file_url || item.sample_url || '',
+            pageCount: 1,
+            illustType: /\.(mp4|webm|gif)$/i.test(item.file_url || '') ? 2 : 0,
+            xRestrict,
+            isAi: tags.some((t) => /ai_generated|novelai|stable_diffusion/i.test(t)),
+            bookmarkCount: Number(item.score || 0),
+          });
+        }
+        if (data.length < 95) reachedEnd = true;
+      }
+    }
+    hasMore = !reachedEnd && (totalPosts === 0 || (nextPage - 1) * 100 < totalPosts);
+  } else if (source === 'yandere' || source === 'konachan') {
+    const host = source === 'yandere' ? 'yande.re' : 'konachan.com';
+    const label = source === 'yandere' ? 'Yande.re' : 'Konachan';
+    let moeTags = queryTag;
+    if (order === 'popular_d' && !/order:/i.test(moeTags)) moeTags += ' order:score';
+    else if (order === 'date' && !/order:/i.test(moeTags)) moeTags += ' order:id';
+    if (startPage === 1) {
+      const cntRes = await fetchTextSafe(`https://${host}/post/index.xml?tags=${encodeURIComponent(queryTag)}&limit=1`, { 'User-Agent': BOORU_UA });
+      const m = cntRes.text.match(/count="(\d+)"/i);
+      if (m) totalPosts = Number(m[1]);
+    }
+    const batchSize = 3;
+    let reachedEnd = false;
+    for (let offset = 0; offset < chunkPages && !reachedEnd; offset += batchSize) {
+      const batch = [];
+      for (let k = 0; k < batchSize && offset + k < chunkPages; k++) batch.push(startPage + offset + k);
+      onProgress?.({ currentPage: batch[0], sampledInChunk: artworks.length, totalPosts });
+      const results = await Promise.all(
+        batch.map((p) =>
+          fetchJsonSafe(`https://${host}/post.json?tags=${encodeURIComponent(moeTags)}&limit=100&page=${p}`, bh).then((data) => ({ p, data }))
+        )
+      );
+      for (const { p, data } of results) {
+        if (!Array.isArray(data) || data.length === 0) {
+          reachedEnd = true;
+          continue;
+        }
+        pagesScanned++;
+        nextPage = Math.max(nextPage, p + 1);
+        for (const item of data) {
+          const id = String(item.id || '');
+          if (!id || seenIds.has(id)) continue;
+          const xRestrict = mapRatingToXRestrict(item.rating);
+          if (!matchesBooruAgeMode(xRestrict, item.rating, mode)) continue;
+          seenIds.add(id);
+          const tags = String(item.tags || '').split(/\s+/).filter(Boolean);
+          artworks.push({
+            id: `${source}_${id}`,
+            externalId: id,
+            source,
+            externalUrl: `https://${host}/post/show/${id}`,
+            title: `${label} #${id}`,
+            tags,
+            userId: String(item.creator_id || ''),
+            userName: String(item.author || label),
+            thumbUrl: item.preview_url || item.sample_url || '',
+            regularUrl: item.sample_url || item.file_url || item.preview_url || '',
+            originalUrl: item.file_url || item.sample_url || '',
+            pageCount: 1,
+            illustType: 0,
+            xRestrict,
+            isAi: tags.some((t) => /ai_generated|novelai/i.test(t)),
+            bookmarkCount: Number(item.score || 0),
+          });
+        }
+        if (data.length < 95) reachedEnd = true;
+      }
+    }
+    hasMore = !reachedEnd && (totalPosts === 0 || (nextPage - 1) * 100 < totalPosts);
+  } else if (source === 'zerochan') {
+    let reachedEnd = false;
+    for (let i = 0; i < chunkPages && !reachedEnd; i++) {
+      const pNum = startPage + i;
+      onProgress?.({ currentPage: pNum, sampledInChunk: artworks.length, totalPosts });
+      const zSort = order === 'popular_d' ? 'fav' : 'id';
+      const res = await fetchTextSafe(`https://www.zerochan.net/${encodeURIComponent(queryTag)}?json&l=50&p=${pNum}&s=${zSort}`, {
+        'User-Agent': ZEROCHAN_UA,
+      });
+      const parsed = parseZerochanJson(res.text);
+      const items = Array.isArray(parsed?.items) ? parsed.items : [];
+      if (items.length === 0) {
+        reachedEnd = true;
+        break;
+      }
+      pagesScanned++;
+      nextPage = pNum + 1;
+      for (const item of items) {
+        const id = String(item.id || '');
+        if (!id || seenIds.has(id)) continue;
+        seenIds.add(id);
+        const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
+        if (item.tag && !tags.includes(item.tag)) tags.unshift(item.tag);
+        artworks.push({
+          id: `zc_${id}`,
+          externalId: id,
+          source: 'zerochan',
+          externalUrl: `https://www.zerochan.net/${id}`,
+          title: item.tag ? `${item.tag} (#${id})` : `Zerochan #${id}`,
+          tags,
+          userId: '',
+          userName: item.tag || 'Zerochan',
+          thumbUrl: item.thumbnail || '',
+          regularUrl: item.thumbnail ? item.thumbnail.replace(/\/240\//, '/600/') : '',
+          originalUrl: item.thumbnail ? item.thumbnail.replace(/\/240\//, '/full/') : '',
+          pageCount: 1,
+          illustType: 0,
+          xRestrict: 0,
+          isAi: tags.some((t) => /ai.?generated/i.test(t)),
+          bookmarkCount: 0,
+        });
+      }
+      if (items.length < 40) reachedEnd = true;
+    }
+    hasMore = !reachedEnd && nextPage <= 100;
+  }
+
+  return {
+    source,
+    primaryTag: queryTag,
+    resolvedFromCjk: resolved.resolvedFromCjk,
+    totalPosts,
+    pagesScanned,
+    nextPage,
+    nextCursor,
+    hasMore,
+    artworks,
+    nativeTagCategories,
+    translations,
+  };
 }
 
 function normalizeHibiIllust(item, translationsOut = {}) {
@@ -123,9 +893,7 @@ function normalizeHibiIllust(item, translationsOut = {}) {
     for (const tObj of item.tags) {
       if (tObj && tObj.name) {
         tags.push(tObj.name);
-        if (tObj.translated_name) {
-          translationsOut[tObj.name] = tObj.translated_name;
-        }
+        if (tObj.translated_name) translationsOut[tObj.name] = tObj.translated_name;
       }
     }
   }
@@ -136,11 +904,13 @@ function normalizeHibiIllust(item, translationsOut = {}) {
     tags.some((t) => /^(AIイラスト|AI生成|AIart|NovelAI)$/i.test(t));
   return {
     id: String(item.id),
+    source: 'pixiv',
     title: item.title || '无题',
     tags,
     userId: String(item.user?.id || ''),
     userName: item.user?.name || '',
     thumbUrl: item.image_urls?.square_medium || item.image_urls?.medium || '',
+    createDate: item.create_date || '',
     pageCount: Number(item.page_count || 1),
     illustType,
     xRestrict: Number(item.x_restrict || 0),
@@ -180,19 +950,117 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const subPath = url.pathname.replace(/^\/api\/pixiv\/?/, '');
   const cookie = request.headers.get('x-pixiv-cookie') || url.searchParams.get('cookie') || '';
+  const r34Key = request.headers.get('x-r34-key') || url.searchParams.get('r34Key') || '';
+  const r34Uid = request.headers.get('x-r34-uid') || url.searchParams.get('r34Uid') || '';
 
   // 0. Health / status endpoint
   if (subPath === 'status' || subPath === '') {
-    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.1' }, 200, request);
+    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.3' }, 200, request);
   }
 
-  // 1. pximg Referer-bypass image proxy (/api/pixiv/pximg?url=... & /api/pixiv/image?url=...)
+  // 0B. Danbooru semantic taxonomy batch enrichment (/api/pixiv/danbooru/enrich)
+  if (subPath === 'danbooru/enrich' && request.method === 'POST') {
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {}
+    const tags = Array.isArray(body.tags) ? body.tags : [];
+    const danbooruMap = await batchEnrichWithDanbooru(tags);
+    return jsonResponse({ error: false, danbooruMap }, 200, request);
+  }
+
+  // 0C. Pre-flight Tag Info & Total Works Count (/api/pixiv/tag-info)
+  if (subPath === 'tag-info') {
+    const source = String(url.searchParams.get('source') || 'pixiv').toLowerCase();
+    const tag = (url.searchParams.get('tag') || url.searchParams.get('q') || '').trim();
+    const mode = url.searchParams.get('mode') || 'all';
+    const s_mode = url.searchParams.get('s_mode') || 's_tag';
+    const type = url.searchParams.get('type') || 'all';
+    if (!tag) return jsonResponse({ error: true, message: '请输入标签' }, 400, request);
+
+    if (source !== 'pixiv') {
+      const info = await fetchBooruTagInfo({ source, tag, mode, r34Key, r34Uid });
+      return jsonResponse(info, info.error ? 400 : 200, request);
+    }
+
+    // Pixiv Strategy 1: Try Direct Pixiv Web AJAX for exact total count
+    const firstDirect = await fetchJsonSafe(
+      `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`,
+      pixivHeaders(cookie)
+    );
+    if (firstDirect && !firstDirect.error && firstDirect.body) {
+      const block = firstDirect.body.illustManga || firstDirect.body.illust || firstDirect.body.manga || {};
+      const totalPosts = Number(block.total || 0);
+      const estimatedPages = totalPosts > 0 ? Math.ceil(totalPosts / 60) : 0;
+      return jsonResponse(
+        {
+          error: false,
+          source: 'pixiv',
+          engine: 'WEB-AJAX',
+          resolvedTag: tag,
+          totalPosts,
+          pageSize: 60,
+          estimatedPages,
+          apiCeilingWorks: 60000,
+          apiCeilingPages: 1000,
+          note: `Pixiv 全站共 ${totalPosts.toLocaleString()} 件作品（约 ${estimatedPages.toLocaleString()} 页，每页 60 件）`,
+        },
+        200,
+        request
+      );
+    }
+
+    // Pixiv Strategy 2: Edge fallback — check Pixiv RPC exact count + HibiAPI probe
+    let totalPosts = 0;
+    const rpcJson = await fetchJsonSafe(
+      `https://www.pixiv.net/rpc/cps.php?keyword=${encodeURIComponent(tag)}&lang=zh`,
+      pixivHeaders(cookie)
+    );
+    if (rpcJson && Array.isArray(rpcJson.candidates)) {
+      const exact = rpcJson.candidates.find((c) => String(c.tag_name || '').toLowerCase() === tag.toLowerCase());
+      if (exact && Number(exact.access_count || 0) > 0) {
+        totalPosts = Number(exact.access_count);
+      }
+    }
+    const hibiMode = mapHibiSearchMode(s_mode);
+    const h1 = await fetchJsonSafe(
+      `${HIBI_BASE}/search?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(hibiMode)}&order=date_desc&search_ai_type=0&page=1&size=30&include_translated_tag_results=true`,
+      hibiHeaders()
+    );
+    const firstCount = Array.isArray(h1?.illusts) ? h1.illusts.length : 0;
+    const hasMoreThanOnePage = firstCount >= 28;
+    const estimatedPages = totalPosts > 0 ? Math.ceil(totalPosts / 30) : hasMoreThanOnePage ? 166 : firstCount > 0 ? 1 : 0;
+    return jsonResponse(
+      {
+        error: false,
+        source: 'pixiv',
+        engine: 'HIBI-APP-API',
+        resolvedTag: tag,
+        totalPosts,
+        totalIsApproximate: totalPosts === 0 && hasMoreThanOnePage,
+        pageSize: 30,
+        estimatedPages,
+        apiCeilingWorks: 5000,
+        apiCeilingPages: 166,
+        note:
+          totalPosts > 0
+            ? `Pixiv 全站约 ${totalPosts.toLocaleString()} 件相关作品（云端边缘网关将分批自动翻页，最多连续采集至 App API 上限约 5,000 件 / 166 批；本地运行可采至 60,000 件）`
+            : hasMoreThanOnePage
+            ? `云端边缘网关（HibiAppAPI）已连接 [${tag}]，该标签作品较多，将自动多批次续翻页直至末页或 App API 上限（约 5,000 件 / 166 批；如需精确全站总数与 60,000 件深度，可本地运行或切换 Danbooru 等图站）`
+            : `已探测 [${tag}] 首批共 ${firstCount} 件作品`,
+      },
+      200,
+      request
+    );
+  }
+
+  // 1. Multi-Site Image Proxy (/api/pixiv/pximg?url=... & /api/pixiv/image?url=...)
   if (subPath === 'pximg' || subPath === 'image') {
     const imgUrl = url.searchParams.get('url');
-    if (!imgUrl || !/^https:\/\/(i|s)\.pximg\.net\//i.test(imgUrl)) {
-      return new Response('Invalid pximg URL', { status: 400, headers: cors });
+    if (!imgUrl || !ALLOWED_IMAGE_HOST_RE.test(imgUrl)) {
+      return new Response('Invalid image URL', { status: 400, headers: cors });
     }
-    const upstream = await fetchPximgWithFallback(imgUrl);
+    const upstream = await fetchImageWithFallback(imgUrl);
     if (!upstream) {
       return new Response('Image upstream error', { status: 502, headers: cors });
     }
@@ -205,11 +1073,11 @@ export async function onRequest(context) {
   // 2. Original artwork download proxy (/api/pixiv/download?url=...&filename=...)
   if (subPath === 'download') {
     const imgUrl = url.searchParams.get('url');
-    const filename = url.searchParams.get('filename') || 'pixiv-artwork.jpg';
-    if (!imgUrl || !/^https:\/\/i\.pximg\.net\//i.test(imgUrl)) {
-      return new Response('Invalid pximg URL', { status: 400, headers: cors });
+    const filename = url.searchParams.get('filename') || 'artwork.jpg';
+    if (!imgUrl || !ALLOWED_IMAGE_HOST_RE.test(imgUrl)) {
+      return new Response('Invalid image URL', { status: 400, headers: cors });
     }
-    const upstream = await fetchPximgWithFallback(imgUrl);
+    const upstream = await fetchImageWithFallback(imgUrl);
     if (!upstream) {
       return new Response('Download upstream error', { status: 502, headers: cors });
     }
@@ -219,14 +1087,17 @@ export async function onRequest(context) {
     return new Response(upstream.body, { status: upstream.status, headers });
   }
 
-  // 3. Autocomplete (/api/pixiv/autocomplete?q=... | ?keyword=...)
+  // 3. Multi-Site Autocomplete (/api/pixiv/autocomplete?source=...&q=...)
   if (subPath === 'autocomplete') {
+    const source = String(url.searchParams.get('source') || 'pixiv').toLowerCase();
     const kw = (url.searchParams.get('q') || url.searchParams.get('keyword') || '').trim();
     if (!kw) return jsonResponse({ candidates: [] }, 200, request);
+    if (source !== 'pixiv') {
+      const candidates = await fetchBooruAutocomplete(source, kw);
+      return jsonResponse({ candidates }, 200, request);
+    }
 
     let candidates = [];
-
-    // Try direct Pixiv RPC first (succeeds when not WAF-challenged)
     const rpcJson = await fetchJsonSafe(
       `https://www.pixiv.net/rpc/cps.php?keyword=${encodeURIComponent(kw)}&lang=zh`,
       pixivHeaders(cookie)
@@ -239,8 +1110,6 @@ export async function onRequest(context) {
         type: c.type || '',
       }));
     }
-
-    // Automatic fallback to HibiAPI tags_autocomplete (reliable from Cloudflare Workers)
     if (candidates.length === 0) {
       const hibiJson = await fetchJsonSafe(
         `${HIBI_BASE}/tags_autocomplete?word=${encodeURIComponent(kw)}`,
@@ -255,14 +1124,12 @@ export async function onRequest(context) {
         }));
       }
     }
-
     candidates = candidates
       .filter((c) => c.tag_name)
       .map((c) => ({
         ...c,
         tag_translation: c.tag_translation || GENERIC_TRANSLATIONS[c.tag_name] || '',
       }));
-
     return jsonResponse({ candidates }, 200, request);
   }
 
@@ -401,7 +1268,6 @@ export async function onRequest(context) {
     const id = (url.searchParams.get('id') || '').trim();
     if (!id) return jsonResponse({ error: true, message: '缺少作品 ID' }, 400, request);
 
-    // Strategy A: Direct Pixiv Web AJAX
     const infoJson = await fetchJsonSafe(
       `https://www.pixiv.net/ajax/illust/${encodeURIComponent(id)}?lang=zh`,
       pixivHeaders(cookie)
@@ -446,7 +1312,6 @@ export async function onRequest(context) {
       );
     }
 
-    // Strategy B: HibiAPI App-API fallback
     const hibiJson = await fetchJsonSafe(`${HIBI_BASE}/illust?id=${encodeURIComponent(id)}`, hibiHeaders());
     if (hibiJson && hibiJson.illust) {
       const ill = hibiJson.illust;
@@ -502,10 +1367,7 @@ export async function onRequest(context) {
   if (subPath === 'illust/ugoira') {
     const id = (url.searchParams.get('id') || '').trim();
     if (!id) return jsonResponse({ error: true, message: '缺少作品 ID' }, 400, request);
-    const hibiMeta = await fetchJsonSafe(
-      `${HIBI_BASE}/ugoira_metadata?id=${encodeURIComponent(id)}`,
-      hibiHeaders()
-    );
+    const hibiMeta = await fetchJsonSafe(`${HIBI_BASE}/ugoira_metadata?id=${encodeURIComponent(id)}`, hibiHeaders());
     if (hibiMeta?.ugoira_metadata) {
       return jsonResponse(
         {
@@ -521,7 +1383,7 @@ export async function onRequest(context) {
     return jsonResponse({ error: true, message: '动图元数据暂不可用' }, 404, request);
   }
 
-  // 6. Quick JSON search endpoint (/api/pixiv/search?q=... | ?tag=...)
+  // 6. Quick JSON search endpoint
   if (subPath === 'search') {
     const tag = (url.searchParams.get('q') || url.searchParams.get('tag') || '').trim();
     if (!tag) return jsonResponse({ error: true, message: '请输入标签' }, 400, request);
@@ -534,7 +1396,7 @@ export async function onRequest(context) {
     const artworks = [];
     const seen = new Set();
 
-    const hibiSearchUrl = `${HIBI_BASE}/search?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(mapHibiSearchMode(s_mode))}&order=date_desc&page=${page}&size=30&include_translated_tag_results=true`;
+    const hibiSearchUrl = `${HIBI_BASE}/search?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(mapHibiSearchMode(s_mode))}&order=date_desc&search_ai_type=0&page=${page}&size=30&include_translated_tag_results=true`;
     const hJson = await fetchJsonSafe(hibiSearchUrl, hibiHeaders());
     if (hJson && Array.isArray(hJson.illusts)) {
       for (const item of hJson.illusts) {
@@ -548,16 +1410,18 @@ export async function onRequest(context) {
     return jsonResponse({ primaryTag: tag, count: artworks.length, artworks, translations }, 200, request);
   }
 
-  // 7. Streaming Full-History Tag Co-Occurrence Analyzer (/api/pixiv/analyze-stream)
+  // 7. Streaming Chunked Multi-Site Co-Occurrence Analyzer (/api/pixiv/analyze-stream)
   if (subPath === 'analyze-stream') {
+    const source = String(url.searchParams.get('source') || 'pixiv').toLowerCase();
     const tag = (url.searchParams.get('tag') || url.searchParams.get('q') || '').trim();
     if (!tag) return jsonResponse({ error: true, message: '请输入标签' }, 400, request);
     const pagesParam = url.searchParams.get('pages') || '3';
-    const requestedPages =
-      String(pagesParam).toUpperCase() === 'ALL'
-        ? 18
-        : Math.min(20, Math.max(1, parseInt(pagesParam, 10) || 3));
+    const isAll = String(pagesParam).toUpperCase() === 'ALL';
+    const startPage = Math.max(1, parseInt(url.searchParams.get('startPage') || '1', 10) || 1);
+    const chunkPagesParam = parseInt(url.searchParams.get('chunkPages') || '0', 10) || 0;
+    const cursor = url.searchParams.get('cursor') || '';
     const mode = url.searchParams.get('mode') || 'all';
+    const order = url.searchParams.get('order') || 'date_d';
     const s_mode = url.searchParams.get('s_mode') || 's_tag';
     const type = url.searchParams.get('type') || 'all';
     const includePopular = url.searchParams.get('includePopular') !== '0' && url.searchParams.get('includePopular') !== 'false';
@@ -570,21 +1434,73 @@ export async function onRequest(context) {
         };
 
         try {
+          // Non-Pixiv Multi-Site Booru Chunked Stream
+          if (source !== 'pixiv') {
+            const targetChunk = chunkPagesParam > 0
+              ? Math.min(12, chunkPagesParam)
+              : isAll
+              ? 10
+              : Math.min(10, Math.max(1, (parseInt(pagesParam, 10) || 3) - startPage + 1));
+
+            const chunk = await fetchBooruChunk({
+              source,
+              tag,
+              startPage,
+              chunkPages: targetChunk,
+              cursor,
+              mode,
+              order,
+              r34Key,
+              r34Uid,
+              onProgress: (prog) => {
+                sendEvent('progress', {
+                  currentPage: prog.currentPage,
+                  totalPages: isAll ? (prog.totalPosts > 0 ? Math.ceil(prog.totalPosts / 100) : prog.currentPage + 5) : parseInt(pagesParam, 10) || targetChunk,
+                  totalMatches: prog.totalPosts,
+                  message: `[${source.toUpperCase()}] 正在采样 [${tag}] 第 ${prog.currentPage} 页 (本批 ${prog.sampledInChunk} 作)...`,
+                });
+              },
+            });
+
+            sendEvent('complete', {
+              source,
+              primaryTag: chunk.primaryTag,
+              resolvedFromCjk: chunk.resolvedFromCjk,
+              pixivTotal: chunk.totalPosts,
+              pagesScanned: chunk.pagesScanned,
+              engine: `${source.toUpperCase()}-API`,
+              hasMore: chunk.hasMore,
+              nextPage: chunk.nextPage,
+              nextCursor: chunk.nextCursor,
+              artworks: chunk.artworks,
+              nativeTagCategories: chunk.nativeTagCategories,
+              translations: chunk.translations,
+            });
+            return;
+          }
+
+          // Pixiv Multi-Chunk Streaming (WEB-AJAX or HIBI-APP-API continuation past 750 works, with search_ai_type=0!)
           const seenIds = new Set();
           const artworks = [];
           const translations = {};
           let pixivTotal = 0;
           let pagesScanned = 0;
           let engine = 'WEB-AJAX';
+          let hasMore = false;
+          let nextPage = startPage;
+          const webOrder = order === 'date' ? 'date' : 'date_d';
+          const hibiOrder = order === 'date' ? 'date_asc' : 'date_desc';
+          const isPopOrder = order === 'popular_d';
+          let queryTagForFetch = tag;
+          let effSMode = s_mode;
 
           sendEvent('progress', {
-            currentPage: 1,
-            totalPages: requestedPages,
-            message: `正在连接 Pixiv 采样 [${tag}] 第 1 页...`,
+            currentPage: startPage,
+            totalPages: isAll ? startPage + 20 : Math.max(startPage, parseInt(pagesParam, 10) || 3),
+            message: `正在连接 Pixiv 采样 [${tag}] 第 ${startPage} 页...`,
           });
 
-          // Probe direct Pixiv Web AJAX on page 1 (succeeds if not blocked by WAF)
-          const firstDirectUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&lang=zh`;
+          const firstDirectUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
           const firstDirect = await fetchJsonSafe(firstDirectUrl, pixivHeaders(cookie));
 
           const ingestDirectBody = (body) => {
@@ -607,15 +1523,17 @@ export async function onRequest(context) {
               const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
               artworks.push({
                 id: idStr,
+                source: 'pixiv',
                 title: item.title || '无题',
                 tags,
                 userId: String(item.userId || ''),
                 userName: item.userName || '',
                 thumbUrl: item.url || '',
+                createDate: item.createDate || '',
                 pageCount: Number(item.pageCount || 1),
                 illustType: Number(item.illustType || 0),
                 xRestrict: Number(item.xRestrict || 0),
-                isAi: item.aiType === 2,
+                isAi: item.aiType === 2 || tags.some((t) => /^(AIイラスト|AI生成|AIart|NovelAI)$/i.test(t)),
                 bookmarkCount: Number(item.bookmarkCount || item.totalBookmarks || 0),
               });
             }
@@ -623,43 +1541,75 @@ export async function onRequest(context) {
           };
 
           if (firstDirect && !firstDirect.error && firstDirect.body) {
-            pagesScanned = 1;
-            ingestDirectBody(firstDirect.body);
-            sendEvent('snapshot', { primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
+            const maxChunkPages = chunkPagesParam > 0 ? Math.min(18, chunkPagesParam) : 18;
+            const endTargetPage = isAll
+              ? Math.min(1000, startPage + maxChunkPages - 1)
+              : Math.min(parseInt(pagesParam, 10) || 3, startPage + maxChunkPages - 1);
 
+            if (isPopOrder) {
+              const popWord = `${tag} (10000users入り OR 5000users入り OR 1000users入り OR 500users入り)`;
+              const popFirst = await fetchJsonSafe(
+                `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(popWord)}?word=${encodeURIComponent(popWord)}&order=date_d&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=s_tag&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`,
+                pixivHeaders(cookie)
+              );
+              if (popFirst && !popFirst.error && popFirst.body && (popFirst.body.illustManga?.data || []).length > 0) {
+                queryTagForFetch = popWord;
+                effSMode = 's_tag';
+                pagesScanned = 1;
+                ingestDirectBody(popFirst.body);
+              } else {
+                pagesScanned = 1;
+                ingestDirectBody(firstDirect.body);
+              }
+            } else {
+              pagesScanned = 1;
+              ingestDirectBody(firstDirect.body);
+            }
+            nextPage = startPage + 1;
+            sendEvent('snapshot', { source: 'pixiv', primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
+
+            let reachedEnd = artworks.length === 0;
             const batchSize = 3;
-            for (let startP = 2; startP <= requestedPages; startP += batchSize) {
-              const endP = Math.min(requestedPages, startP + batchSize - 1);
+            for (let pStart = startPage + 1; pStart <= endTargetPage && !reachedEnd; pStart += batchSize) {
+              const pEnd = Math.min(endTargetPage, pStart + batchSize - 1);
               sendEvent('progress', {
-                currentPage: startP,
-                totalPages: requestedPages,
-                message: `正在采样 [${tag}] 第 ${startP}~${endP} 页 (已采集 ${artworks.length} 作)...`,
+                currentPage: pStart,
+                totalPages: isAll && pixivTotal > 0 ? Math.min(1000, Math.ceil(pixivTotal / 60)) : endTargetPage,
+                totalMatches: pixivTotal,
+                message: `正在采样 [${tag}] 第 ${pStart}~${pEnd} 页 (本批 ${artworks.length} 作)...`,
               });
               const batchPromises = [];
-              for (let p = startP; p <= endP; p++) {
-                const apiUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=${p}&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&lang=zh`;
+              for (let p = pStart; p <= pEnd; p++) {
+                const apiUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(queryTagForFetch)}?word=${encodeURIComponent(queryTagForFetch)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${p}&s_mode=${encodeURIComponent(effSMode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
                 batchPromises.push(fetchJsonSafe(apiUrl, pixivHeaders(cookie)));
               }
               const results = await Promise.all(batchPromises);
               let addedInBatch = 0;
-              for (const json of results) {
+              for (let idx = 0; idx < results.length; idx++) {
+                const json = results[idx];
                 if (!json || json.error || !json.body) continue;
                 pagesScanned++;
+                nextPage = Math.max(nextPage, pStart + idx + 1);
                 addedInBatch += ingestDirectBody(json.body);
               }
-              sendEvent('snapshot', { primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
-              if (addedInBatch === 0 || (pixivTotal > 0 && artworks.length >= pixivTotal)) break;
+              sendEvent('snapshot', { source: 'pixiv', primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
+              if (addedInBatch === 0 || (pixivTotal > 0 && nextPage * 60 - 60 >= pixivTotal)) {
+                reachedEnd = true;
+              }
             }
+            const maxWantedPage = isAll ? 1000 : parseInt(pagesParam, 10) || 3;
+            hasMore = !reachedEnd && nextPage <= maxWantedPage && (pixivTotal === 0 || (nextPage - 1) * 60 < pixivTotal);
           } else {
-            // Direct www.pixiv.net returned WAF HTML/403 from Cloudflare edge -> switch seamlessly to HibiAPI!
+            // HibiAPI multi-chunk continuation WITH search_ai_type=0 (so real AI works are NOT silently hidden!)
             engine = 'HIBI-APP-API';
             const hibiMode = mapHibiSearchMode(s_mode);
-            // Each HibiAPI page has 30 illusts; cap total subrequests safely within CF Worker 50-subrequest limit
-            const totalHibiPages = Math.min(24, requestedPages * 2);
+            const maxHibiChunk = chunkPagesParam > 0 ? Math.min(24, chunkPagesParam) : 24;
+            const totalWantedHibiPages = isAll ? 168 : Math.min(168, (parseInt(pagesParam, 10) || 3) * 2);
+            const endHibiPage = Math.min(totalWantedHibiPages, startPage + maxHibiChunk - 1);
 
-            if (includePopular) {
+            if (startPage === 1 && (includePopular || isPopOrder)) {
               const popJson = await fetchJsonSafe(
-                `${HIBI_BASE}/popular_preview?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(hibiMode)}&include_translated_tag_results=true`,
+                `${HIBI_BASE}/popular_preview?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(hibiMode)}&search_ai_type=0&include_translated_tag_results=true`,
                 hibiHeaders()
               );
               if (popJson && Array.isArray(popJson.illusts)) {
@@ -673,27 +1623,48 @@ export async function onRequest(context) {
               }
             }
 
+            let hibiWord = tag;
+            let hibiEffMode = hibiMode;
+            if (isPopOrder) {
+              const popQ = `${tag} (10000users入り OR 5000users入り OR 1000users入り OR 500users入り)`;
+              const probe = await fetchJsonSafe(
+                `${HIBI_BASE}/search?word=${encodeURIComponent(popQ)}&mode=partial_match_for_tags&order=date_desc&search_ai_type=0&page=1&size=30&include_translated_tag_results=true`,
+                hibiHeaders()
+              );
+              if (probe && Array.isArray(probe.illusts) && probe.illusts.length >= 10) {
+                hibiWord = popQ;
+                hibiEffMode = 'partial_match_for_tags';
+              }
+            }
+
+            let reachedEnd = false;
             const batchSize = 3;
-            for (let startP = 1; startP <= totalHibiPages; startP += batchSize) {
-              const endP = Math.min(totalHibiPages, startP + batchSize - 1);
+            for (let pStart = startPage; pStart <= endHibiPage && !reachedEnd; pStart += batchSize) {
+              const pEnd = Math.min(endHibiPage, pStart + batchSize - 1);
               sendEvent('progress', {
-                currentPage: Math.ceil(startP / 2),
-                totalPages: Math.ceil(totalHibiPages / 2),
-                message: `正在通过边缘网关采样 [${tag}] 第 ${startP}~${endP} 批 (已采集 ${artworks.length} 作)...`,
+                currentPage: pStart,
+                totalPages: totalWantedHibiPages,
+                message: `边缘网关采样 [${tag}] 第 ${pStart}~${pEnd} 批 (本段 ${artworks.length} 作)...`,
               });
 
               const batchPromises = [];
-              for (let p = startP; p <= endP; p++) {
-                const hUrl = `${HIBI_BASE}/search?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(hibiMode)}&order=date_desc&page=${p}&size=30&include_translated_tag_results=true`;
+              for (let p = pStart; p <= pEnd; p++) {
+                const hUrl = `${HIBI_BASE}/search?word=${encodeURIComponent(hibiWord)}&mode=${encodeURIComponent(hibiEffMode)}&order=${encodeURIComponent(hibiOrder)}&search_ai_type=0&page=${p}&size=30&include_translated_tag_results=true`;
                 batchPromises.push(fetchJsonSafe(hUrl, hibiHeaders()));
               }
-
               const results = await Promise.all(batchPromises);
               let rawCountInBatch = 0;
-              for (const json of results) {
-                if (!json || !Array.isArray(json.illusts)) continue;
+              let hadShortPage = false;
+              for (let idx = 0; idx < results.length; idx++) {
+                const json = results[idx];
+                if (!json || !Array.isArray(json.illusts)) {
+                  hadShortPage = true;
+                  continue;
+                }
                 pagesScanned++;
+                nextPage = Math.max(nextPage, pStart + idx + 1);
                 rawCountInBatch += json.illusts.length;
+                if (json.illusts.length < 25) hadShortPage = true;
                 for (const item of json.illusts) {
                   const w = normalizeHibiIllust(item, translations);
                   if (w && !seenIds.has(w.id) && matchesFilters(w, mode, type)) {
@@ -703,8 +1674,8 @@ export async function onRequest(context) {
                 }
               }
 
-              pixivTotal = Math.max(pixivTotal, artworks.length);
               sendEvent('snapshot', {
+                source: 'pixiv',
                 primaryTag: tag,
                 pixivTotal,
                 pagesScanned,
@@ -713,15 +1684,21 @@ export async function onRequest(context) {
                 translations,
               });
 
-              if (rawCountInBatch === 0) break;
+              if (rawCountInBatch === 0 || hadShortPage) {
+                reachedEnd = true;
+              }
             }
+            hasMore = !reachedEnd && nextPage <= totalWantedHibiPages;
           }
 
           sendEvent('complete', {
+            source: 'pixiv',
             primaryTag: tag,
-            pixivTotal: Math.max(pixivTotal, artworks.length),
+            pixivTotal,
             pagesScanned,
             engine,
+            hasMore,
+            nextPage,
             artworks,
             translations,
           });

@@ -48,8 +48,8 @@
       root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=4.2" />
-  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.2" />
+  <link rel="stylesheet" href="./styles.css?v=4.3" />
+  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.3" />
 </head>
 <body class="call-screen-host-v7">
   <!-- Single Bounded CRT Optical Viewport (Exact magireco-call-search-cn / MagiReader v14 architecture) -->
@@ -141,6 +141,19 @@
         <!-- Row 2: Compact Inline Selects (Auto-upgraded to in-DOM CRT-covered dropdowns) + Local Recent History -->
         <div class="query-params-inline">
           <div class="inline-select-chip">
+            <span>站点</span>
+            <select id="sourceSelect" class="js-custom-select">
+              <option value="pixiv" selected>Pixiv</option>
+              <option value="danbooru">Danbooru</option>
+              <option value="sankaku">Sankaku</option>
+              <option value="safebooru">Safebooru</option>
+              <option value="yandere">Yande.re</option>
+              <option value="konachan">Konachan</option>
+              <option value="zerochan">Zerochan</option>
+              <option value="rule34">Rule34</option>
+            </select>
+          </div>
+          <div class="inline-select-chip">
             <span>深度</span>
             <select id="pagesSelect" class="js-custom-select">
               <option value="3" selected>3页</option>
@@ -153,6 +166,14 @@
             </select>
           </div>
           <div class="inline-select-chip">
+            <span>顺序</span>
+            <select id="orderSelect" class="js-custom-select">
+              <option value="date_d" selected>最新→最早</option>
+              <option value="date">最早→最新</option>
+              <option value="popular_d">人气优先</option>
+            </select>
+          </div>
+          <div class="inline-select-chip">
             <span>范围</span>
             <select id="modeSelect" class="js-custom-select">
               <option value="all" selected>全部年龄</option>
@@ -160,7 +181,7 @@
               <option value="r18">仅R-18</option>
             </select>
           </div>
-          <div class="inline-select-chip">
+          <div class="inline-select-chip" id="sModeSelectChip">
             <span>匹配</span>
             <select id="sModeSelect" class="js-custom-select">
               <option value="s_tag" selected>部分一致</option>
@@ -168,7 +189,7 @@
               <option value="s_tc">标签+标题</option>
             </select>
           </div>
-          <div class="inline-select-chip">
+          <div class="inline-select-chip" id="typeSelectChip">
             <span>类型</span>
             <select id="typeSelect" class="js-custom-select">
               <option value="all" selected>全部作品</option>
@@ -181,7 +202,7 @@
           <div class="quick-tags-strip hidden" id="recentHistoryStrip" aria-label="最近搜索历史">
             <span class="strip-label">最近:</span>
             <div class="recent-history-list" id="recentHistoryList"></div>
-            <button class="t-btn t-btn--sm" id="clearHistoryBtn" type="button" title="清空本地搜索历史">清空历史</button>
+            <button class="t-btn t-btn--sm" id="clearHistoryBtn" type="button" title="一键清空全部最近搜索历史">清空历史</button>
           </div>
         </div>
 
@@ -191,9 +212,21 @@
           <label class="check-node"><input type="checkbox" id="excludeAiWorksCheck" /><span>剔除AI作品</span></label>
           <label class="check-node"><input type="checkbox" id="hideAiTagCheck" /><span>隐藏AI标签</span></label>
           <label class="check-node"><input type="checkbox" id="hideMetaTagCheck" /><span>隐藏元标签</span></label>
-          <label class="check-node"><input type="checkbox" id="includePopularCheck" checked /><span>含热门</span></label>
+          <label class="check-node" id="includePopularWrap"><input type="checkbox" id="includePopularCheck" checked /><span>含热门</span></label>
           <label class="threshold-node"><span>最低共现≥</span><input type="number" id="minCountInput" value="2" min="1" max="500" /></label>
           <span class="panel-meta hidden" id="engineSourceIndicator"></span>
+        </div>
+      </div>
+
+      <!-- Pre-flight Total Count & Full-Crawl Confirmation Banner -->
+      <div class="preflight-banner hidden" id="preflightNoticeBar">
+        <div class="preflight-banner__text" id="preflightNoticeText"></div>
+        <div class="preflight-banner__actions hidden" id="preflightConfirmActions">
+          <button class="t-btn t-btn--sm t-btn--primary" id="preflightConfirmAllBtn" type="button">确认全量采集</button>
+          <button class="t-btn t-btn--sm" id="preflightCap25Btn" type="button">改采25页</button>
+          <button class="t-btn t-btn--sm" id="preflightCap50Btn" type="button">改采50页</button>
+          <button class="t-btn t-btn--sm" id="preflightCap100Btn" type="button">改采100页</button>
+          <button class="t-btn t-btn--sm t-btn--danger" id="preflightCancelBtn" type="button">取消</button>
         </div>
       </div>
 
@@ -329,9 +362,11 @@
               <option value="2">动图</option>
             </select>
             <select id="gallerySortSelect" class="t-select-sm js-custom-select">
-              <option value="date_desc">最新投稿</option>
-              <option value="bmk_desc">收藏最高</option>
-              <option value="page_desc">多P页数</option>
+              <option value="date_desc">时间: 由近到远 (最新)</option>
+              <option value="date_asc">时间: 由远到近 (最早)</option>
+              <option value="bmk_desc">人气/收藏: 由高到低</option>
+              <option value="bmk_asc">人气/收藏: 由低到高</option>
+              <option value="page_desc">多P页数: 由多到少</option>
             </select>
           </div>
         </div>
@@ -643,8 +678,28 @@
           <div class="third-tags-grid" id="modalThirdTags"></div>
         </div>
         <div class="inspector-section">
-          <div class="inspector-section__head">同时包含这两个标签的采样作品 (<span id="modalArtworkCount">0</span> 件 // 纯净原图无网格遮挡):</div>
+          <div class="inspector-section__head inspector-section__head--toolbar">
+            <span>同时包含这两个标签的采样作品 (<span id="modalArtworkCount">0</span> 件 // 纯净原图无网格遮挡):</span>
+            <div class="inspector-sort-controls">
+              <select id="modalArtworksSortSelect" class="t-select-sm">
+                <option value="date_desc">时间: 由近到远 (最新)</option>
+                <option value="date_asc">时间: 由远到近 (最早)</option>
+                <option value="bmk_desc">人气/收藏: 由高到低</option>
+                <option value="bmk_asc">人气/收藏: 由低到高</option>
+                <option value="page_desc">多P页数: 由多到少</option>
+              </select>
+              <select id="modalArtworksTypeSelect" class="t-select-sm">
+                <option value="all">全部类型</option>
+                <option value="0">插画</option>
+                <option value="1">漫画</option>
+                <option value="2">动图</option>
+              </select>
+            </div>
+          </div>
           <div class="artwork-grid artwork-grid--compact" id="modalArtworksGrid"></div>
+          <div class="inspector-load-more hidden" id="modalArtworksMoreWrap">
+            <button class="t-btn t-btn--sm" id="modalArtworksLoadMoreBtn" type="button">加载更多作品</button>
+          </div>
         </div>
       </div>
     </div>
@@ -854,6 +909,11 @@
               <input type="text" id="oauthCodeInput" placeholder="可选: 填入 OAuth 回调 code..." />
               <button class="t-btn" id="submitOAuthCodeBtn" type="button">验证 Code</button>
             </div>
+            <div class="copy-input-row">
+              <input type="password" id="r34ApiKeyInput" placeholder="Rule34 可选: api_key" />
+              <input type="text" id="r34UserIdInput" placeholder="user_id" style="max-width:110px;" />
+              <button class="t-btn" id="saveR34CredsBtn" type="button">保存 R34</button>
+            </div>
           </div>
         </details>
       </div>
@@ -967,6 +1027,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.2"></script>
+  <script src="./app.js?v=4.3"></script>
 </body>
 </html>

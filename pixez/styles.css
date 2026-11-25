@@ -1643,32 +1643,53 @@ a, a:hover, a:focus-visible {
   outline: none;
 }
 
-/* Streaming Progress Monitor */
+/* Streaming Progress Monitor (percentage centered cleanly inside bar) */
 .progress-monitor {
-  padding: 3px 8px;
+  padding: 4px 8px 5px;
   border-top: 1px solid var(--t-border);
   background: var(--t-surface-raised);
 }
 
 .progress-monitor__row {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   font-size: 11px;
   font-weight: 700;
   color: var(--t-accent);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .progress-track {
-  height: 4px;
+  position: relative;
+  height: 18px;
   background: var(--t-surface-soft);
   border: 1px solid var(--t-border);
+  overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--t-accent);
+  background: color-mix(in srgb, var(--t-accent) 42%, transparent);
+  border-right: 2px solid var(--t-accent);
   transition: width 0.15s linear;
+}
+
+.progress-percent-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--t-text-strong);
+  text-shadow: 0 0 4px var(--t-surface), 0 0 2px var(--t-surface);
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* Compact Single-Row Telemetry Strip (Uninterrupted watermark transparency + lit hover) */

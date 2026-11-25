@@ -2338,7 +2338,17 @@
         }
         if (!preflightInfo) {
           const infoQs = new URLSearchParams({ source, tag: parsed.tag, mode, s_mode: sMode, type });
-          const ir = await apiFetch(`/api/tag-info?${infoQs.toString()}`, { headers: commonHeaders });
+          const infoCtrl = new AbortController();
+          const infoTimer = setTimeout(() => infoCtrl.abort(), 9500);
+          let ir;
+          try {
+            ir = await apiFetch(`/api/tag-info?${infoQs.toString()}`, {
+              headers: commonHeaders,
+              signal: infoCtrl.signal
+            });
+          } finally {
+            clearTimeout(infoTimer);
+          }
           const idata = await ir.json().catch(() => null);
           if (idata && idata.error) {
             showPreflightBanner(idata.message || '无法连接目标数据源', false);

@@ -48,8 +48,8 @@
       root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=4.4" />
-  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.4" />
+  <link rel="stylesheet" href="./styles.css?v=4.5" />
+  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.5" />
 </head>
 <body class="call-screen-host-v7">
   <!-- Single Bounded CRT Optical Viewport (Exact magireco-call-search-cn / MagiReader v14 architecture) -->
@@ -231,14 +231,14 @@
         </div>
       </div>
 
-      <!-- Streaming Progress Bar -->
+      <!-- Streaming Progress Bar (percentage centered inside track so right floating rail never overlaps) -->
       <div class="progress-monitor hidden" id="progressBarWrap">
         <div class="progress-monitor__row">
           <span id="progressText">正在采样...</span>
-          <span id="progressPercent">0%</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill" id="progressBarFill" style="width: 0%"></div>
+          <span class="progress-percent-center" id="progressPercent">0%</span>
         </div>
       </div>
 
@@ -1063,6 +1063,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.4"></script>
+  <script src="./app.js?v=4.5"></script>
 </body>
 </html>

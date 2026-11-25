@@ -4,9 +4,11 @@
 
 const DEFAULT_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-const BOORU_UA = 'PixEzPulse/4.3 (MultiBooruTagAnalyzer; MadeInMagius)';
+const BOORU_UA = 'PixEzPulse/4.5 (MultiBooruTagAnalyzer; MadeInMagius)';
 const ZEROCHAN_UA = 'PixEzPulse - MadeInMagius';
 const HIBI_BASE = 'https://hibiapi.getloli.com/api/pixiv';
+const PIXIV_WEB_ORIGINS = ['https://www.pixiv.net', 'https://pixiv.js.org'];
+const PIXIVIZ_APP_API = 'https://pixiviz-api-rn.pwp.link/v1';
 
 const ALLOWED_IMAGE_HOST_RE =
   /^https:\/\/(i\.pximg\.net|s\.pximg\.net|cdn\.donmai\.us|v\.sankakucomplex\.com|s\.sankakucomplex\.com|cs\.sankakucomplex\.com|safebooru\.org|files\.yande\.re|assets\.yande\.re|konachan\.com|konachan\.net|s[0-9]*\.zerochan\.net|static\.zerochan\.net|api-cdn\.rule34\.xxx|us\.rule34\.xxx|wimg\.rule34\.xxx)\//i;
@@ -106,9 +108,11 @@ function refererForImageUrl(url) {
   return '';
 }
 
-async function fetchJsonSafe(url, headers = {}) {
+async function fetchJsonSafe(url, headers = {}, timeoutMs = 5500) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { headers });
+    const res = await fetch(url, { headers, signal: ctrl.signal });
     const ct = (res.headers.get('content-type') || '').toLowerCase();
     if (!res.ok) return null;
     if (ct.includes('json')) return await res.json();
@@ -120,16 +124,81 @@ async function fetchJsonSafe(url, headers = {}) {
     }
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-async function fetchTextSafe(url, headers = {}) {
+async function fetchTextSafe(url, headers = {}, timeoutMs = 5500) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { headers });
+    const res = await fetch(url, { headers, signal: ctrl.signal });
     const text = await res.text();
     return { ok: res.ok, status: res.status, text };
   } catch {
     return { ok: false, status: 0, text: '' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Race official www.pixiv.net and live PixivNow mirror (pixiv.js.org) in parallel.
+// Returns { origin, data } for the first valid non-error Pixiv Web AJAX JSON response.
+async function fetchPixivWebAjaxRace(pathAndQuery, cookie = '', preferredOrigin = '', timeoutMs = 5500) {
+  if (preferredOrigin) {
+    const headers = preferredOrigin.includes('www.pixiv.net')
+      ? pixivHeaders(cookie)
+      : { 'User-Agent': DEFAULT_UA, Accept: 'application/json', 'Accept-Language': 'zh-CN,zh;q=0.9,ja;q=0.8' };
+    const data = await fetchJsonSafe(`${preferredOrigin}${pathAndQuery}`, headers, timeoutMs);
+    if (data && !data.error && (data.body || Array.isArray(data.candidates))) {
+      return { origin: preferredOrigin, data };
+    }
+  }
+  const origins = preferredOrigin
+    ? PIXIV_WEB_ORIGINS.filter((o) => o !== preferredOrigin)
+    : PIXIV_WEB_ORIGINS;
+  const racers = origins.map(async (origin) => {
+    const headers = origin.includes('www.pixiv.net')
+      ? pixivHeaders(cookie)
+      : { 'User-Agent': DEFAULT_UA, Accept: 'application/json', 'Accept-Language': 'zh-CN,zh;q=0.9,ja;q=0.8' };
+    const data = await fetchJsonSafe(`${origin}${pathAndQuery}`, headers, timeoutMs);
+    if (data && !data.error && (data.body || Array.isArray(data.candidates))) {
+      return { origin, data };
+    }
+    throw new Error(`upstream ${origin} invalid`);
+  });
+  try {
+    return await Promise.any(racers);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchAppApiFallbackSearch({ word, mode = 'partial_match_for_tags', order = 'date_desc', page = 1 }) {
+  // Race fast Pixiviz relay + HibiAPI (both with tight 4.5s timeout so Workers never stall!)
+  const racers = [
+    fetchJsonSafe(
+      `${PIXIVIZ_APP_API}/illust/search?word=${encodeURIComponent(word)}&page=${page}`,
+      { 'User-Agent': DEFAULT_UA, Accept: 'application/json', Referer: 'https://pixiviz.pwp.app/' },
+      4500
+    ).then((d) => {
+      if (d && Array.isArray(d.illusts) && d.illusts.length > 0) return { engine: 'PIXIVIZ-RELAY', data: d };
+      throw new Error('pixiviz empty');
+    }),
+    fetchJsonSafe(
+      `${HIBI_BASE}/search?word=${encodeURIComponent(word)}&mode=${encodeURIComponent(mode)}&order=${encodeURIComponent(order)}&search_ai_type=0&page=${page}&size=30&include_translated_tag_results=true`,
+      hibiHeaders(),
+      4200
+    ).then((d) => {
+      if (d && Array.isArray(d.illusts) && d.illusts.length > 0) return { engine: 'HIBI-APP-API', data: d };
+      throw new Error('hibi empty');
+    }),
+  ];
+  try {
+    return await Promise.any(racers);
+  } catch {
+    return null;
   }
 }
 
@@ -955,7 +1024,7 @@ export async function onRequest(context) {
 
   // 0. Health / status endpoint
   if (subPath === 'status' || subPath === '') {
-    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.4' }, 200, request);
+    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.5' }, 200, request);
   }
 
   // 0B. Danbooru semantic taxonomy batch enrichment (/api/pixiv/danbooru/enrich)
@@ -983,58 +1052,66 @@ export async function onRequest(context) {
       return jsonResponse(info, info.error ? 400 : 200, request);
     }
 
-    // Pixiv Strategy 1: Try Direct Pixiv Web AJAX for exact total count
-    const firstDirect = await fetchJsonSafe(
-      `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`,
-      pixivHeaders(cookie)
-    );
-    if (firstDirect && !firstDirect.error && firstDirect.body) {
-      const block = firstDirect.body.illustManga || firstDirect.body.illust || firstDirect.body.manga || {};
+    // Pixiv Strategy 1: Race Direct Pixiv Web AJAX & live PixivNow mirror (pixiv.js.org) for exact total count!
+    const ajaxPath = `/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
+    const webRace = await fetchPixivWebAjaxRace(ajaxPath, cookie, '', 5500);
+    if (webRace && webRace.data && !webRace.data.error && webRace.data.body) {
+      const block = webRace.data.body.illustManga || webRace.data.body.illust || webRace.data.body.manga || {};
       const totalPosts = Number(block.total || 0);
       const estimatedPages = totalPosts > 0 ? Math.ceil(totalPosts / 60) : 0;
+      const engineName = webRace.origin.includes('pixiv.js.org') ? 'WEB-AJAX-MIRROR' : 'WEB-AJAX';
       return jsonResponse(
         {
           error: false,
           source: 'pixiv',
-          engine: 'WEB-AJAX',
+          engine: engineName,
           resolvedTag: tag,
           totalPosts,
           pageSize: 60,
           estimatedPages,
           apiCeilingWorks: 60000,
           apiCeilingPages: 1000,
-          note: `Pixiv 全站共 ${totalPosts.toLocaleString()} 件作品（约 ${estimatedPages.toLocaleString()} 页，每页 60 件）`,
+          note: `Pixiv 全站共 ${totalPosts.toLocaleString()} 件作品（约 ${estimatedPages.toLocaleString()} 页，每页 60 件，支持日期分段突破上限）`,
         },
         200,
         request
       );
     }
 
-    // Pixiv Strategy 2: Edge fallback — check Pixiv RPC exact count + HibiAPI probe
+    // Pixiv Strategy 2: Race Pixiv RPC + fast Pixiviz/Hibi App-API relays in parallel (strict 4.5s cap!)
+    const hibiMode = mapHibiSearchMode(s_mode);
+    const [rpcRace, appFallback] = await Promise.all([
+      fetchPixivWebAjaxRace(`/rpc/cps.php?keyword=${encodeURIComponent(tag)}&lang=zh`, cookie, '', 4000),
+      fetchAppApiFallbackSearch({ word: tag, mode: hibiMode, order: 'date_desc', page: 1 }),
+    ]);
     let totalPosts = 0;
-    const rpcJson = await fetchJsonSafe(
-      `https://www.pixiv.net/rpc/cps.php?keyword=${encodeURIComponent(tag)}&lang=zh`,
-      pixivHeaders(cookie)
-    );
-    if (rpcJson && Array.isArray(rpcJson.candidates)) {
-      const exact = rpcJson.candidates.find((c) => String(c.tag_name || '').toLowerCase() === tag.toLowerCase());
+    if (rpcRace?.data && Array.isArray(rpcRace.data.candidates)) {
+      const exact = rpcRace.data.candidates.find((c) => String(c.tag_name || '').toLowerCase() === tag.toLowerCase());
       if (exact && Number(exact.access_count || 0) > 0) {
         totalPosts = Number(exact.access_count);
       }
     }
-    const hibiMode = mapHibiSearchMode(s_mode);
-    const h1 = await fetchJsonSafe(
-      `${HIBI_BASE}/search?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(hibiMode)}&order=date_desc&search_ai_type=0&page=1&size=30&include_translated_tag_results=true`,
-      hibiHeaders()
-    );
-    const firstCount = Array.isArray(h1?.illusts) ? h1.illusts.length : 0;
+    if (!appFallback) {
+      return jsonResponse(
+        {
+          error: true,
+          upstreamDown: true,
+          source: 'pixiv',
+          resolvedTag: tag,
+          message: '云端 Pixiv 上游节点响应超时，请稍后重试，或点击「账号」登录 Pixiv（直连官方 App API）/ 切换 Danbooru 等图站。',
+        },
+        503,
+        request
+      );
+    }
+    const firstCount = Array.isArray(appFallback.data?.illusts) ? appFallback.data.illusts.length : 0;
     const hasMoreThanOnePage = firstCount >= 28;
     const estimatedPages = totalPosts > 0 ? Math.ceil(totalPosts / 30) : hasMoreThanOnePage ? 166 : firstCount > 0 ? 1 : 0;
     return jsonResponse(
       {
         error: false,
         source: 'pixiv',
-        engine: 'HIBI-APP-API',
+        engine: appFallback.engine,
         resolvedTag: tag,
         totalPosts,
         totalIsApproximate: totalPosts === 0 && hasMoreThanOnePage,
@@ -1044,9 +1121,9 @@ export async function onRequest(context) {
         apiCeilingPages: 166,
         note:
           totalPosts > 0
-            ? `Pixiv 全站约 ${totalPosts.toLocaleString()} 件相关作品（云端边缘网关将分批自动翻页，最多连续采集至 App API 上限约 5,000 件 / 166 批；本地运行可采至 60,000 件）`
+            ? `Pixiv 全站约 ${totalPosts.toLocaleString()} 件相关作品（云端边缘网关 ${appFallback.engine} 将自动多批次翻页采集）`
             : hasMoreThanOnePage
-            ? `云端边缘网关（HibiAppAPI）已连接 [${tag}]，该标签作品较多，将自动多批次续翻页直至末页或 App API 上限（约 5,000 件 / 166 批；如需精确全站总数与 60,000 件深度，可本地运行或切换 Danbooru 等图站）`
+            ? `云端边缘网关（${appFallback.engine}）已连接 [${tag}]，将自动多批次持续翻页采样（支持本地 1GB 分段缓存）`
             : `已探测 [${tag}] 首批共 ${firstCount} 件作品`,
       },
       200,
@@ -1098,10 +1175,13 @@ export async function onRequest(context) {
     }
 
     let candidates = [];
-    const rpcJson = await fetchJsonSafe(
-      `https://www.pixiv.net/rpc/cps.php?keyword=${encodeURIComponent(kw)}&lang=zh`,
-      pixivHeaders(cookie)
+    const rpcRace = await fetchPixivWebAjaxRace(
+      `/rpc/cps.php?keyword=${encodeURIComponent(kw)}&lang=zh`,
+      cookie,
+      '',
+      4500
     );
+    const rpcJson = rpcRace?.data;
     if (rpcJson && Array.isArray(rpcJson.candidates) && rpcJson.candidates.length > 0) {
       candidates = rpcJson.candidates.map((c) => ({
         tag_name: c.tag_name || '',
@@ -1113,7 +1193,8 @@ export async function onRequest(context) {
     if (candidates.length === 0) {
       const hibiJson = await fetchJsonSafe(
         `${HIBI_BASE}/tags_autocomplete?word=${encodeURIComponent(kw)}`,
-        hibiHeaders()
+        hibiHeaders(),
+        3500
       );
       if (hibiJson && Array.isArray(hibiJson.tags)) {
         candidates = hibiJson.tags.map((t) => ({
@@ -1277,15 +1358,21 @@ export async function onRequest(context) {
     const id = (url.searchParams.get('id') || '').trim();
     if (!id) return jsonResponse({ error: true, message: '缺少作品 ID' }, 400, request);
 
-    const infoJson = await fetchJsonSafe(
-      `https://www.pixiv.net/ajax/illust/${encodeURIComponent(id)}?lang=zh`,
-      pixivHeaders(cookie)
+    const detailRace = await fetchPixivWebAjaxRace(
+      `/ajax/illust/${encodeURIComponent(id)}?lang=zh`,
+      cookie,
+      '',
+      5500
     );
+    const infoJson = detailRace?.data;
     if (infoJson && !infoJson.error && infoJson.body) {
-      const pagesJson = await fetchJsonSafe(
-        `https://www.pixiv.net/ajax/illust/${encodeURIComponent(id)}/pages?lang=zh`,
-        pixivHeaders(cookie)
+      const pagesRace = await fetchPixivWebAjaxRace(
+        `/ajax/illust/${encodeURIComponent(id)}/pages?lang=zh`,
+        cookie,
+        detailRace.origin,
+        5000
       );
+      const pagesJson = pagesRace?.data;
       const b = infoJson.body;
       const tags = (b.tags?.tags || []).map((t) => t.tag).filter(Boolean);
       const pages = Array.isArray(pagesJson?.body)
@@ -1405,8 +1492,13 @@ export async function onRequest(context) {
     const artworks = [];
     const seen = new Set();
 
-    const hibiSearchUrl = `${HIBI_BASE}/search?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(mapHibiSearchMode(s_mode))}&order=date_desc&search_ai_type=0&page=${page}&size=30&include_translated_tag_results=true`;
-    const hJson = await fetchJsonSafe(hibiSearchUrl, hibiHeaders());
+    const appRes = await fetchAppApiFallbackSearch({
+      word: tag,
+      mode: mapHibiSearchMode(s_mode),
+      order: 'date_desc',
+      page,
+    });
+    const hJson = appRes?.data;
     if (hJson && Array.isArray(hJson.illusts)) {
       for (const item of hJson.illusts) {
         const w = normalizeHibiIllust(item, translations);
@@ -1588,8 +1680,11 @@ export async function onRequest(context) {
           }
 
           const dateSuffix = `${startDate ? `&scd=${encodeURIComponent(startDate)}` : ''}${endDate ? `&ecd=${encodeURIComponent(endDate)}` : ''}`;
-          const firstDirectUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateSuffix}`;
-          const firstDirect = await fetchJsonSafe(firstDirectUrl, pixivHeaders(cookie));
+          const firstDirectPath = `/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateSuffix}`;
+          const directRace = await fetchPixivWebAjaxRace(firstDirectPath, cookie, '', 5500);
+          const firstDirect = directRace?.data;
+          const activeWebOrigin = directRace?.origin || '';
+          if (activeWebOrigin.includes('pixiv.js.org')) engine = 'WEB-AJAX-MIRROR';
 
           const ingestDirectBody = (body) => {
             let added = 0;
@@ -1636,10 +1731,13 @@ export async function onRequest(context) {
 
             if (isPopOrder) {
               const popWord = `${tag} (10000users入り OR 5000users入り OR 1000users入り OR 500users入り)`;
-              const popFirst = await fetchJsonSafe(
-                `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(popWord)}?word=${encodeURIComponent(popWord)}&order=date_d&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=s_tag&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`,
-                pixivHeaders(cookie)
+              const popRace = await fetchPixivWebAjaxRace(
+                `/ajax/search/artworks/${encodeURIComponent(popWord)}?word=${encodeURIComponent(popWord)}&order=date_d&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=s_tag&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`,
+                cookie,
+                activeWebOrigin,
+                5500
               );
+              const popFirst = popRace?.data;
               if (popFirst && !popFirst.error && popFirst.body && (popFirst.body.illustManga?.data || []).length > 0) {
                 queryTagForFetch = popWord;
                 effSMode = 's_tag';
@@ -1668,8 +1766,10 @@ export async function onRequest(context) {
               });
               const batchPromises = [];
               for (let p = pStart; p <= pEnd; p++) {
-                const apiUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(queryTagForFetch)}?word=${encodeURIComponent(queryTagForFetch)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${p}&s_mode=${encodeURIComponent(effSMode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateSuffix}`;
-                batchPromises.push(fetchJsonSafe(apiUrl, pixivHeaders(cookie)));
+                const apiPath = `/ajax/search/artworks/${encodeURIComponent(queryTagForFetch)}?word=${encodeURIComponent(queryTagForFetch)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${p}&s_mode=${encodeURIComponent(effSMode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateSuffix}`;
+                batchPromises.push(
+                  fetchPixivWebAjaxRace(apiPath, cookie, activeWebOrigin, 5500).then((r) => r?.data || null)
+                );
               }
               const results = await Promise.all(batchPromises);
               let addedInBatch = 0;
@@ -1688,38 +1788,24 @@ export async function onRequest(context) {
             const maxWantedPage = isAll ? 1000 : parseInt(pagesParam, 10) || 3;
             hasMore = !reachedEnd && nextPage <= maxWantedPage && (pixivTotal === 0 || (nextPage - 1) * 60 < pixivTotal);
           } else {
-            // HibiAPI multi-chunk continuation WITH search_ai_type=0 (so real AI works are NOT silently hidden!)
-            engine = 'HIBI-APP-API';
+            // Fast App-API Relay fallback (races Pixiviz + HibiAPI with strict 4.5s timeouts!)
+            engine = 'APP-API-RELAY';
             const hibiMode = mapHibiSearchMode(s_mode);
-            const maxHibiChunk = chunkPagesParam > 0 ? Math.min(24, chunkPagesParam) : 24;
+            const maxHibiChunk = chunkPagesParam > 0 ? Math.min(20, chunkPagesParam) : 20;
             const totalWantedHibiPages = isAll ? 168 : Math.min(168, (parseInt(pagesParam, 10) || 3) * 2);
             const endHibiPage = Math.min(totalWantedHibiPages, startPage + maxHibiChunk - 1);
-
-            if (startPage === 1 && (includePopular || isPopOrder)) {
-              const popJson = await fetchJsonSafe(
-                `${HIBI_BASE}/popular_preview?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(hibiMode)}&search_ai_type=0&include_translated_tag_results=true`,
-                hibiHeaders()
-              );
-              if (popJson && Array.isArray(popJson.illusts)) {
-                for (const item of popJson.illusts) {
-                  const w = normalizeHibiIllust(item, translations);
-                  if (w && !seenIds.has(w.id) && matchesFilters(w, mode, type)) {
-                    seenIds.add(w.id);
-                    artworks.push(w);
-                  }
-                }
-              }
-            }
 
             let hibiWord = tag;
             let hibiEffMode = hibiMode;
             if (isPopOrder) {
               const popQ = `${tag} (10000users入り OR 5000users入り OR 1000users入り OR 500users入り)`;
-              const probe = await fetchJsonSafe(
-                `${HIBI_BASE}/search?word=${encodeURIComponent(popQ)}&mode=partial_match_for_tags&order=date_desc&search_ai_type=0&page=1&size=30&include_translated_tag_results=true`,
-                hibiHeaders()
-              );
-              if (probe && Array.isArray(probe.illusts) && probe.illusts.length >= 10) {
+              const probe = await fetchAppApiFallbackSearch({
+                word: popQ,
+                mode: 'partial_match_for_tags',
+                order: 'date_desc',
+                page: 1,
+              });
+              if (probe?.data && Array.isArray(probe.data.illusts) && probe.data.illusts.length >= 10) {
                 hibiWord = popQ;
                 hibiEffMode = 'partial_match_for_tags';
               }
@@ -1737,14 +1823,22 @@ export async function onRequest(context) {
 
               const batchPromises = [];
               for (let p = pStart; p <= pEnd; p++) {
-                const hUrl = `${HIBI_BASE}/search?word=${encodeURIComponent(hibiWord)}&mode=${encodeURIComponent(hibiEffMode)}&order=${encodeURIComponent(hibiOrder)}&search_ai_type=0&page=${p}&size=30&include_translated_tag_results=true`;
-                batchPromises.push(fetchJsonSafe(hUrl, hibiHeaders()));
+                batchPromises.push(
+                  fetchAppApiFallbackSearch({
+                    word: hibiWord,
+                    mode: hibiEffMode,
+                    order: hibiOrder,
+                    page: p,
+                  })
+                );
               }
               const results = await Promise.all(batchPromises);
               let rawCountInBatch = 0;
               let hadShortPage = false;
               for (let idx = 0; idx < results.length; idx++) {
-                const json = results[idx];
+                const resObj = results[idx];
+                const json = resObj?.data;
+                if (resObj?.engine) engine = resObj.engine;
                 if (!json || !Array.isArray(json.illusts)) {
                   hadShortPage = true;
                   continue;

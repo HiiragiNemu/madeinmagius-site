@@ -16,21 +16,31 @@ export const HOME_WEBSITES = [
   { title: 'LIVE2D / ADV', description: '魔法纪录 / Magia Exedra Live2D 和战斗小人网站，含剧情播放功能', url: 'https://magiaexedralive2dviewer.pages.dev/' },
 ];
 
+export const EXEDRA_SUBS = [
+  { id: 'exedra-downloads', label: 'DOWNLOADS', note: 'TW / JP / 工具', section: '下载与版本', tag: '下载' },
+  { id: 'tw-client-113', label: 'TW CLIENT 1.1.3', note: '版本说明', section: '下载与版本', tag: '版本' },
+  { id: 'tw-mumu', label: 'TW · WINDOWS / MUMU', note: '完整教程', section: '中文教程', tag: '教程' },
+  { id: 'tw-phone', label: 'TW · ANDROID PHONE', note: '完整教程', section: '中文教程', tag: '教程' },
+  { id: 'jp-android', label: 'JP · ANDROID / MUMU', note: '完整教程', section: '中文教程', tag: '教程' },
+  { id: 'steam', label: 'STEAM WINDOWS', note: '安装与网络', section: '中文教程', tag: '教程' },
+  { id: 'tw-mumu-en', label: 'TW · WINDOWS / MUMU (EN)', note: 'English guide', section: 'EN GUIDE', tag: 'EN' },
+  { id: 'tw-phone-en', label: 'TW · ANDROID PHONE (EN)', note: 'English guide', section: 'EN GUIDE', tag: 'EN' },
+  { id: 'integrity', label: 'INTEGRITY / HASHES', note: '校验与验证记录', section: '校验与排障', tag: '校验' },
+  { id: 'troubleshoot', label: 'TROUBLESHOOT', note: '常见问题', section: '校验与排障', tag: '排障' }
+];
+
 export const PROGRAMS = {
   home: { subs: [
     { id: 'welcome', label: '魔法纪录相关网站', note: '作品导航' },
     { id: 'magireco-private-server', label: '魔法纪录中文化私服', note: '正式客户端 '+magirecoRelease.version },
     { id: 'universal-adv-reader', label: '通用 ADV 阅读网站', note: 'Narcissu / KANA' },
-    { id: 'exedra-downloads', label: 'DOWNLOADS', note: 'TW / JP / 工具' },
-    { id: 'tw-mumu', label: 'TW · WINDOWS / MUMU', note: '完整教程' },
-    { id: 'tw-phone', label: 'TW · ANDROID PHONE', note: '完整教程' },
-    { id: 'jp-android', label: 'JP · ANDROID / MUMU', note: '完整教程' },
-    { id: 'steam', label: 'STEAM WINDOWS', note: '安装与网络' },
-    { id: 'tw-client-113', label: 'TW CLIENT 1.1.3', note: '版本说明' },
-    { id: 'tw-mumu-en', label: 'TW · WINDOWS / MUMU (EN)', note: 'English guide' },
-    { id: 'tw-phone-en', label: 'TW · ANDROID PHONE (EN)', note: 'English guide' },
-    { id: 'integrity', label: 'INTEGRITY / HASHES', note: '校验与验证记录' },
-    { id: 'troubleshoot', label: 'TROUBLESHOOT', note: '常见问题' },
+    {
+      id: 'exedra-group',
+      group: 'exedra',
+      label: 'EXEDRA TW / JP',
+      note: '客户端与教程',
+      children: EXEDRA_SUBS
+    },
     { id: 'programs', label: '资源比对与证据记录', note: '报告' },
     { id: 'reporting-records', label: '事件截图与处理记录', note: '图集 / 来源' },
     { id: 'contact', label: 'CONTACT', note: '联系' }
@@ -54,23 +64,81 @@ export const PROGRAMS = {
     { id: 'netease-verify', label: 'VERIFY', note: '清单 / 签名' },
     { id: 'netease-guide', label: 'USAGE', note: '完整使用说明' }
   ]},
-  exedra: { subs: [
-    { id: 'exedra-downloads', label: 'DOWNLOADS', note: 'TW / JP / 工具' },
-    { id: 'tw-mumu', label: 'TW · WINDOWS / MUMU', note: '完整教程' },
-    { id: 'tw-phone', label: 'TW · ANDROID PHONE', note: '完整教程' },
-    { id: 'jp-android', label: 'JP · ANDROID / MUMU', note: '完整教程' },
-    { id: 'steam', label: 'STEAM WINDOWS', note: '安装与网络' },
-    { id: 'tw-client-113', label: 'TW CLIENT 1.1.3', note: '版本说明' },
-    { id: 'tw-mumu-en', label: 'TW · WINDOWS / MUMU (EN)', note: 'English guide' },
-    { id: 'tw-phone-en', label: 'TW · ANDROID PHONE (EN)', note: 'English guide' },
-    { id: 'integrity', label: 'INTEGRITY / HASHES', note: '校验与验证记录' },
-    { id: 'troubleshoot', label: 'TROUBLESHOOT', note: '常见问题' }
-  ]},
+  exedra: { subs: EXEDRA_SUBS },
   about: { subs: [
     { id: 'profile', label: 'PROFILE', note: 'MadeInMagius' },
     { id: 'contact-about', label: 'CONTACT', note: '外部入口' }
   ]}
 };
+
+export const SUB_ALIASES = {
+  home: {
+    downloads: 'exedra-downloads',
+    exedra: 'exedra-downloads',
+    'exedra-group': 'exedra-downloads',
+    'tw-windows': 'tw-mumu',
+    'tw-windows-en': 'tw-mumu-en',
+    'tw-android': 'tw-phone',
+    'tw-android-en': 'tw-phone-en',
+    hashes: 'integrity'
+  }
+};
+
+export function flattenSubs(programId) {
+  const subs = PROGRAMS[programId]?.subs || [];
+  const leaves = [];
+  for (const item of subs) {
+    if (Array.isArray(item.children)) {
+      for (const child of item.children) leaves.push(child);
+    } else {
+      leaves.push(item);
+    }
+  }
+  return leaves;
+}
+
+export function findSubItem(programId, subId) {
+  const subs = PROGRAMS[programId]?.subs || [];
+  for (const item of subs) {
+    if (Array.isArray(item.children)) {
+      const child = item.children.find(entry => entry.id === subId);
+      if (child) return { item: child, parentGroup: item };
+    } else if (item.id === subId) {
+      return { item, parentGroup: null };
+    }
+  }
+  return null;
+}
+
+export function resolveHashRoute(rawHash) {
+  const cleaned = String(rawHash || '').replace(/^#/, '');
+  if (!cleaned) return null;
+  const [rawP, rawS] = cleaned.split('/');
+  const isLegacyExedra = rawP === 'exedra';
+  const programId = isLegacyExedra ? 'home' : rawP;
+  if (!PROGRAMS[programId]) return null;
+
+  const aliases = SUB_ALIASES[programId] || {};
+  const requestedSub = isLegacyExedra && !rawS
+    ? 'exedra-downloads'
+    : (rawS ? (aliases[rawS] || rawS) : '');
+  const found = requestedSub ? findSubItem(programId, requestedSub) : null;
+  if (found) {
+    return {
+      programId,
+      subId: found.item.id,
+      expandGroupId: found.parentGroup ? found.parentGroup.id : null,
+      hasSub: true
+    };
+  }
+  const fallback = flattenSubs(programId)[0];
+  return {
+    programId,
+    subId: fallback ? fallback.id : '',
+    expandGroupId: null,
+    hasSub: false
+  };
+}
 
 export function escapeHtml(value) {
   return String(value)
@@ -259,7 +327,7 @@ function androidUpdateGuide(tag, project) {
   return '<p>首次安装或从旧版升级，请从本页下载正式 APK；升级时使用同签名覆盖安装，不要先卸载或清除数据。更新能力以实际安装的版本为准。</p>';
 }
 
-const EXEDRA_SUB_IDS = new Set(['exedra-downloads','tw-mumu','tw-phone','jp-android','steam','tw-client-113','tw-mumu-en','tw-phone-en','integrity','troubleshoot']);
+const EXEDRA_SUB_IDS = new Set(EXEDRA_SUBS.map(item => item.id));
 
 export function renderContent(programId, subId, data) {
   if (programId === 'home' && EXEDRA_SUB_IDS.has(subId)) programId = 'exedra';

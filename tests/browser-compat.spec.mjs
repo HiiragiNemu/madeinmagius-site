@@ -132,11 +132,26 @@ test('terminal optics, responsive information hierarchy, home jump and public do
   const win = page.locator('.download-button').first();
   await expect(win).toHaveAttribute('href', /downloads\/netease\/(?:windows$|v2\.5\.1\/.*windows-x64\.zip)/);
 
-  await page.locator('[data-program="exedra"]').evaluate(el => el.click());
+  await page.locator('[data-program="home"]').evaluate(el => el.click());
+  const exedraToggle = page.locator('[data-group="exedra-group"]');
+  await expect(exedraToggle).toHaveAttribute('aria-expanded', 'false');
+  await exedraToggle.evaluate(el => el.click());
+  await expect(exedraToggle).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('[data-sub="tw-demo"]')).toHaveCount(0);
   await page.locator('[data-sub="integrity"]').evaluate(el => el.click());
   await expect(page.getByText('TW ORIGINAL CLIENT')).toBeVisible();
   await expect(page.getByText('JP ORIGINAL CLIENT')).toBeVisible();
+
+  await page.goto('/#home/tw-client-113', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('[data-group="exedra-group"]')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('[data-sub="tw-client-113"]')).toHaveClass(/is-selected/);
+  await expect(page.locator('#content-panel')).toContainText('1.1.3');
+
+  await page.locator('[data-program="pixiv"]').evaluate(el => el.click());
+  await expect(page.locator('[data-sub="android"]')).toBeVisible();
+  await page.locator('[data-sub="android"]').evaluate(el => el.click());
+  await expect(page.locator('a[href$="downloads/pixiv/android"]').first()).toBeVisible();
+  await expect(page.locator('a[href="./pixez/"]').first()).toBeVisible();
 
   await page.locator('#home-jump').click();
   await expect(page).toHaveURL(/#home\/welcome$/);

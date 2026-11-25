@@ -24,7 +24,9 @@
 
   const CATEGORY_CYCLE = ['character', 'attribute_xp', 'series_ip', 'meta_general'];
 
-  const VISUAL_STORAGE_KEY = 'pixez_visual_v40';
+  const VISUAL_STORAGE_KEY = 'pixez_visual_v41';
+  const RECENT_HISTORY_KEY = 'pixez_recent_searches_v1';
+  const REMOTE_API_FALLBACK = 'https://madeinmagius-site.pages.dev/api/pixiv';
   const THEME_LABELS = {
     light: '明亮',
     paper: '纸张',
@@ -33,11 +35,11 @@
     frost: '冷辉'
   };
   const VISUAL_DEFAULTS = {
-    light: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: false },
-    paper: { curvature: true, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
-    green: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: false },
-    dark:  { curvature: true, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
-    frost: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: true }
+    light: { curvature: false, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+    paper: { curvature: false, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+    green: { curvature: false, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+    dark:  { curvature: true,  scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+    frost: { curvature: false, scanlines: false, noise: true, pixelFont: false, registration: false, glassDamage: false }
   };
 
   const IS_IOS = (() => {
@@ -51,11 +53,16 @@
     let theme = 'paper';
     let phosphor = 'green';
     let themeBarMode = 'floating';
+    const nightPixelFonts = { green: false, amber: true };
     try {
       const saved = JSON.parse(localStorage.getItem(VISUAL_STORAGE_KEY) || '{}');
       if (saved && VISUAL_DEFAULTS[saved.theme]) theme = saved.theme;
       if (saved && (saved.phosphor === 'amber' || saved.phosphor === 'green')) phosphor = saved.phosphor;
       if (saved && (saved.themeBarMode === 'top' || saved.themeBarMode === 'floating')) themeBarMode = saved.themeBarMode;
+      if (saved && saved.nightPixelFonts && typeof saved.nightPixelFonts === 'object') {
+        if (typeof saved.nightPixelFonts.green === 'boolean') nightPixelFonts.green = saved.nightPixelFonts.green;
+        if (typeof saved.nightPixelFonts.amber === 'boolean') nightPixelFonts.amber = saved.nightPixelFonts.amber;
+      }
       if (saved && saved.effects) {
         for (const k of Object.keys(VISUAL_DEFAULTS)) {
           if (saved.effects[k] && typeof saved.effects[k] === 'object') {
@@ -63,8 +70,9 @@
           }
         }
       }
+      effects.dark.pixelFont = nightPixelFonts[phosphor];
     } catch (_) {}
-    return { theme, phosphor, themeBarMode, effects };
+    return { theme, phosphor, nightPixelFonts, themeBarMode, effects };
   }
 
   const initialVisual = loadVisualState();
@@ -72,6 +80,7 @@
   const state = {
     theme: initialVisual.theme,
     nightPhosphor: initialVisual.phosphor,
+    nightPixelFonts: initialVisual.nightPixelFonts,
     themeBarMode: initialVisual.themeBarMode,
     visualEffects: initialVisual.effects,
     cookie: localStorage.getItem('pixez_cookie') || '',
@@ -79,6 +88,14 @@
     bridgeDetected: false,
     bridgeVersion: '',
     authStatus: { loggedIn: false, user: null, mode: 'guest' },
+    recentSearches: (() => {
+      try {
+        const arr = JSON.parse(localStorage.getItem(RECENT_HISTORY_KEY) || '[]');
+        return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string' && x.trim()).slice(0, 12) : [];
+      } catch (_) {
+        return [];
+      }
+    })(),
 
     rawDataset: null,
     activeCategoryScope: 'all',
@@ -124,6 +141,7 @@
       localStorage.setItem(VISUAL_STORAGE_KEY, JSON.stringify({
         theme: state.theme,
         phosphor: state.nightPhosphor,
+        nightPixelFonts: state.nightPixelFonts,
         themeBarMode: state.themeBarMode,
         effects: state.visualEffects
       }));
@@ -158,30 +176,42 @@
       .replace(/"/g, '&quot;');
   }
 
-  const API_BASE = (() => {
+  let API_BASE = (() => {
     const h = window.location.hostname;
+    const proto = window.location.protocol;
     if (h === 'localhost' || h === '127.0.0.1') return '';
-    if (h === 'hiiraginemu.github.io') return 'https://madeinmagius-site.pages.dev/api/pixiv';
+    if (proto === 'file:' || h.endsWith('.github.io')) return REMOTE_API_FALLBACK;
     return '/api/pixiv';
   })();
 
   function apiUrl(p) {
     if (!API_BASE) return p;
-    return API_BASE + p.replace(/^\/api/, '');
+    const suffix = p.replace(/^\/api\/pixiv/, '').replace(/^\/api/, '');
+    return API_BASE + suffix;
   }
 
-  function apiFetch(p, init) {
-    return fetch(apiUrl(p), init);
+  async function apiFetch(p, init) {
+    const res = await fetch(apiUrl(p), init);
+    if (res.status === 404 && API_BASE === '/api/pixiv') {
+      API_BASE = REMOTE_API_FALLBACK;
+      return fetch(apiUrl(p), init);
+    }
+    return res;
   }
 
   function proxyImg(url) {
     if (!url) return '';
-    return apiUrl(`/api/pximg?url=${encodeURIComponent(url)}`);
+    return apiUrl(`/api/pixiv/image?url=${encodeURIComponent(url)}`);
+  }
+
+  function directFallbackImg(url) {
+    if (!url) return '';
+    return String(url).replace(/^https:\/\/i\.pximg\.net\//i, 'https://i.pixiv.re/');
   }
 
   function downloadImgUrl(url, filename) {
     if (!url) return '#';
-    return apiUrl(`/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename || 'pixiv-artwork.jpg')}`);
+    return apiUrl(`/api/pixiv/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename || 'pixiv-artwork.jpg')}`);
   }
 
   // =========================================================================
@@ -287,20 +317,37 @@
     if (opticalScrollUpdater) opticalScrollUpdater();
   }
 
+  let themeSwitchToken = 0;
+
   function setTheme(themeName) {
     if (!VISUAL_DEFAULTS[themeName]) return;
-    state.theme = themeName;
-    persistVisualState();
-    applyVisualSettings();
-    if (!$('networkView').classList.contains('hidden')) {
-      renderNetworkGraph();
+    const token = ++themeSwitchToken;
+    const commit = () => {
+      if (token !== themeSwitchToken) return;
+      const scrollRoot = $('callDisplayScroll');
+      const prevScrollTop = scrollRoot ? scrollRoot.scrollTop : 0;
+      state.theme = themeName;
+      persistVisualState();
+      applyVisualSettings();
+      if (scrollRoot && scrollRoot.scrollTop !== prevScrollTop) {
+        scrollRoot.scrollTop = prevScrollTop;
+      }
+      if (!$('networkView').classList.contains('hidden')) {
+        renderNetworkGraph();
+      }
+    };
+    const wantFrostGlass = themeName === 'frost' && Boolean((state.visualEffects.frost || VISUAL_DEFAULTS.frost).glassDamage);
+    if (wantFrostGlass && window.CallGlass && typeof window.CallGlass.isPrepared === 'function' && !window.CallGlass.isPrepared()) {
+      window.CallGlass.prepare().then(commit, commit);
+      return;
     }
+    commit();
   }
 
   function setPhosphor(phosphor) {
     state.nightPhosphor = phosphor === 'amber' ? 'amber' : 'green';
     state.theme = 'dark';
-    currentFx().pixelFont = state.nightPhosphor === 'amber';
+    currentFx().pixelFont = Boolean(state.nightPixelFonts[state.nightPhosphor]);
     persistVisualState();
     applyVisualSettings();
     if (!$('networkView').classList.contains('hidden')) {
@@ -317,7 +364,9 @@
   function resetCurrentThemeDefaults() {
     state.visualEffects[state.theme] = { ...(VISUAL_DEFAULTS[state.theme] || VISUAL_DEFAULTS.paper) };
     if (state.theme === 'dark') {
-      state.visualEffects.dark.pixelFont = state.nightPhosphor === 'amber';
+      const defPx = state.nightPhosphor === 'amber';
+      state.visualEffects.dark.pixelFont = defPx;
+      state.nightPixelFonts[state.nightPhosphor] = defPx;
     }
     persistVisualState();
     applyVisualSettings();
@@ -429,14 +478,11 @@
   // 3. SEMANTIC CATEGORY CLASSIFIER (Danbooru Ontology + User Rules + Heuristics)
   // =========================================================================
   const SERIES_SET = new Set([
-    'ブルーアーカイブ', 'ブルアカ', 'BlueArchive', '原神', 'GenshinImpact', '崩壊:スターレイル', '崩壊スターレイル',
-    'アークナイツ', '明日方舟', 'Fate/GrandOrder', 'FGO', 'アズールレーン', '碧蓝航线', '艦これ', '艦隊これくしょん',
-    '東方Project', '東方', 'アイドルマスター', 'シャニマス', '学マス', '学園アイドルマスター', 'デレマス',
-    'ウマ娘', 'ウマ娘プリティーダービー', 'ホロライブ', 'hololive', 'にじさんじ', '初音ミク', 'VOCALOID', 'プロセカ',
-    '葬送のフリーレン', '魔法少女まどか☆マギカ', 'マギアレコード', 'まどマギ', 'マギレコ',
-    'ラブライブ!', 'ラブライブ', 'ゼンレスゾーンゼロ', '绝区零', '鳴潮', '勝利の女神:NIKKE', 'NIKKE',
-    'チェンソーマン', '呪術廻戦', '鬼滅の刃', 'ぼっち・ざ・ろっく!', 'リコリス・リコイル',
-    'プリキュア', 'precure', '名探偵プリキュア!', '名探偵プリキュア', 'たんプリ', 'わんだふるぷりきゅあ!', 'ひろがるスカイ!プリキュア'
+    '東方Project', '東方', 'VOCALOID', 'Fate/GrandOrder', 'FGO',
+    'アークナイツ', '明日方舟', 'アズールレーン', '艦これ', '艦隊これくしょん',
+    'ウマ娘', 'ウマ娘プリティーダービー', 'ホロライブ', 'hololive', 'にじさんじ',
+    'アイドルマスター', 'ラブライブ!', 'ラブライブ', '崩壊:スターレイル', '崩壊スターレイル',
+    'ゼンレスゾーンゼロ', '鳴潮', '勝利の女神:NIKKE', 'NIKKE'
   ]);
 
   const ATTR_SET = new Set([
@@ -455,7 +501,7 @@
   const META_SET = new Set([
     'R-18', 'R-18G', 'NSFW', 'オリジナル', '創作', '一次創作', '二次創作', '漫画', 'マンガ', '4コマ',
     'イラスト', '落書き', 'らくがき', 'ドット絵', 'デフォルメ', 'SD', 'ちびキャラ', 'Live2D', '3DCG',
-    'うごイラ', 'GIF', '風景', '背景', '厚塗り', '線画', 'モノクロ', 'skeb', 'commission', '立ち絵'
+    'GIF', 'ugoira', '風景', '背景', '厚塗り', '線画', 'モノクロ', 'skeb', 'commission', '立ち絵'
   ]);
 
   const AI_SET = new Set(['AI生成', 'AIイラスト', 'AI-generated', 'AIart', 'AI作品', 'AI', 'NovelAI', 'StableDiffusion']);
@@ -478,7 +524,7 @@
     const dbEntry = state.danbooruCache[clean] || (state.rawDataset?.danbooruMap && state.rawDataset.danbooruMap[clean]);
     if (dbEntry && dbEntry.category) return dbEntry.category;
 
-    if (SERIES_SET.has(clean) || /プリキュア|アーカイブ|原神|東方|艦これ|ホロライブ|ウマ娘|FGO|スターレイル|アークナイツ|アズールレーン|アイドルマスター|ラブライブ/i.test(clean)) {
+    if (SERIES_SET.has(clean) || /東方|艦これ|ホロライブ|ウマ娘|FGO|スターレイル|アークナイツ|アズールレーン|アイドルマスター|ラブライブ|Project|シリーズ/i.test(clean)) {
       return 'series_ip';
     }
     if (ATTR_SET.has(clean) || /(タイツ|ストッキング|ニーソ|水着|ビキニ|制服|メイド|バニー|ドレス|服|着|耳|髪|目|眼|乳|胸|尻|足|脚|もも|腋|腹|へそ|顔|涙|笑|娘|少女|ロリ|姉|百合|キス|メガネ|眼鏡|リボン|帽)$/.test(clean)) {
@@ -661,7 +707,9 @@
     renderTelemetry(activeWorks, fullList, scopedList);
     renderBarChart(scopedList);
     renderTable(scopedList);
-    renderGallery();
+    if (!$('artworksView').classList.contains('hidden')) {
+      renderGallery();
+    }
     if (!$('networkView').classList.contains('hidden')) {
       renderNetworkGraph();
     }
@@ -951,7 +999,7 @@
   // =========================================================================
   // 6. ARTWORKS GALLERY & OPTICAL ISOLATED VIEWER
   // =========================================================================
-  function createArtworkCardHtml(w, highlightTags = []) {
+  function createArtworkCardHtml(w, highlightTags = [], eager = false) {
     const hiSet = new Set(highlightTags.map((t) => t.toLowerCase()));
     const badges = [];
     if (w.xRestrict >= 1 || (w.tags && w.tags.includes('R-18'))) {
@@ -978,11 +1026,11 @@
       <article class="artwork-card" data-illust-id="${escapeHtml(w.id)}">
         <div class="artwork-thumb-box clean-optical-media" data-open-viewer="${escapeHtml(w.id)}">
           <div class="artwork-badges">${badges.join('')}</div>
-          <img class="clean-optical-media" src="${proxyImg(w.thumbUrl)}" alt="${escapeHtml(w.title)}" loading="lazy" decoding="async" />
+          <img class="clean-optical-media" src="${proxyImg(w.thumbUrl)}" data-fallback-src="${escapeHtml(directFallbackImg(w.thumbUrl))}" alt="${escapeHtml(w.title)}" loading="${eager ? 'eager' : 'lazy'}" decoding="async" />
         </div>
         <div class="artwork-meta">
           <div class="artwork-title" data-open-viewer="${escapeHtml(w.id)}" title="${escapeHtml(w.title)}">${escapeHtml(w.title || '无题')}</div>
-          <div class="artwork-artist">${escapeHtml(w.userName || 'Pixiv Artist')} · ★${Number(w.bookmarkCount || 0).toLocaleString()}</div>
+          <div class="artwork-artist">${escapeHtml(w.userName || 'Pixiv Artist')} · 收藏 ${Number(w.bookmarkCount || 0).toLocaleString()}</div>
           <div class="artwork-tags-mini">${miniTags}</div>
           <div class="artwork-card-actions">
             <button class="t-btn t-btn--sm t-btn--primary" data-open-viewer="${escapeHtml(w.id)}" type="button">看高清原图</button>
@@ -994,6 +1042,15 @@
   }
 
   function bindArtworkCardEvents(container) {
+    container.querySelectorAll('img[data-fallback-src]').forEach((img) => {
+      img.addEventListener('error', () => {
+        const fb = img.dataset.fallbackSrc;
+        if (fb && img.src !== fb) {
+          img.dataset.fallbackSrc = '';
+          img.src = fb;
+        }
+      });
+    });
     container.querySelectorAll('[data-open-viewer]').forEach((el) => {
       el.addEventListener('click', () => openIllustViewer(el.dataset.openViewer));
     });
@@ -1032,7 +1089,7 @@
     list = [...list].sort((a, b) => {
       if (sortBy === 'bmk_desc') return (b.bookmarkCount || 0) - (a.bookmarkCount || 0);
       if (sortBy === 'page_desc') return (b.pageCount || 1) - (a.pageCount || 1);
-      return String(b.id).localeCompare(String(a.id));
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
     });
 
     if (list.length === 0) {
@@ -1041,7 +1098,7 @@
     }
 
     const hiTags = [state.rawDataset?.primaryTag || '', ...Array.from(state.lockedSubTags)];
-    grid.innerHTML = list.slice(0, 96).map((w) => createArtworkCardHtml(w, hiTags)).join('');
+    grid.innerHTML = list.slice(0, 60).map((w, idx) => createArtworkCardHtml(w, hiTags, idx < 12)).join('');
     bindArtworkCardEvents(grid);
   }
 
@@ -1238,7 +1295,14 @@
     loading.classList.remove('hidden');
 
     mainImg.onload = () => loading.classList.add('hidden');
-    mainImg.onerror = () => loading.classList.add('hidden');
+    mainImg.onerror = () => {
+      const fb = directFallbackImg(targetUrl);
+      if (fb && mainImg.src !== fb) {
+        mainImg.src = fb;
+      } else {
+        loading.classList.add('hidden');
+      }
+    };
     mainImg.src = proxyImg(targetUrl);
 
     const dlUrl = origUrl;
@@ -1325,10 +1389,11 @@
     }
 
     $('tagSearchInput').value = parsed.tag;
+    recordRecentSearch(parsed.tag);
     if (parsed.mode) $('modeSelect').value = parsed.mode;
     if (parsed.sMode) $('sModeSelect').value = parsed.sMode;
     syncCustomSelects();
-    $('autocompleteDropdown').classList.add('hidden');
+    hideAutocomplete();
 
     const pages = $('pagesSelect').value;
     const mode = $('modeSelect').value;
@@ -2054,20 +2119,19 @@
 
     if (isLogged) {
       $('headerAuthLabel').textContent = `已登录: ${userName}`;
-      $('authCurrentStatusBox').textContent = `当前状态: 已自动连接 Pixiv 账号 (${userName}) — 后续打开将自动保持登录。`;
+      $('authCurrentStatusBox').textContent = `当前状态: 已连接 Pixiv 账号 (${userName}) — 后续打开将自动保持登录。`;
       $('oauthLogoutBtn').classList.remove('hidden');
     } else {
       $('headerAuthLabel').textContent = '账号';
-      $('authCurrentStatusBox').textContent = '当前状态: 免登录直连模式 — 无需登录即可采样与看图；登录一次后将自动记住。';
+      $('authCurrentStatusBox').textContent = '当前状态: 免登录直连模式 — 可直接使用全部采样与看图功能。';
       $('oauthLogoutBtn').classList.add('hidden');
     }
 
-    if ($('bridgeStatusTitle') && $('bridgeStatusDesc')) {
+    if ($('bridgeStatusTitle')) {
       if (state.bridgeDetected) {
-        $('bridgeStatusTitle').textContent = `全自动授权桥接已就绪 (v${state.bridgeVersion || '4.0'})`;
-        $('bridgeStatusDesc').innerHTML = '检测到自动授权脚本已启用：点击 <strong>「一键登录 Pixiv」</strong> 并在 Pixiv 页点击「继续使用此账号」后，授权会自动回传本页并关闭弹窗，下次访问自动保持登录。';
+        $('bridgeStatusTitle').textContent = `油猴桥接已就绪 (v${state.bridgeVersion || '4.0'})`;
       } else {
-        $('bridgeStatusTitle').textContent = '全自动登录与跨页授权桥接';
+        $('bridgeStatusTitle').textContent = '三种使用方式说明';
       }
     }
   }
@@ -2183,6 +2247,207 @@
     });
   }
 
+  // =========================================================================
+  // 10C. LOCAL RECENT SEARCH HISTORY & PIXEZ AUTOCOMPLETE DROPDOWN
+  // =========================================================================
+  let acTimer = null;
+  let acAbort = null;
+  let acItems = [];
+  let acActiveIndex = -1;
+
+  function persistRecentSearches() {
+    try {
+      localStorage.setItem(RECENT_HISTORY_KEY, JSON.stringify(state.recentSearches));
+    } catch (_) {}
+  }
+
+  function renderRecentSearches() {
+    const strip = $('recentHistoryStrip');
+    const list = $('recentHistoryList');
+    if (!strip || !list) return;
+    if (!state.recentSearches.length) {
+      strip.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+    strip.classList.remove('hidden');
+    list.innerHTML = state.recentSearches
+      .map(
+        (tag) =>
+          `<button class="tag-preset history-chip" data-history-tag="${escapeHtml(tag)}" type="button" title="搜索 ${escapeHtml(tag)}">${escapeHtml(tag)}</button>`
+      )
+      .join('');
+    list.querySelectorAll('[data-history-tag]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const t = btn.dataset.historyTag;
+        $('tagSearchInput').value = t;
+        state.lockedSubTags.clear();
+        executeAnalysis(t);
+      });
+    });
+  }
+
+  function recordRecentSearch(tag) {
+    const clean = String(tag || '').trim();
+    if (!clean) return;
+    state.recentSearches = [clean, ...state.recentSearches.filter((x) => x !== clean)].slice(0, 12);
+    persistRecentSearches();
+    renderRecentSearches();
+  }
+
+  function clearRecentSearches() {
+    state.recentSearches = [];
+    try {
+      localStorage.removeItem(RECENT_HISTORY_KEY);
+    } catch (_) {}
+    renderRecentSearches();
+    showToast('已清空本地搜索历史');
+  }
+
+  function hideAutocomplete() {
+    const dd = $('autocompleteDropdown');
+    if (dd) dd.classList.add('hidden');
+    acItems = [];
+    acActiveIndex = -1;
+  }
+
+  function formatAccessCount(val) {
+    const n = Number(val || 0);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    if (n >= 1e8) return `${(n / 1e8).toFixed(1)}亿`;
+    if (n >= 1e4) return `${(n / 1e4).toFixed(1)}万`;
+    return String(n);
+  }
+
+  function updateAutocompleteHighlight() {
+    const dd = $('autocompleteDropdown');
+    if (!dd) return;
+    const rows = dd.querySelectorAll('.ac-item');
+    rows.forEach((row, idx) => {
+      const active = idx === acActiveIndex;
+      row.classList.toggle('is-active', active);
+      row.setAttribute('aria-selected', active ? 'true' : 'false');
+      if (active) row.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  function selectAutocompleteItem(tagName) {
+    if (!tagName) return;
+    $('tagSearchInput').value = tagName;
+    hideAutocomplete();
+    state.lockedSubTags.clear();
+    executeAnalysis(tagName);
+  }
+
+  function renderAutocomplete(candidates) {
+    const dd = $('autocompleteDropdown');
+    if (!dd) return;
+    const list = (Array.isArray(candidates) ? candidates : [])
+      .map((c) => ({
+        tag_name: String(c.tag_name || c.name || '').trim(),
+        tag_translation: String(c.tag_translation || c.translated_name || '').trim(),
+        access_count: c.access_count || ''
+      }))
+      .filter((c) => c.tag_name)
+      .slice(0, 10);
+
+    if (!list.length) {
+      hideAutocomplete();
+      return;
+    }
+
+    acItems = list;
+    acActiveIndex = -1;
+
+    dd.innerHTML = list
+      .map((c, idx) => {
+        const transHtml =
+          c.tag_translation && c.tag_translation.toLowerCase() !== c.tag_name.toLowerCase()
+            ? `<span class="ac-item__trans">${escapeHtml(c.tag_translation)}</span>`
+            : '';
+        const metaStr = formatAccessCount(c.access_count);
+        const metaHtml = metaStr ? `<span class="ac-item__meta">${escapeHtml(metaStr)}</span>` : '';
+        return `
+          <div class="ac-item" role="option" aria-selected="false" data-ac-idx="${idx}" data-ac="${escapeHtml(c.tag_name)}">
+            <div class="ac-item__main">
+              <span class="ac-item__tag">${escapeHtml(c.tag_name)}</span>
+              ${transHtml}
+            </div>
+            ${metaHtml}
+          </div>
+        `;
+      })
+      .join('');
+
+    const inputBox = $('tagSearchInput')?.closest('.query-input-box');
+    if (inputBox) positionPortalMenu(inputBox, dd, true);
+    else dd.classList.remove('hidden');
+
+    dd.querySelectorAll('.ac-item').forEach((item) => {
+      item.addEventListener('mouseenter', () => {
+        acActiveIndex = parseInt(item.dataset.acIdx, 10);
+        updateAutocompleteHighlight();
+      });
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectAutocompleteItem(item.dataset.ac);
+      });
+    });
+  }
+
+  function triggerAutocomplete(rawVal) {
+    clearTimeout(acTimer);
+    if (acAbort) {
+      acAbort.abort();
+      acAbort = null;
+    }
+    const q = String(rawVal || '').trim();
+    const isAscii = /^[\x00-\x7F]+$/.test(q);
+    if (!q || (isAscii && q.length < 2) || /^https?:\/\//i.test(q) || q.startsWith('pixiv.net/')) {
+      hideAutocomplete();
+      return;
+    }
+    acTimer = setTimeout(async () => {
+      const ctrl = new AbortController();
+      acAbort = ctrl;
+      try {
+        const headers = state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {};
+        const r = await apiFetch(`/api/pixiv/autocomplete?q=${encodeURIComponent(q)}`, {
+          headers,
+          signal: ctrl.signal
+        });
+        if (!r.ok) {
+          hideAutocomplete();
+          return;
+        }
+        const d = await r.json();
+        if ($('tagSearchInput')?.value.trim() !== q) return;
+        renderAutocomplete(d.candidates || d.tags || []);
+      } catch (err) {
+        if (err && err.name !== 'AbortError') hideAutocomplete();
+      }
+    }, 180);
+  }
+
+  function bindFxToggleImpl(id, key) {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener('change', (e) => {
+      const scrollRoot = $('callDisplayScroll');
+      const prevScrollTop = scrollRoot ? scrollRoot.scrollTop : 0;
+      const checked = Boolean(e.target.checked);
+      currentFx()[key] = checked;
+      if (state.theme === 'dark' && key === 'pixelFont') {
+        state.nightPixelFonts[state.nightPhosphor] = checked;
+      }
+      persistVisualState();
+      applyVisualSettings();
+      if (scrollRoot && scrollRoot.scrollTop !== prevScrollTop) {
+        scrollRoot.scrollTop = prevScrollTop;
+      }
+    });
+  }
+
   function initEvents() {
     // Theme Switcher & Display Settings Window (call-theme-widget-v7 + call-fx-window-v7)
     document.querySelectorAll('#themeSwitcher [data-call-theme-option]').forEach((btn) => {
@@ -2197,15 +2462,7 @@
       btn.addEventListener('click', () => setThemeBarMode(btn.dataset.themebarMode));
     });
 
-    const bindFxToggle = (id, key) => {
-      const el = $(id);
-      if (!el) return;
-      el.addEventListener('change', (e) => {
-        currentFx()[key] = Boolean(e.target.checked);
-        persistVisualState();
-        applyVisualSettings();
-      });
-    };
+    const bindFxToggle = bindFxToggleImpl;
     bindFxToggle('toggleCurvatureCheck', 'curvature');
     bindFxToggle('toggleCrtFxCheck', 'scanlines');
     bindFxToggle('toggleNoiseFxCheck', 'noise');
@@ -2260,6 +2517,7 @@
           $(id).classList.toggle('hidden', id !== target);
         });
         document.documentElement.dataset.activeView = target === 'artworksView' ? 'gallery' : (target === 'networkView' ? 'network' : 'table');
+        if (target === 'artworksView') renderGallery();
         if (target === 'networkView') renderNetworkGraph();
         if (opticalScrollUpdater) requestAnimationFrame(opticalScrollUpdater);
       });
@@ -2281,63 +2539,62 @@
       if (state.activeStreamAbort) state.activeStreamAbort.abort();
     });
     $('tagSearchInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') executeAnalysis();
+      const dd = $('autocompleteDropdown');
+      const isOpen = dd && !dd.classList.contains('hidden') && acItems.length > 0;
+      if (e.key === 'ArrowDown' && isOpen) {
+        e.preventDefault();
+        acActiveIndex = (acActiveIndex + 1) % acItems.length;
+        updateAutocompleteHighlight();
+        return;
+      }
+      if (e.key === 'ArrowUp' && isOpen) {
+        e.preventDefault();
+        acActiveIndex = (acActiveIndex - 1 + acItems.length) % acItems.length;
+        updateAutocompleteHighlight();
+        return;
+      }
+      if (e.key === 'Escape' && isOpen) {
+        e.preventDefault();
+        hideAutocomplete();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (isOpen && acActiveIndex >= 0 && acItems[acActiveIndex]) {
+          selectAutocompleteItem(acItems[acActiveIndex].tag_name);
+        } else {
+          hideAutocomplete();
+          executeAnalysis();
+        }
+      }
+    });
+    $('tagSearchInput').addEventListener('input', () => {
+      triggerAutocomplete($('tagSearchInput').value);
+    });
+    $('tagSearchInput').addEventListener('focus', () => {
+      const val = $('tagSearchInput').value.trim();
+      if (val) triggerAutocomplete(val);
     });
     $('clearInputBtn').addEventListener('click', () => {
       $('tagSearchInput').value = '';
+      hideAutocomplete();
       $('tagSearchInput').focus();
     });
+    if ($('clearHistoryBtn')) {
+      $('clearHistoryBtn').addEventListener('click', clearRecentSearches);
+    }
 
-    // Autocomplete
-    let acTimer = null;
-    $('tagSearchInput').addEventListener('input', () => {
-      clearTimeout(acTimer);
-      const q = $('tagSearchInput').value.trim();
+    document.addEventListener('click', (e) => {
       const dd = $('autocompleteDropdown');
-      if (!q || q.length < 2 || q.startsWith('http')) {
-        dd.classList.add('hidden');
-        return;
+      const inputBox = $('tagSearchInput')?.closest('.query-input-box');
+      if (dd && !dd.classList.contains('hidden')) {
+        if (!dd.contains(e.target) && (!inputBox || !inputBox.contains(e.target))) {
+          hideAutocomplete();
+        }
       }
-      acTimer = setTimeout(async () => {
-        try {
-          const r = await apiFetch(`/api/autocomplete?keyword=${encodeURIComponent(q)}`);
-          const d = await r.json();
-          const list = d.candidates || [];
-          if (!list.length) {
-            dd.classList.add('hidden');
-            return;
-          }
-          dd.innerHTML = list
-            .slice(0, 8)
-            .map(
-              (c) => `
-              <div class="ac-item" data-ac="${escapeHtml(c.tag_name)}">
-                <span><strong>${escapeHtml(c.tag_name)}</strong> ${c.tag_translation ? `<small style="color:var(--t-muted)">(${escapeHtml(c.tag_translation)})</small>` : ''}</span>
-              </div>
-            `
-            )
-            .join('');
-          const inputBox = $('tagSearchInput')?.closest('.query-input-box');
-          if (inputBox) positionPortalMenu(inputBox, dd, true);
-          else dd.classList.remove('hidden');
-          dd.querySelectorAll('[data-ac]').forEach((item) => {
-            item.addEventListener('click', () => {
-              $('tagSearchInput').value = item.dataset.ac;
-              dd.classList.add('hidden');
-              executeAnalysis(item.dataset.ac);
-            });
-          });
-        } catch (_) {}
-      }, 220);
     });
-
-    document.querySelectorAll('.tag-preset').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        $('tagSearchInput').value = btn.dataset.tag;
-        state.lockedSubTags.clear();
-        executeAnalysis(btn.dataset.tag);
-      });
-    });
+    $('callDisplayScroll')?.addEventListener('scroll', () => hideAutocomplete(), { passive: true });
+    window.addEventListener('resize', () => hideAutocomplete(), { passive: true });
 
     // Filter Checkboxes & Controls
     ['hideBookmarkTagCheck', 'excludeAiWorksCheck', 'hideAiTagCheck', 'hideMetaTagCheck', 'minCountInput', 'tableSortSelect'].forEach((id) => {
@@ -2710,6 +2967,7 @@
   initCustomSelects();
   initQuickJumpRail();
   initEvents();
+  renderRecentSearches();
   checkAuthStatus();
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -2719,7 +2977,9 @@
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
-  const initialQuery = urlParams.get('q') || urlParams.get('tag') || '森亜るるか';
-  $('tagSearchInput').value = initialQuery;
-  executeAnalysis(initialQuery);
+  const initialQuery = (urlParams.get('q') || urlParams.get('tag') || '').trim();
+  if (initialQuery) {
+    $('tagSearchInput').value = initialQuery;
+    executeAnalysis(initialQuery);
+  }
 })();

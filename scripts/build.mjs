@@ -10,6 +10,7 @@ console.log(snapshotCheck.stdout.trim());
 const required = [
   'index.html',
   'assets/styles.css',
+  'assets/submenu.css',
   'assets/app.js',
   'assets/content.js',
   'assets/effects.js',
@@ -30,15 +31,19 @@ for (const path of required) {
 }
 
 const index = await readFile('index.html','utf8');
-for (const token of ['./assets/styles.css','./assets/app.js','FOLDERS','BILIBILI','NETEASE','EXEDRA TW / JP','MADE IN MAGIUS']) {
+for (const token of ['./assets/styles.css','./assets/submenu.css','./assets/app.js','FOLDERS','BILIBILI','NETEASE','PIXIV','EXEDRA TW / JP','MADE IN MAGIUS']) {
   if (!index.includes(token)) throw new Error(`index.html missing required token: ${token}`);
 }
-for (const rejected of ['独立分发','HTTPS 直链','本站直链','版本可核对','左侧选择程序，连接线会点亮','商店版','GOOGLE PLAY AAB','SOURCE ZIP','SOURCE TAR.GZ','MUMU DEMO SCRIPT','演示脚本']) {
+for (const rejected of ['独立分发','HTTPS 直链','本站直链','版本可核对','左侧选择程序，连接线会点亮','商店版','GOOGLE PLAY AAB','SOURCE ZIP','SOURCE TAR.GZ','MUMU DEMO SCRIPT','演示脚本','HiiragiNemu/pixez-pulse']) {
   if (index.includes(rejected)) throw new Error(`rejected homepage copy returned: ${rejected}`);
 }
 const contentSource = await readFile('assets/content.js','utf8');
+const appSource = await readFile('assets/app.js','utf8');
 if (contentSource.includes('github.com/HiiragiNemu/Bilibili-Follower-Snapshot#readme')) {
   throw new Error('private Bilibili repository link returned to public UI');
+}
+if (contentSource.includes('HiiragiNemu/pixez-pulse') || appSource.includes('HiiragiNemu/pixez-pulse')) {
+  throw new Error('private PixEz Pulse repository link returned to public UI');
 }
 if (/BILIBILI \/ ANDROID \/ v\d+\.\d+\.\d+/.test(contentSource)) {
   throw new Error('Bilibili Android version must come from release metadata, not hard-coded UI copy');

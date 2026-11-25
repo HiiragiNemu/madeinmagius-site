@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-call-theme="paper" data-call-phosphor="green" data-call-theme-bar-mode="floating" data-call-fx-curvature="true" data-call-fx-scanlines="true" data-call-fx-noise="true" data-call-fx-pixel-font="false" data-call-fx-registration="true" data-call-fx-glass-damage="false" data-call-optics-active="true" data-call-crt-engine="static-svg" data-call-ios="false" data-call-ios-flat="false" data-call-reader-optics="v14" data-active-view="table">
+<html lang="zh-CN" data-call-theme="paper" data-call-phosphor="green" data-call-theme-bar-mode="floating" data-call-fx-curvature="false" data-call-fx-scanlines="true" data-call-fx-noise="true" data-call-fx-pixel-font="false" data-call-fx-registration="true" data-call-fx-glass-damage="false" data-call-optics-active="false" data-call-crt-engine="static-svg" data-call-ios="false" data-call-ios-flat="false" data-call-reader-optics="v14" data-active-view="table">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -10,20 +10,25 @@
       const ua = navigator.userAgent || '';
       const ios = /AppleWebKit/.test(ua) && (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
       const DEFAULTS = {
-        light: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: false },
-        paper: { curvature: true, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
-        green: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: false },
-        dark:  { curvature: true, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
-        frost: { curvature: true, scanlines: false, noise: true, pixelFont: false, registration: true, glassDamage: true }
+        light: { curvature: false, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+        paper: { curvature: false, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+        green: { curvature: false, scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+        dark:  { curvature: true,  scanlines: true, noise: true, pixelFont: false, registration: true, glassDamage: false },
+        frost: { curvature: false, scanlines: false, noise: true, pixelFont: false, registration: false, glassDamage: false }
       };
       let theme = 'paper', phosphor = 'green', themeBarMode = 'floating';
       let fx = { ...DEFAULTS.paper };
       try {
-        const saved = JSON.parse(localStorage.getItem('pixez_visual_v40') || '{}');
+        const saved = JSON.parse(localStorage.getItem('pixez_visual_v41') || '{}');
         if (saved && DEFAULTS[saved.theme]) theme = saved.theme;
         if (saved && (saved.phosphor === 'amber' || saved.phosphor === 'green')) phosphor = saved.phosphor;
         if (saved && (saved.themeBarMode === 'top' || saved.themeBarMode === 'floating')) themeBarMode = saved.themeBarMode;
-        fx = { ...DEFAULTS[theme], ...(saved?.effects?.[theme] || {}) };
+        const base = { ...DEFAULTS[theme] };
+        if (theme === 'dark') base.pixelFont = phosphor === 'amber';
+        fx = { ...base, ...(saved?.effects?.[theme] || {}) };
+        if (theme === 'dark' && typeof saved?.nightPixelFonts?.[phosphor] === 'boolean') {
+          fx.pixelFont = saved.nightPixelFonts[phosphor];
+        }
       } catch (_) {}
       root.dataset.callTheme = theme;
       root.dataset.callPhosphor = phosphor;
@@ -43,8 +48,8 @@
       root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=4.0" />
-  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.0" />
+  <link rel="stylesheet" href="./styles.css?v=4.1" />
+  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.1" />
 </head>
 <body class="call-screen-host-v7">
   <!-- Single Bounded CRT Optical Viewport (Exact magireco-call-search-cn / MagiReader v14 architecture) -->
@@ -117,18 +122,18 @@
             <input
               type="text"
               id="tagSearchInput"
-              placeholder="输入 Pixiv 标签 (如 森亜るるか) 或粘贴 /search?q= 、/tags/ 完整链接..."
+              placeholder="输入 Pixiv 标签，或粘贴完整 Pixiv 标签页 / 搜索页链接..."
               autocomplete="off"
               spellcheck="false"
             />
             <button class="btn-clear" id="clearInputBtn" type="button" title="清空输入">清空</button>
-            <div class="autocomplete-dropdown hidden" id="autocompleteDropdown"></div>
+            <div class="autocomplete-dropdown hidden" id="autocompleteDropdown" role="listbox" aria-label="Pixiv 标签补全建议"></div>
           </div>
           <button class="t-btn t-btn--execute" id="analyzeBtn" type="button">开始采样</button>
           <button class="t-btn t-btn--danger hidden" id="stopStreamBtn" type="button">停止翻页</button>
         </div>
 
-        <!-- Row 2: Compact Inline Selects (Auto-upgraded to in-DOM CRT-covered dropdowns) + Quick Presets -->
+        <!-- Row 2: Compact Inline Selects (Auto-upgraded to in-DOM CRT-covered dropdowns) + Local Recent History -->
         <div class="query-params-inline">
           <div class="inline-select-chip">
             <span>深度</span>
@@ -168,14 +173,10 @@
               <option value="ugoira">仅动图</option>
             </select>
           </div>
-          <div class="quick-tags-strip">
-            <span class="strip-label">预设:</span>
-            <button class="tag-preset" data-tag="森亜るるか" type="button">森亜るるか</button>
-            <button class="tag-preset" data-tag="https://www.pixiv.net/search?q=%E6%A3%AE%E4%BA%9C%E3%82%8B%E3%82%8B%E3%81%8B&s_mode=tag&type=artwork&r=1" type="button">搜索链接</button>
-            <button class="tag-preset" data-tag="ブルーアーカイブ" type="button">ブルーアーカイブ</button>
-            <button class="tag-preset" data-tag="原神" type="button">原神</button>
-            <button class="tag-preset" data-tag="葬送のフリーレン" type="button">芙莉莲</button>
-            <button class="tag-preset" data-tag="うごイラ" type="button">うごイラ</button>
+          <div class="quick-tags-strip hidden" id="recentHistoryStrip" aria-label="最近搜索历史">
+            <span class="strip-label">最近:</span>
+            <div class="recent-history-list" id="recentHistoryList"></div>
+            <button class="t-btn t-btn--sm" id="clearHistoryBtn" type="button" title="清空本地搜索历史">清空历史</button>
           </div>
         </div>
 
@@ -285,7 +286,7 @@
               </tr>
             </thead>
             <tbody id="coTagTableBody">
-              <tr><td colspan="6" class="empty-cell">等待采样数据...</td></tr>
+              <tr><td colspan="6" class="empty-cell">输入任意 Pixiv 标签并点击「开始采样」即可开始共现分析</td></tr>
             </tbody>
           </table>
         </div>
@@ -303,7 +304,7 @@
           </div>
         </div>
         <div class="bar-chart-grid" id="barChartContainer">
-          <div class="empty-placeholder">正在加载共现频次分布...</div>
+          <div class="empty-placeholder">输入标签采样后，将在此展示前 18 高频共现分布</div>
         </div>
       </section>
     </div>
@@ -450,7 +451,7 @@
           <legend>屏幕与字体效果</legend>
           <label class="call-fx-toggle-row-v7">
             <span>屏幕曲率模拟</span>
-            <input type="checkbox" id="toggleCurvatureCheck" checked />
+            <input type="checkbox" id="toggleCurvatureCheck" />
           </label>
           <label class="call-fx-toggle-row-v7">
             <span>扫描线</span>
@@ -470,7 +471,7 @@
           </label>
           <label class="call-fx-toggle-row-v7" id="fxGlassDamageRow" hidden>
             <span>玻璃裂纹与划痕</span>
-            <input type="checkbox" id="toggleGlassDamageCheck" checked />
+            <input type="checkbox" id="toggleGlassDamageCheck" />
           </label>
         </fieldset>
 
@@ -615,7 +616,7 @@
           <span class="magi-link-arrow">→</span>
         </a>
       </div>
-      <div class="magi-about-footer">Made with ♥ by MadeInMagius</div>
+      <div class="magi-about-footer">Made by MadeInMagius</div>
     </div>
   </div>
 
@@ -709,11 +710,11 @@
         <div class="guide-grid">
           <div class="guide-card">
             <div class="subbox-title">支持哪些搜索格式？</div>
-            <p>顶部搜索框支持以下任意格式（直接粘贴即可自动提取主标签与年龄模式）：</p>
+            <p>顶部搜索框支持实时标签联想补全，并支持以下任意输入格式（粘贴链接会自动提取主标签与年龄模式）：</p>
             <ul>
-              <li><strong>纯标签名称</strong>：如 <code>森亜るるか</code>、<code>ブルーアーカイブ</code></li>
-              <li><strong>Pixiv 常规搜索页链接</strong>：如 <code>https://www.pixiv.net/search?q=森亜るるか&amp;s_mode=tag&amp;type=artwork&amp;r=1</code></li>
-              <li><strong>Pixiv 标签页链接</strong>：如 <code>https://www.pixiv.net/tags/ブルーアーカイブ/artworks</code></li>
+              <li><strong>纯标签名称</strong>：如 <code>オリジナル</code>、<code>風景</code></li>
+              <li><strong>Pixiv 标签页链接</strong>：如 <code>https://www.pixiv.net/tags/&lt;标签名&gt;/artworks</code></li>
+              <li><strong>Pixiv 搜索结果页完整链接</strong>：直接粘贴浏览器地址栏链接即可自动提取关键词</li>
             </ul>
           </div>
           <div class="guide-card">
@@ -725,15 +726,15 @@
             <div class="subbox-title">列表右侧 4 个操作按钮分别代表什么？</div>
             <ul>
               <li><strong><code>看图</code></strong>：弹窗查看同时包含「当前主标签 + 该共现标签」的全部作品缩略图，以及伴随的第 3 标签排行。</li>
-              <li><strong><code>+必含</code> / <code>✓已锁</code></strong>：在当前已采样的作品池中，要求作品<strong>必须同时包含该标签</strong>并重算排行。锁定后该行会<strong>置顶在表格第一行</strong>，且<strong>屏幕上方会出现跟随滚动的「叠加必含筛选」悬浮条</strong>，随时可点击取消。</li>
+              <li><strong><code>+必含</code> / <code>已锁</code></strong>：在当前已采样的作品池中，要求作品<strong>必须同时包含该标签</strong>并重算排行。锁定后该行会<strong>置顶在表格第一行</strong>，且<strong>屏幕上方会出现跟随滚动的「叠加必含筛选」悬浮条</strong>，随时可点击取消。</li>
               <li><strong><code>搜Tag</code></strong>：将该标签设为主搜索词，重新发起采样。</li>
               <li><strong><code>+收集</code></strong>：将该标签加入顶部的「收集篮」，方便组合复制 Pixiv 搜索词或导出 <strong>Danbooru / NovelAI 英文绘图 Prompt</strong>。</li>
             </ul>
           </div>
           <div class="guide-card">
-            <div class="subbox-title">Danbooru 语义分类与 R-18 登录说明</div>
-            <p>系统已实时对接 <strong>Danbooru (`danbooru.donmai.us`)</strong> 词库 API，自动将日文 Pixiv 标签识别为 <strong>角色</strong>、<strong>属性</strong>、<strong>作品/IP</strong>，并附带英文 Booru 词条（如 <code>howa_kurea</code>）。点击表格中的「分类」列也可手动改归类。</p>
-            <p>本终端支持<strong>免登录直连</strong>使用全部核心功能；若需解锁 R-18 搜索权限，可点击顶栏「Pixiv 账号」通过油猴脚本自动同步已登录的 Chrome 会话、粘贴 F12 控制台 `pixiv://` 回调行或填入 `PHPSESSID`。</p>
+            <div class="subbox-title">Danbooru 语义分类与登录说明</div>
+            <p>系统已实时对接 <strong>Danbooru (`danbooru.donmai.us`)</strong> 词库 API，自动将日文 Pixiv 标签识别为 <strong>角色</strong>、<strong>属性</strong>、<strong>作品/IP</strong>，并附带英文 Booru 词条（如 <code>school_uniform</code>）。点击表格中的「分类」列也可手动改归类。</p>
+            <p>本终端<strong>免登录即可直接使用全部采样与看图功能</strong>；桌面端如需同步已登录账号（如解锁 R-18 范围），请安装油猴脚本 v4.0；手机端推荐直接使用 Android APK（内置 PixEz 原生登录）。</p>
           </div>
         </div>
       </div>
@@ -758,15 +759,15 @@
         <div class="rules-grid">
           <div class="rule-editor-box">
             <label>角色 / 人物类 (CHARACTER) 强制词表:</label>
-            <textarea id="ruleCharTextarea" rows="5" placeholder="例如: 森亜るるか, 帆羽くれあ, キュアアルカナ・シャドウ, 十六夜ノノミ..."></textarea>
+            <textarea id="ruleCharTextarea" rows="5" placeholder="输入需要强制归类为「角色」的标签，用逗号或换行分隔..."></textarea>
           </div>
           <div class="rule-editor-box">
             <label>服装 / 身体特征 / 属性类 (ATTRIBUTE / XP) 强制词表:</label>
-            <textarea id="ruleAttrTextarea" rows="5" placeholder="例如: 白タイツ, 水着, メイド服, 百合, 足裏, ケモミミ..."></textarea>
+            <textarea id="ruleAttrTextarea" rows="5" placeholder="例如: 制服, 水着, 眼鏡, 白髪, 風景..."></textarea>
           </div>
           <div class="rule-editor-box">
             <label>作品 / IP / 企划简称 (SERIES / IP) 强制词表:</label>
-            <textarea id="ruleIpTextarea" rows="5" placeholder="例如: 名探偵プリキュア!, たんプリ, ブルーアーカイブ, ブルアカ..."></textarea>
+            <textarea id="ruleIpTextarea" rows="5" placeholder="输入需要强制归类为「作品/IP」的标签，用逗号或换行分隔..."></textarea>
           </div>
           <div class="rule-editor-box">
             <label>元标签 / 形式 / 分级 (META / GENERAL) 强制词表:</label>
@@ -782,44 +783,47 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 6: PIXIV AUTOMATED ONE-CLICK AUTH & PERSISTENT SESSION          -->
+  <!-- MODAL 6: PIXIV ACCOUNT & BRIDGE STATUS                                -->
   <!-- ===================================================================== -->
   <div class="modal-backdrop hidden" id="authModal">
     <div class="modal-window modal-window--md">
       <div class="modal-titlebar">
         <div>
-          <h3>连接 Pixiv 账号（全自动授权与持久化登录）</h3>
+          <h3>Pixiv 账号与登录说明</h3>
         </div>
         <button class="btn-modal-close" id="closeAuthModalBtn" type="button">[X] 关闭</button>
       </div>
       <div class="modal-content">
         <div class="auth-status-banner" id="authStatusBanner">
-          <div id="authCurrentStatusBox">当前状态: 免登录直连模式 — 无需登录即可采样与看图。</div>
+          <div id="authCurrentStatusBox">当前状态: 免登录直连模式 — 可直接使用全部采样与看图功能。</div>
           <button class="t-btn t-btn--danger hidden" id="oauthLogoutBtn" type="button">退出当前账号</button>
         </div>
 
         <div class="auth-method-card" id="autoAuthPrimaryCard">
-          <div class="subbox-title" id="bridgeStatusTitle">全自动登录与跨页授权桥接</div>
-          <p class="modal-note" id="bridgeStatusDesc">
-            安装或更新 <strong>v4.0 油猴桥接脚本</strong> 后，打开本页会自动同步您浏览器已登录的 Pixiv 账号；或点击下方「一键登录 Pixiv」，在 Pixiv 页面点击「继续使用此账号」后会自动回传授权并关闭弹窗，后续每次打开均自动保持登录状态。
-          </p>
+          <div class="subbox-title" id="bridgeStatusTitle">三种使用方式说明</div>
+          <ul class="auth-summary-list" id="bridgeStatusDesc">
+            <li><strong>免登录直连</strong>：无需登录账号，可直接进行标签补全、共现采样、分类筛选与高清看图。</li>
+            <li><strong>桌面浏览器自动同步登录</strong>：受浏览器同源安全策略限制，纯网页无法直接读取 <code>pixiv.net</code> 的 HttpOnly 会话 Cookie 或拦截 <code>pixiv://</code> 回调；安装 <strong>油猴脚本 v4.0</strong> 后即可自动同步当前浏览器登录态。</li>
+            <li><strong>手机端登录</strong>：请直接使用 <strong>Android APK 客户端</strong>（内置 PixEz 原生登录流程）。</li>
+          </ul>
           <div class="modal-footer-btns" style="justify-content:flex-start;">
-            <button class="t-btn t-btn--primary" id="startPixivOAuthBtn" type="button">一键登录 Pixiv ↗</button>
-            <button class="t-btn" id="syncChromeBridgeNowBtn" type="button">立即同步当前浏览器登录态</button>
-            <a class="t-btn" id="installAuthBridgeLink" href="./downloads/pixtag-companion.user.js" target="_blank" rel="noopener">安装 / 更新 v4.0 自动桥接脚本</a>
+            <a class="t-btn t-btn--primary" id="installAuthBridgeLink" href="./downloads/pixtag-companion.user.js" target="_blank" rel="noopener">安装油猴脚本 v4.0</a>
+            <button class="t-btn" id="syncChromeBridgeNowBtn" type="button">同步浏览器登录态</button>
+            <button class="t-btn" id="startPixivOAuthBtn" type="button">一键授权登录 ↗</button>
+            <a class="t-btn" href="https://madeinmagius-site.pages.dev/downloads/pixiv/android" target="_blank" rel="noopener">下载 Android APK ↗</a>
           </div>
         </div>
 
         <details class="auth-advanced-details">
-          <summary>无脚本环境手动导入凭据（可选备用）</summary>
+          <summary>高级：手动导入会话凭据（可选备用）</summary>
           <div class="auth-advanced-body">
             <div class="copy-input-row">
               <input type="password" id="cookieInput" placeholder="可选: 填入 PHPSESSID..." />
-              <button class="t-btn t-btn--primary" id="saveCookieBtn" type="button">保存并持久化</button>
+              <button class="t-btn t-btn--primary" id="saveCookieBtn" type="button">保存</button>
               <button class="t-btn" id="clearCookieBtn" type="button">清除</button>
             </div>
             <div class="copy-input-row">
-              <input type="password" id="refreshTokenInput" placeholder="可选: 填入已有 PixEz Refresh Token..." />
+              <input type="password" id="refreshTokenInput" placeholder="可选: 填入 Refresh Token..." />
               <button class="t-btn" id="submitRefreshTokenBtn" type="button">Token 登录</button>
             </div>
             <div class="copy-input-row">
@@ -913,8 +917,8 @@
         <div class="client-grid">
           <div class="client-box">
             <div class="client-box__tag">油猴脚本 v4.0 (推荐)</div>
-            <h3>Pixiv 网页内嵌抽屉 + 全自动授权登录桥接脚本</h3>
-            <p>安装后不仅能在 <code>pixiv.net/tags/...</code> 与 <code>pixiv.net/search?q=...</code> 右侧直接展开档案风全量共现分析抽屉，还能<strong>自动同步您当前 Chrome 的 Pixiv 登录态，并全自动接管 Pixiv 登录授权回调（零空白页、零 F12）</strong>。</p>
+            <h3>Pixiv 网页内嵌抽屉 + 浏览器登录态同步脚本</h3>
+            <p>安装后可在 Pixiv 标签页与搜索页右侧直接展开纸张档案风全量共现分析抽屉，并支持在桌面浏览器中自动同步您当前的 Pixiv 登录态。</p>
             <div class="client-box__actions">
               <button class="t-btn t-btn--primary" id="copyUserscriptSourceBtn" type="button">一键复制油猴脚本代码</button>
               <a class="t-btn" href="./downloads/pixtag-companion.user.js" target="_blank">下载/安装 .user.js 脚本</a>
@@ -923,7 +927,7 @@
           <div class="client-box">
             <div class="client-box__tag">Android APK 客户端 &amp; 下载中心</div>
             <h3>MadeInMagius PixEz Pulse Android 客户端 APK</h3>
-            <p>内置全量历史页面采样、角色/属性/作品独立分类统计、角色头像拓扑图与免代理直连看图，已同步交付至 MadeInMagius 下载中心。</p>
+            <p>内置全量历史页面采样、角色/属性/作品独立分类统计、角色头像拓扑图、原生 PixEz 登录与免代理直连看图。</p>
             <div class="client-box__actions">
               <a class="t-btn t-btn--primary" id="githubReleaseApkLink" href="https://madeinmagius-site.pages.dev/downloads/pixiv/android" target="_blank" rel="noopener">直接下载 Android APK ↗</a>
               <a class="t-btn" id="githubRepoLink" href="https://madeinmagius-site.pages.dev/#pixiv" target="_blank" rel="noopener">前往 MadeInMagius 下载中心 ↗</a>
@@ -935,10 +939,10 @@
   </div>
 
   <div class="toast-container" id="toastContainer"></div>
-  <script src="./optics/reader-optics-graphs-v14.js?v=4.0"></script>
-  <script src="./optics/reader-optics-v14.js?v=4.0"></script>
-  <script src="./optics/reader-glass-cache-v12.js?v=4.0"></script>
-  <script src="./optics/reader-glass-v12.js?v=4.0"></script>
-  <script src="./app.js?v=4.0"></script>
+  <script src="./optics/reader-optics-graphs-v14.js?v=4.1"></script>
+  <script src="./optics/reader-optics-v14.js?v=4.1"></script>
+  <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
+  <script src="./optics/reader-glass-v12.js?v=4.1"></script>
+  <script src="./app.js?v=4.1"></script>
 </body>
 </html>

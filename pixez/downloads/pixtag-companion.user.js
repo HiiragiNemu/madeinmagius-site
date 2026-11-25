@@ -328,11 +328,10 @@
 
   // 语义分类识别 (角色 / 属性 / 作品IP / 元标签 / 收藏梯队)
   const SERIES_SET = new Set([
-    'ブルーアーカイブ', 'ブルアカ', 'BlueArchive', '原神', 'GenshinImpact', '崩壊:スターレイル', '崩壊スターレイル',
-    'アークナイツ', '明日方舟', 'Fate/GrandOrder', 'FGO', 'アズールレーン', '碧蓝航线', '艦これ', '艦隊これくしょん',
+    '崩壊:スターレイル', '崩壊スターレイル', 'アークナイツ', '明日方舟',
+    'Fate/GrandOrder', 'FGO', 'アズールレーン', '碧蓝航线', '艦これ', '艦隊これくしょん',
     '東方Project', '東方', 'アイドルマスター', 'ウマ娘', 'ウマ娘プリティーダービー', 'ホロライブ', 'hololive',
-    'にじさんじ', '初音ミク', 'VOCALOID', 'プロセカ', 'ゼンレスゾーンゼロ', '绝区零', '鳴潮', '勝利の女神:NIKKE', 'NIKKE',
-    'プリキュア', 'precure', '名探偵プリキュア!', '名探偵プリキュア', 'たんプリ', '魔法少女まどか☆マギカ', 'マギアレコード'
+    'にじさんじ', 'VOCALOID', 'プロセカ', 'ゼンレスゾーンゼロ', '绝区零', '鳴潮', '勝利の女神:NIKKE', 'NIKKE'
   ]);
   const ATTR_SET = new Set([
     '白タイツ', '黒タイツ', 'タイツ', 'ストッキング', 'ニーソ', 'ガーターベルト', '水着', 'ビキニ', 'スク水',
@@ -344,14 +343,14 @@
   ]);
   const META_SET = new Set([
     'R-18', 'R-18G', 'AI生成', 'AIイラスト', 'AI', 'NovelAI', 'StableDiffusion',
-    'オリジナル', '創作', '漫画', '4コマ', 'イラスト', '落書き', 'らくがき', 'ドット絵', 'Live2D', 'うごイラ'
+    'オリジナル', '創作', '漫画', '4コマ', 'イラスト', '落書き', 'らくがき', 'ドット絵', 'Live2D', 'ugoira'
   ]);
 
   function classifyTag(tag) {
     const clean = String(tag || '').trim();
     if (/^\d+users入り$/i.test(clean) || /users入り$/i.test(clean)) return 'bookmark_milestone';
     if (META_SET.has(clean)) return 'meta_general';
-    if (SERIES_SET.has(clean) || /プリキュア|アーカイブ|原神|東方|艦これ|ホロライブ|ウマ娘|FGO|スターレイル/i.test(clean)) return 'series_ip';
+    if (SERIES_SET.has(clean) || /東方|艦これ|ホロライブ|ウマ娘|FGO|スターレイル|Project|シリーズ/i.test(clean)) return 'series_ip';
     if (ATTR_SET.has(clean) || /(タイツ|水着|制服|服|ドレス|耳|髪|乳|足|もも|尻|顔|目|娘|少女|百合|メガネ|眼鏡|ビキニ|ニーソ)$/.test(clean)) return 'attribute_xp';
     return 'character';
   }
@@ -641,7 +640,7 @@
     </div>
     <div class="pxp-status" id="pxp-status">
       <span id="pxp-status-text">等待分析</span>
-      <a href="${LOCAL_WEB_ORIGIN}" target="_blank" style="color:#8E2B23;text-decoration:none;font-weight:700;">打开完整终端 ↗</a>
+      <a href="${DEFAULT_WEB_ORIGIN}" target="_blank" style="color:#8E2B23;text-decoration:none;font-weight:700;">打开完整终端 ↗</a>
     </div>
     <div class="pxp-list" id="pxp-list"></div>
   `;

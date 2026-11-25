@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 const version = bytes => createHash('sha256').update(bytes).digest('hex').slice(0, 16);
@@ -19,7 +20,12 @@ export async function versionStaticAssets(directory) {
   versions['app.js'] = version(app);
   versions['styles.css'] = version(await readFile(path.join(assets, 'styles.css')));
   let html = await readFile(path.join(directory, 'index.html'), 'utf8');
-  for (const name of ['app.js', 'styles.css']) {
+  const htmlAssets = ['app.js', 'styles.css'];
+  if (existsSync(path.join(assets, 'submenu.css')) && html.includes('./assets/submenu.css')) {
+    versions['submenu.css'] = version(await readFile(path.join(assets, 'submenu.css')));
+    htmlAssets.push('submenu.css');
+  }
+  for (const name of htmlAssets) {
     const expression = new RegExp('\\./assets/' + name.replace('.', '\\.') + '(?:\\?[^\'\"\\s>]*)?', 'g');
     let matches = 0;
     html = html.replace(expression, () => { matches++; return './assets/' + name + '?v=' + versions[name]; });

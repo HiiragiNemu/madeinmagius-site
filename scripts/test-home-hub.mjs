@@ -1,9 +1,43 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { PROGRAMS, HOME_WEBSITES, renderContent } from '../assets/content.js';
+import { PROGRAMS, EXEDRA_SUBS, HOME_WEBSITES, flattenSubs, findSubItem, resolveHashRoute, renderContent } from '../assets/content.js';
 
-assert.deepEqual(PROGRAMS.home.subs.map(s => s.id), ['welcome', 'magireco-private-server', 'universal-adv-reader', 'exedra-downloads', 'tw-mumu', 'tw-phone', 'jp-android', 'steam', 'tw-client-113', 'tw-mumu-en', 'tw-phone-en', 'integrity', 'troubleshoot', 'programs', 'reporting-records', 'contact']);
+assert.deepEqual(PROGRAMS.home.subs.map(s => s.id), ['welcome', 'magireco-private-server', 'universal-adv-reader', 'exedra-group', 'programs', 'reporting-records', 'contact']);
+const exedraGroup = PROGRAMS.home.subs.find(s => s.id === 'exedra-group');
+assert.equal(exedraGroup.label, 'EXEDRA TW / JP');
+assert.deepEqual(exedraGroup.children.map(c => c.id), EXEDRA_SUBS.map(c => c.id));
+assert.deepEqual(exedraGroup.children.map(c => c.id), ['exedra-downloads', 'tw-client-113', 'tw-mumu', 'tw-phone', 'jp-android', 'steam', 'tw-mumu-en', 'tw-phone-en', 'integrity', 'troubleshoot']);
+assert.equal(flattenSubs('home').length, 16);
+assert.equal(findSubItem('home', 'tw-client-113').parentGroup.id, 'exedra-group');
+assert.equal(findSubItem('home', 'welcome').parentGroup, null);
+for (const [hash, expectedSub, expectedGroup] of [
+  ['#home/tw-client-113', 'tw-client-113', 'exedra-group'],
+  ['#home/downloads', 'exedra-downloads', 'exedra-group'],
+  ['#home/tw-windows', 'tw-mumu', 'exedra-group'],
+  ['#exedra', 'exedra-downloads', 'exedra-group'],
+  ['#exedra/tw-client-113', 'tw-client-113', 'exedra-group'],
+  ['#exedra/downloads', 'exedra-downloads', 'exedra-group'],
+  ['#exedra/tw-windows', 'tw-mumu', 'exedra-group'],
+  ['#home/welcome', 'welcome', null],
+]) {
+  const route = resolveHashRoute(hash);
+  assert.equal(route.programId, 'home', hash);
+  assert.equal(route.subId, expectedSub, hash);
+  assert.equal(route.expandGroupId, expectedGroup, hash);
+  assert.equal(route.hasSub, true, hash);
+}
+const pixivAndroid = renderContent('pixiv', 'android', {});
+assert.ok(pixivAndroid.includes('./downloads/pixiv/android'));
+assert.ok(pixivAndroid.includes('./downloads/pixtag-companion.user.js'));
+assert.ok(pixivAndroid.includes('./downloads/pixiv/userscript'));
+assert.ok(pixivAndroid.includes('./pixez/'));
+assert.ok(!pixivAndroid.includes('HiiragiNemu/pixez-pulse'));
+const pixivUserscript = renderContent('pixiv', 'userscript', {});
+assert.ok(pixivUserscript.includes('data-copy-url="./downloads/pixtag-companion.user.js"'));
+assert.ok(pixivUserscript.includes('href="./downloads/pixtag-companion.user.js"'));
+const pixivWebapp = renderContent('pixiv', 'webapp', {});
+assert.ok(pixivWebapp.includes('href="./pixez/"'));
 assert.equal(PROGRAMS.home.subs[0].label, '魔法纪录相关网站');
 assert.equal(PROGRAMS.home.subs.find(s => s.id === 'programs').label, '资源比对与证据记录');
 assert.equal(HOME_WEBSITES.length, 4);

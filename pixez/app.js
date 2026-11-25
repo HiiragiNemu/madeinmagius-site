@@ -1729,22 +1729,327 @@
       .slice(0, 60)
       .map(([t]) => t);
     if (!topUncached.length) return;
+    let map = {};
     try {
       const r = await apiFetch('/api/danbooru/enrich', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tags: topUncached })
       });
-      if (!r.ok) return;
-      const d = await r.json();
-      if (d && d.danbooruMap && Object.keys(d.danbooruMap).length > 0) {
-        Object.assign(state.danbooruCache, d.danbooruMap);
-        if (state.rawDataset) {
-          state.rawDataset.danbooruMap = { ...(state.rawDataset.danbooruMap || {}), ...d.danbooruMap };
-        }
-        recomputeAndRender();
+      if (r.ok) {
+        const d = await r.json();
+        if (d && d.danbooruMap) map = d.danbooruMap;
       }
     } catch (_) {}
+
+    // Direct-browser CORS fallback (danbooru.donmai.us returns Access-Control-Allow-Origin: *)
+    if (Object.keys(map).length === 0) {
+      try {
+        for (let i = 0; i < topUncached.length; i += 20) {
+          const chunk = topUncached.slice(i, i + 20);
+          const qs = new URLSearchParams({
+            'search[other_names_include_any]': chunk.join(' '),
+            limit: '100',
+            only: 'title,other_names,tag[name,category,post_count]'
+          });
+          const r = await fetch(`https://danbooru.donmai.us/wiki_pages.json?${qs.toString()}`);
+          if (!r.ok) continue;
+          const items = await r.json();
+          if (!Array.isArray(items)) continue;
+          for (const pixTag of chunk) {
+            const lp = pixTag.toLowerCase();
+            let best = null;
+            for (const item of items) {
+              const others = Array.isArray(item.other_names) ? item.other_names : [];
+              if (others.some((n) => String(n).toLowerCase() === lp) || String(item.title || '').toLowerCase() === lp) {
+                const pc = Number(item.tag?.post_count || 0);
+                if (!best || pc > best.postCount) {
+                  const code = Number(item.tag?.category ?? 0);
+                  best = {
+                    danbooruTag: item.title || item.tag?.name || '',
+                    category: code === 4 ? 'character' : code === 3 ? 'series_ip' : (code === 1 || code === 5 ? 'meta_general' : 'attribute_xp'),
+                    postCount: pc
+                  };
+                }
+              }
+            }
+            if (best && best.danbooruTag) map[pixTag] = best;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (Object.keys(map).length > 0) {
+      Object.assign(state.danbooruCache, map);
+      if (state.rawDataset) {
+        state.rawDataset.danbooruMap = { ...(state.rawDataset.danbooruMap || {}), ...map };
+      }
+      recomputeAndRender();
+    }
+  }
+
+  // Direct-browser CORS adapters for Danbooru & Sankaku (bypass CF-Worker-to-CF WAF cleanly!)
+  function mapDirectBooruCat(code) {
+    const n = Number(code);
+    if (n === 4) return 'character';
+    if (n === 3) return 'series_ip';
+    if (n === 1 || n === 5 || n === 8 || n === 9) return 'meta_general';
+    return 'attribute_xp';
+  }
+
+  async function directResolveCjkTag(rawTag) {
+    const t = String(rawTag || '').trim();
+    if (!t || /^[\x00-\x7F]+$/.test(t)) return { tag: t.replace(/\s+/g, '_'), resolvedFromCjk: false };
+    try {
+      const r = await fetch(
+        `https://danbooru.donmai.us/wiki_pages.json?search[other_names_match]=${encodeURIComponent(t)}&limit=5&only=title,other_names,tag[name,category,post_count]`
+      );
+      if (r.ok) {
+        const items = await r.json();
+        if (Array.isArray(items) && items.length) {
+          items.sort((a, b) => Number(b.tag?.post_count || 0) - Number(a.tag?.post_count || 0));
+          if (items[0]?.title) return { tag: items[0].title, resolvedFromCjk: true };
+        }
+      }
+    } catch (_) {}
+    return { tag: t, resolvedFromCjk: false };
+  }
+
+  async function directBrowserAutocomplete(source, q) {
+    if (source === 'danbooru') {
+      const out = [];
+      if (/[^\x00-\x7F]/.test(q)) {
+        const [wRes, aRes] = await Promise.all([
+          fetch(`https://danbooru.donmai.us/wiki_pages.json?search[other_names_match]=${encodeURIComponent(q + '*')}&limit=8&only=title,other_names,tag[name,category,post_count]`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+          fetch(`https://danbooru.donmai.us/artists.json?search[any_name_matches]=${encodeURIComponent(q + '*')}&limit=5`).then((r) => (r.ok ? r.json() : [])).catch(() => [])
+        ]);
+        if (Array.isArray(wRes)) {
+          for (const w of wRes) {
+            if (!w?.title) continue;
+            const alias = Array.isArray(w.other_names) ? w.other_names.find((n) => /[^\x00-\x7F]/.test(n)) || '' : '';
+            out.push({ tag_name: w.title, tag_translation: alias || w.title.replace(/_/g, ' '), access_count: Number(w.tag?.post_count || 0), category: mapDirectBooruCat(w.tag?.category ?? 0) });
+          }
+        }
+        if (Array.isArray(aRes)) {
+          for (const a of aRes) {
+            if (!a?.name || out.some((x) => x.tag_name === a.name)) continue;
+            out.push({ tag_name: a.name, tag_translation: `画师: ${(a.other_names || []).slice(0, 2).join(' / ') || a.name}`, access_count: 0, category: 'meta_general' });
+          }
+        }
+        if (out.length) return out.slice(0, 10);
+      }
+      const r = await fetch(`https://danbooru.donmai.us/autocomplete.json?search[query]=${encodeURIComponent(q)}&search[type]=tag_query&limit=10`);
+      if (!r.ok) return [];
+      const arr = await r.json();
+      return Array.isArray(arr)
+        ? arr.filter((x) => x?.value).map((x) => ({ tag_name: x.value, tag_translation: x.label || '', access_count: Number(x.post_count || 0), category: mapDirectBooruCat(x.category ?? 0) }))
+        : [];
+    }
+    if (source === 'sankaku') {
+      const r = await fetch(`https://sankakuapi.com/tags/autosuggestCreating?tag=${encodeURIComponent(q)}`, {
+        headers: { Accept: 'application/vnd.sankaku.api+json;v=2' }
+      });
+      if (!r.ok) return [];
+      const arr = await r.json();
+      return Array.isArray(arr)
+        ? arr.slice(0, 10).map((t) => ({ tag_name: t.tagName || t.name || '', tag_translation: t.name_ja || t.name_en || '', access_count: Number(t.post_count || t.count || 0), category: mapDirectBooruCat(t.type ?? 0) })).filter((x) => x.tag_name)
+        : [];
+    }
+    return [];
+  }
+
+  async function directBrowserTagInfo(source, rawTag, mode) {
+    const res = await directResolveCjkTag(rawTag);
+    if (source === 'danbooru') {
+      let q = res.tag;
+      if (mode === 'safe' && !/rating:/i.test(q)) q += ' rating:g';
+      else if (mode === 'r18' && !/rating:/i.test(q)) q += ' rating:e';
+      const r = await fetch(`https://danbooru.donmai.us/counts/posts.json?tags=${encodeURIComponent(q)}`);
+      if (!r.ok) return null;
+      const d = await r.json();
+      const totalPosts = Number(d?.counts?.posts || 0);
+      return {
+        error: false,
+        source: 'danbooru',
+        resolvedTag: res.tag,
+        resolvedFromCjk: res.resolvedFromCjk,
+        totalPosts,
+        pageSize: 100,
+        estimatedPages: totalPosts > 0 ? Math.ceil(totalPosts / 100) : 0,
+        apiCeilingWorks: 100000,
+        note: res.resolvedFromCjk
+          ? `已通过 Danbooru Wiki 自动将 [${rawTag}] 映射为 [${res.tag}]；全站共 ${totalPosts.toLocaleString()} 件作品（浏览器直连 CORS，每页 100 件，官方原生角色/作品/属性/画师分类）`
+          : `Danbooru 全站共 ${totalPosts.toLocaleString()} 件作品（浏览器直连 CORS，每页 100 件，官方原生角色/作品/属性/画师分类）`
+      };
+    }
+    if (source === 'sankaku') {
+      const r = await fetch(`https://sankakuapi.com/tags/autosuggestCreating?tag=${encodeURIComponent(res.tag)}`, {
+        headers: { Accept: 'application/vnd.sankaku.api+json;v=2' }
+      });
+      if (!r.ok) return null;
+      const arr = await r.json();
+      const exact = Array.isArray(arr) ? (arr.find((x) => String(x.tagName || x.name || '').toLowerCase() === res.tag.toLowerCase()) || arr[0]) : null;
+      const totalPosts = Number(exact?.post_count || exact?.count || 0);
+      return {
+        error: false,
+        source: 'sankaku',
+        resolvedTag: res.tag,
+        resolvedFromCjk: res.resolvedFromCjk,
+        totalPosts,
+        pageSize: 40,
+        estimatedPages: totalPosts > 0 ? Math.ceil(totalPosts / 40) : 0,
+        apiCeilingWorks: 20000,
+        note: `Sankaku Complex 全站约 ${totalPosts.toLocaleString()} 件作品（浏览器直连 CORS，每页 40 件，原生双语分类与 Keyset 翻页）`
+      };
+    }
+    return null;
+  }
+
+  async function directBrowserSampleChunk({ source, tag, startPage, chunkPages, cursor, mode, order, signal, onProgress }) {
+    const artworks = [];
+    const nativeTagCategories = {};
+    const translations = {};
+    let pagesScanned = 0;
+    let nextPage = startPage;
+    let nextCursor = '';
+    let hasMore = false;
+
+    if (source === 'danbooru') {
+      let apiTags = tag;
+      if (mode === 'safe' && !/rating:/i.test(apiTags)) apiTags += ' rating:g';
+      else if (mode === 'r18' && !/rating:/i.test(apiTags)) apiTags += ' rating:e';
+      if (order === 'popular_d' && !/order:/i.test(apiTags)) apiTags += ' order:favcount';
+      else if (order === 'date' && !/order:/i.test(apiTags)) apiTags += ' order:id_asc';
+      let reachedEnd = false;
+      for (let off = 0; off < chunkPages && !reachedEnd && !signal.aborted; off += 3) {
+        const batch = [];
+        for (let k = 0; k < 3 && off + k < chunkPages; k++) batch.push(startPage + off + k);
+        onProgress?.(batch[0], artworks.length);
+        const results = await Promise.all(
+          batch.map((p) =>
+            fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(apiTags)}&limit=100&page=${p}`, { signal })
+              .then((r) => (r.ok ? r.json() : []))
+              .catch(() => [])
+              .then((data) => ({ p, data }))
+          )
+        );
+        for (const { p, data } of results) {
+          if (!Array.isArray(data) || !data.length) { reachedEnd = true; continue; }
+          pagesScanned++;
+          nextPage = Math.max(nextPage, p + 1);
+          for (const item of data) {
+            if (!item?.id) continue;
+            const id = String(item.id);
+            const cTags = String(item.tag_string_character || '').split(/\s+/).filter(Boolean);
+            const sTags = String(item.tag_string_copyright || '').split(/\s+/).filter(Boolean);
+            const gTags = String(item.tag_string_general || '').split(/\s+/).filter(Boolean);
+            const aTags = String(item.tag_string_artist || '').split(/\s+/).filter(Boolean);
+            const mTags = String(item.tag_string_meta || '').split(/\s+/).filter(Boolean);
+            for (const t of cTags) nativeTagCategories[t] = 'character';
+            for (const t of sTags) nativeTagCategories[t] = 'series_ip';
+            for (const t of gTags) if (!nativeTagCategories[t]) nativeTagCategories[t] = 'attribute_xp';
+            for (const t of aTags) nativeTagCategories[t] = 'meta_general';
+            for (const t of mTags) nativeTagCategories[t] = 'meta_general';
+            const allTags = [...new Set([...cTags, ...sTags, ...gTags, ...aTags, ...mTags])];
+            const thumb = item.preview_file_url || item.large_file_url || item.file_url || '';
+            artworks.push({
+              id: `db_${id}`,
+              externalId: id,
+              source: 'danbooru',
+              externalUrl: `https://danbooru.donmai.us/posts/${id}`,
+              title: cTags[0] ? cTags[0].replace(/_/g, ' ') : `Danbooru #${id}`,
+              tags: allTags,
+              userId: aTags[0] || String(item.uploader_id || ''),
+              userName: aTags.join(', ') || `Uploader #${item.uploader_id || ''}`,
+              thumbUrl: thumb,
+              regularUrl: item.large_file_url || item.file_url || thumb,
+              originalUrl: item.file_url || item.large_file_url || thumb,
+              createDate: item.created_at || '',
+              pageCount: 1,
+              illustType: item.file_ext === 'mp4' || item.file_ext === 'webm' ? 2 : 0,
+              xRestrict: String(item.rating || '').toLowerCase() === 'e' ? 1 : 0,
+              isAi: allTags.some((t) => /^ai[-_]?generated$/i.test(t)),
+              bookmarkCount: Number(item.fav_count || item.score || 0)
+            });
+          }
+          if (data.length < 95) reachedEnd = true;
+        }
+      }
+      hasMore = !reachedEnd && nextPage <= 1000;
+    } else if (source === 'sankaku') {
+      let skTags = tag;
+      if (order === 'popular_d' && !/order:/i.test(skTags)) skTags += ' order:popular';
+      else if (order === 'date' && !/order:/i.test(skTags)) skTags += ' order:id_asc';
+      let cur = cursor;
+      let reachedEnd = false;
+      for (let i = 0; i < chunkPages && !reachedEnd && !signal.aborted; i++) {
+        const pNum = startPage + i;
+        onProgress?.(pNum, artworks.length);
+        const u = cur
+          ? `https://sankakuapi.com/posts/keyset?tags=${encodeURIComponent(skTags)}&limit=40&next=${encodeURIComponent(cur)}`
+          : `https://sankakuapi.com/posts/keyset?tags=${encodeURIComponent(skTags)}&limit=40`;
+        const r = await fetch(u, { headers: { Accept: 'application/vnd.sankaku.api+json;v=2' }, signal });
+        if (!r.ok) { reachedEnd = true; break; }
+        const d = await r.json();
+        const list = Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [];
+        if (!list.length) { reachedEnd = true; break; }
+        pagesScanned++;
+        nextPage = pNum + 1;
+        cur = d?.meta?.next || '';
+        nextCursor = cur;
+        for (const item of list) {
+          if (!item?.id) continue;
+          const id = String(item.id);
+          const rLow = String(item.rating || '').toLowerCase();
+          const xRestrict = rLow === 'e' || rLow === 'explicit' ? 1 : 0;
+          if (mode === 'safe' && (xRestrict > 0 || rLow === 'q')) continue;
+          if (mode === 'r18' && xRestrict === 0) continue;
+          const tags = [];
+          let artistName = item.author?.name || '';
+          for (const tObj of Array.isArray(item.tags) ? item.tags : []) {
+            const tn = tObj?.tagName || tObj?.name || '';
+            if (!tn) continue;
+            tags.push(tn);
+            nativeTagCategories[tn] = mapDirectBooruCat(tObj.type ?? 0);
+            if (tObj.name_ja && tObj.name_ja !== tn) translations[tn] = tObj.name_ja;
+            if (Number(tObj.type) === 1 && !artistName) artistName = tObj.name_en || tn;
+          }
+          artworks.push({
+            id: `sk_${id}`,
+            externalId: id,
+            source: 'sankaku',
+            externalUrl: `https://beta.sankakucomplex.com/post/show/${id}`,
+            title: `Sankaku #${id}`,
+            tags,
+            userId: String(item.author?.id || ''),
+            userName: artistName || 'Sankaku',
+            thumbUrl: item.preview_url || item.sample_url || '',
+            regularUrl: item.sample_url || item.file_url || item.preview_url || '',
+            originalUrl: item.file_url || item.sample_url || '',
+            pageCount: 1,
+            illustType: String(item.file_type || '').startsWith('video/') ? 2 : 0,
+            xRestrict,
+            isAi: Boolean(item.has_ai_derivatives) || tags.some((t) => /ai_generated|novelai/i.test(t)),
+            bookmarkCount: Number(item.fav_count || item.total_score || 0)
+          });
+        }
+        if (!cur) reachedEnd = true;
+      }
+      hasMore = !reachedEnd && Boolean(nextCursor);
+    }
+
+    return {
+      source,
+      primaryTag: tag,
+      pagesScanned,
+      nextPage,
+      nextCursor,
+      hasMore,
+      engine: `${source.toUpperCase()}-DIRECT`,
+      artworks,
+      nativeTagCategories,
+      translations
+    };
   }
 
   async function executeAnalysis(overrideQuery, opts = {}) {
@@ -1807,18 +2112,24 @@
     if (!preflightInfo) {
       showPreflightBanner(`正在探测 [${srcMeta.label}] 标签 [${parsed.tag}] 的全站作品总数...`, false);
       try {
-        const infoQs = new URLSearchParams({ source, tag: parsed.tag, mode, s_mode: sMode, type });
-        const ir = await apiFetch(`/api/tag-info?${infoQs.toString()}`, { headers: commonHeaders });
-        const idata = await ir.json().catch(() => null);
-        if (idata && idata.error) {
-          showPreflightBanner(idata.message || '无法连接目标数据源', false);
-          if (idata.needsAuth) {
-            showToast(idata.message, 4500);
-            $('authModal')?.classList.remove('hidden');
-          }
-          return;
+        // Danbooru & Sankaku support direct browser CORS cleanly (avoids CF-Worker egress WAF)
+        if ((source === 'danbooru' || source === 'sankaku') && API_BASE) {
+          preflightInfo = await directBrowserTagInfo(source, parsed.tag, mode);
         }
-        preflightInfo = idata || null;
+        if (!preflightInfo) {
+          const infoQs = new URLSearchParams({ source, tag: parsed.tag, mode, s_mode: sMode, type });
+          const ir = await apiFetch(`/api/tag-info?${infoQs.toString()}`, { headers: commonHeaders });
+          const idata = await ir.json().catch(() => null);
+          if (idata && idata.error) {
+            showPreflightBanner(idata.message || '无法连接目标数据源', false);
+            if (idata.needsAuth) {
+              showToast(idata.message, 4500);
+              $('authModal')?.classList.remove('hidden');
+            }
+            return;
+          }
+          preflightInfo = idata || null;
+        }
       } catch (_) {}
     }
 
@@ -1899,8 +2210,49 @@
     };
 
     try {
+      const useDirectBrowserBooru = Boolean(API_BASE && (source === 'danbooru' || source === 'sankaku'));
       while (hasMore && !abortCtrl.signal.aborted && chunkIndex < 120) {
         chunkIndex++;
+        if (useDirectBrowserBooru) {
+          const stepChunk = isAllMode ? 6 : Math.min(6, Math.max(1, requestedMaxPages - totalPagesScanned));
+          const ch = await directBrowserSampleChunk({
+            source,
+            tag: primaryResolvedTag,
+            startPage,
+            chunkPages: stepChunk,
+            cursor,
+            mode,
+            order,
+            signal: abortCtrl.signal,
+            onProgress: (curP, inChunk) => {
+              const curTotal = accumWorks.size + inChunk;
+              const targetWorks = isAllMode
+                ? (knownTotalPosts > 0 ? Math.min(knownTotalPosts, 100000) : Math.max(curTotal + 200, 1000))
+                : Math.min(knownTotalPosts > 0 ? knownTotalPosts : requestedMaxPages * srcMeta.pageSize, requestedMaxPages * srcMeta.pageSize);
+              const pct = targetWorks > 0 ? Math.min(96, Math.max(4, Math.round((curTotal / targetWorks) * 96))) : 35;
+              progressText.textContent = knownTotalPosts > 0
+                ? `[${srcMeta.label}] 第 ${curP} 页 · 已采集 ${curTotal.toLocaleString()} / ${knownTotalPosts.toLocaleString()} 件作品`
+                : `[${srcMeta.label}] 正在采集第 ${curP} 页 (已采 ${curTotal.toLocaleString()} 作)...`;
+              progressPct.textContent = `${pct}%`;
+              progressFill.style.width = `${pct}%`;
+            }
+          });
+          lastEngine = ch.engine;
+          Object.assign(accumNativeCats, ch.nativeTagCategories || {});
+          Object.assign(accumTrans, ch.translations || {});
+          for (const w of ch.artworks || []) {
+            if (w && w.id) accumWorks.set(String(w.id), w);
+          }
+          totalPagesScanned += ch.pagesScanned || 0;
+          flushDataset(true, ch.hasMore);
+          if (!ch.hasMore || (!isAllMode && totalPagesScanned >= requestedMaxPages)) {
+            hasMore = false;
+          } else {
+            startPage = ch.nextPage;
+            cursor = ch.nextCursor || '';
+          }
+          continue;
+        }
         const qs = new URLSearchParams({
           source,
           tag: primaryResolvedTag,
@@ -3128,17 +3480,22 @@
       try {
         const headers = state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {};
         const src = state.source || 'pixiv';
-        const r = await apiFetch(`/api/pixiv/autocomplete?source=${encodeURIComponent(src)}&q=${encodeURIComponent(q)}`, {
-          headers,
-          signal: ctrl.signal
-        });
-        if (!r.ok) {
-          hideAutocomplete();
-          return;
+        let list = [];
+        if (API_BASE && (src === 'danbooru' || src === 'sankaku')) {
+          list = await directBrowserAutocomplete(src, q).catch(() => []);
         }
-        const d = await r.json();
+        if (!list.length) {
+          const r = await apiFetch(`/api/pixiv/autocomplete?source=${encodeURIComponent(src)}&q=${encodeURIComponent(q)}`, {
+            headers,
+            signal: ctrl.signal
+          });
+          if (r.ok) {
+            const d = await r.json();
+            list = d.candidates || d.tags || [];
+          }
+        }
         if ($('tagSearchInput')?.value.trim() !== q) return;
-        renderAutocomplete(d.candidates || d.tags || []);
+        renderAutocomplete(list);
       } catch (err) {
         if (err && err.name !== 'AbortError') hideAutocomplete();
       }

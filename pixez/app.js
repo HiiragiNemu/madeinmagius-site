@@ -2339,7 +2339,7 @@
         if (!preflightInfo) {
           const infoQs = new URLSearchParams({ source, tag: parsed.tag, mode, s_mode: sMode, type });
           const infoCtrl = new AbortController();
-          const infoTimer = setTimeout(() => infoCtrl.abort(), 13000);
+          const infoTimer = setTimeout(() => infoCtrl.abort(), 16000);
           let ir;
           try {
             ir = await apiFetch(`/api/tag-info?${infoQs.toString()}`, {

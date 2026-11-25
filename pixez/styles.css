@@ -3320,3 +3320,69 @@ a, a:hover, a:focus-visible {
   border-color: var(--t-cat-atr);
   color: var(--t-cat-atr);
 }
+
+/* v4.4: 1GB Local IndexedDB Cache Manager */
+.cache-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--t-border);
+  background: color-mix(in srgb, var(--t-surface-soft) 55%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cache-limit-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cache-records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.cache-record-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 7px 9px;
+  border: 1px solid var(--t-border);
+  background: color-mix(in srgb, var(--t-surface-raised) 70%, transparent);
+}
+
+.cache-record-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
+.cache-record-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--t-text-strong);
+}
+
+.cache-record-meta {
+  font-size: 11px;
+  color: var(--t-muted);
+  font-family: Consolas, monospace;
+}
+
+.cache-record-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}

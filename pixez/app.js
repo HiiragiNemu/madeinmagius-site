@@ -142,7 +142,9 @@
     themeBarMode: initialVisual.themeBarMode,
     visualEffects: initialVisual.effects,
     cookie: localStorage.getItem('pixez_cookie') || '',
+    accessToken: localStorage.getItem('pixez_access_token_v4') || '',
     refreshToken: localStorage.getItem('pixez_refresh_token_v4') || '',
+    cacheLimitMb: Math.max(128, Math.min(2048, parseInt(localStorage.getItem('pixez_cache_limit_mb') || '1024', 10) || 1024)),
     source: SOURCE_META[localStorage.getItem('pixez_source_v43')] ? localStorage.getItem('pixez_source_v43') : 'pixiv',
     r34Key: localStorage.getItem('pixez_r34_key') || '',
     r34Uid: localStorage.getItem('pixez_r34_uid') || '',
@@ -178,7 +180,13 @@
     basket: new Set(JSON.parse(localStorage.getItem('pixez_basket') || '[]')),
     userCategoryOverrides: JSON.parse(localStorage.getItem('pixez_cat_overrides') || '{}'),
     userCategoryLists: JSON.parse(localStorage.getItem('pixez_cat_lists') || '{"character":[],"attribute_xp":[],"series_ip":[],"meta_general":[]}'),
-    danbooruCache: {},
+    danbooruCache: (() => {
+      try {
+        return JSON.parse(localStorage.getItem('pixez_danbooru_wiki_cache_v1') || '{}') || {};
+      } catch (_) {
+        return {};
+      }
+    })(),
 
     computedCoTags: [],
     filteredArtworks: [],
@@ -669,6 +677,17 @@
     'final', 'happy', 'sad', 'new', 'old', 'full', 'half', 'mini', 'super', 'ultra', 'digital', 'anime'
   ]);
 
+  const NON_CHAR_ROOT_RE =
+    /(エロ|無様|責め|堕ち|姦|射精|顔射|口内|中出|手コキ|足コキ|パイズリ|フェラ|アナル|バイブ|電マ|プレイ|セックス|オナニー|イキ|ハメ|種付|寝取|敗北|事後|凌辱|調教|拘束|緊縛|催眠|洗脳|露出|放尿|失禁|脱糞|絶頂|痙攣|妊娠|妊婦|出産|母乳|搾乳|触手|苗床|産卵|丸呑|ふたなり|女体化|性転|男の娘|女装|全裸|半裸|下脱|上脱|下着|水着|制服|衣装|メイド|バニー|タイツ|ストッキング|ニーソ|ビキニ|ドレス|パンツ|ブラ|巨乳|爆乳|貧乳|ちっぱい|おっぱい|ふともも|太もも|絶対領域|パンチラ|胸チラ|腹チラ|腋|足裏|素足|裸足|差分|漫画|小説|落書|らくがき|練習|模写|原画|背景|風景|素材|講座|企画|生誕|誕生|記念|周年|公式|二次|一次|創作|オリジナル|百合|変身|擬人|再臨|霊衣|概念礼装|ネタバレ|ワンドロ|ガチャ|セット|ポーズ|アヘ顔|トロ顔|イキ顔|笑顔|泣き顔|寝顔|横顔|後ろ姿|立ち絵|振り返り|寝そべり|見返り|しゃがみ|お姉さん|女の子|男の子|美少女|幼女|ロリ|熟女|人妻|ギャル|メスガキ|ヤンデレ|ツンデレ|陰毛|パイパン|褐肌|日焼け|黒髪|白髪|金髪|銀髪|赤目|青目|ジト目|ハート目|獣耳|猫耳|狐耳|犬耳|尻尾|動画|動畫|うごイラ)/i;
+
+  function persistDanbooruCache() {
+    try {
+      const entries = Object.entries(state.danbooruCache);
+      const trimmed = entries.length > 4000 ? Object.fromEntries(entries.slice(-4000)) : state.danbooruCache;
+      localStorage.setItem('pixez_danbooru_wiki_cache_v1', JSON.stringify(trimmed));
+    } catch (_) {}
+  }
+
   function classifyTagClient(tag, translation = '', serverCategory = null) {
     const clean = String(tag || '').trim();
     if (!clean) return 'meta_general';
@@ -706,10 +725,11 @@
       return 'series_ip';
     }
 
+    if (ATTR_SET.has(lower) || NON_CHAR_WORDS.has(lower)) return 'attribute_xp';
+    if (NON_CHAR_ROOT_RE.test(clean) && !/^キュア/.test(clean)) return 'attribute_xp';
     if (
-      ATTR_SET.has(lower) ||
-      (/(タイツ|ストッキング|ニーソ|水着|ビキニ|制服|メイド|バニー|ドレス|服|着|耳|髪|目|眼|乳|胸|尻|足|脚|もも|腋|腹|へそ|顔|涙|笑|娘|少女|ロリ|姉|百合|キス|メガネ|眼鏡|リボン|帽|脱ぎ|出し|再臨|緊縛|拘束|ゲーム|ブローチ)$/.test(clean) &&
-        !/^キュア/.test(clean))
+      /(タイツ|ストッキング|ニーソ|水着|ビキニ|制服|メイド|バニー|ドレス|服|着|耳|髪|目|眼|乳|胸|尻|足|脚|もも|腋|腹|へそ|顔|涙|笑|娘|少女|ロリ|姉|百合|キス|メガネ|眼鏡|リボン|帽|脱ぎ|出し|再臨|緊縛|拘束|ゲーム|ブローチ|化|系|風|版|集|録|記|伝|編|章|話|巻|祭|日|戦|プレイ|エロ)$/.test(clean) &&
+      !/^キュア/.test(clean)
     ) {
       return 'attribute_xp';
     }
@@ -718,19 +738,24 @@
       return serverCategory;
     }
 
-    // Positive-evidence-ONLY Character Heuristics (NEVER default unknown tags to 'character'!)
+    // Precision-First Positive-Evidence-ONLY Character Heuristics (NO loose Kanji+Katakana rule!)
     if (/^(キュア|仮面ライダー|ウルトラマン)[ァ-ヴー・]+/.test(clean)) return 'character';
 
     const parenMatch = clean.match(/^([^()（）]{2,15})[(（]([^()（）]{1,18})[)）]$/);
     if (parenMatch) {
       const baseName = parenMatch[1].trim();
-      if (!CLASS_OR_NON_CHAR_BASE_RE.test(baseName) && !ATTR_SET.has(baseName.toLowerCase()) && !META_SET.has(baseName.toLowerCase())) {
+      if (
+        !CLASS_OR_NON_CHAR_BASE_RE.test(baseName) &&
+        !ATTR_SET.has(baseName.toLowerCase()) &&
+        !META_SET.has(baseName.toLowerCase()) &&
+        !NON_CHAR_ROOT_RE.test(baseName)
+      ) {
         return 'character';
       }
       return 'attribute_xp';
     }
 
-    if (/^[ァ-ヴー]{2,10}・[ァ-ヴー]{2,10}$/.test(clean) && !NON_CHAR_WORDS.has(lower)) {
+    if (/^[ァ-ヴー]{2,10}・[ァ-ヴー]{2,10}$/.test(clean) && !NON_CHAR_WORDS.has(lower) && !NON_CHAR_ROOT_RE.test(clean)) {
       return 'character';
     }
 
@@ -745,10 +770,7 @@
       }
     }
 
-    if (!NON_CHAR_WORDS.has(lower) && /^[一-龥々ヶノ]{1,3}[ぁ-んー]{2,5}$/.test(clean)) {
-      return 'character';
-    }
-    if (!NON_CHAR_WORDS.has(lower) && /^[一-龥々ヶノ]{1,3}[ァ-ヴー]{2,6}$/.test(clean)) {
+    if (!NON_CHAR_WORDS.has(lower) && !NON_CHAR_ROOT_RE.test(clean) && /^[一-龥々ヶノ]{1,3}[ぁ-んー]{2,5}$/.test(clean)) {
       return 'character';
     }
 
@@ -1726,7 +1748,7 @@
     }
     const topUncached = Array.from(counts.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 60)
+      .slice(0, 180)
       .map(([t]) => t);
     if (!topUncached.length) return;
     let map = {};
@@ -1734,7 +1756,7 @@
       const r = await apiFetch('/api/danbooru/enrich', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tags: topUncached })
+        body: JSON.stringify({ tags: topUncached.slice(0, 100) })
       });
       if (r.ok) {
         const d = await r.json();
@@ -1742,50 +1764,247 @@
       }
     } catch (_) {}
 
-    // Direct-browser CORS fallback (danbooru.donmai.us returns Access-Control-Allow-Origin: *)
-    if (Object.keys(map).length === 0) {
+    // Direct-browser CORS enrichment (danbooru.donmai.us returns Access-Control-Allow-Origin: *)
+    const stillMissing = topUncached.filter((t) => !map[t]);
+    if (stillMissing.length > 0) {
       try {
-        for (let i = 0; i < topUncached.length; i += 20) {
-          const chunk = topUncached.slice(i, i + 20);
-          const qs = new URLSearchParams({
-            'search[other_names_include_any]': chunk.join(' '),
-            limit: '100',
-            only: 'title,other_names,tag[name,category,post_count]'
-          });
-          const r = await fetch(`https://danbooru.donmai.us/wiki_pages.json?${qs.toString()}`);
-          if (!r.ok) continue;
-          const items = await r.json();
-          if (!Array.isArray(items)) continue;
-          for (const pixTag of chunk) {
-            const lp = pixTag.toLowerCase();
-            let best = null;
-            for (const item of items) {
-              const others = Array.isArray(item.other_names) ? item.other_names : [];
-              if (others.some((n) => String(n).toLowerCase() === lp) || String(item.title || '').toLowerCase() === lp) {
-                const pc = Number(item.tag?.post_count || 0);
-                if (!best || pc > best.postCount) {
-                  const code = Number(item.tag?.category ?? 0);
-                  best = {
-                    danbooruTag: item.title || item.tag?.name || '',
-                    category: code === 4 ? 'character' : code === 3 ? 'series_ip' : (code === 1 || code === 5 ? 'meta_general' : 'attribute_xp'),
-                    postCount: pc
-                  };
+        const chunks = [];
+        for (let i = 0; i < stillMissing.length; i += 25) chunks.push(stillMissing.slice(i, i + 25));
+        await Promise.all(
+          chunks.map(async (chunk) => {
+            const qs = new URLSearchParams({
+              'search[other_names_include_any]': chunk.join(' '),
+              limit: '100',
+              only: 'title,other_names,tag[name,category,post_count]'
+            });
+            const r = await fetch(`https://danbooru.donmai.us/wiki_pages.json?${qs.toString()}`);
+            if (!r.ok) return;
+            const items = await r.json();
+            if (!Array.isArray(items)) return;
+            for (const pixTag of chunk) {
+              const lp = pixTag.toLowerCase();
+              let best = null;
+              for (const item of items) {
+                const others = Array.isArray(item.other_names) ? item.other_names : [];
+                if (others.some((n) => String(n).toLowerCase() === lp) || String(item.title || '').toLowerCase() === lp) {
+                  const pc = Number(item.tag?.post_count || 0);
+                  if (!best || pc > best.postCount) {
+                    const code = Number(item.tag?.category ?? 0);
+                    best = {
+                      danbooruTag: item.title || item.tag?.name || '',
+                      category: code === 4 ? 'character' : code === 3 ? 'series_ip' : (code === 1 || code === 5 ? 'meta_general' : 'attribute_xp'),
+                      postCount: pc
+                    };
+                  }
                 }
               }
+              if (best && best.danbooruTag) map[pixTag] = best;
             }
-            if (best && best.danbooruTag) map[pixTag] = best;
-          }
-        }
+          })
+        );
       } catch (_) {}
     }
 
     if (Object.keys(map).length > 0) {
       Object.assign(state.danbooruCache, map);
+      persistDanbooruCache();
       if (state.rawDataset) {
         state.rawDataset.danbooruMap = { ...(state.rawDataset.danbooruMap || {}), ...map };
       }
       recomputeAndRender();
     }
+  }
+
+  // =========================================================================
+  // 9A. 1GB LOCAL SEGMENTED CACHE (IndexedDB: pixez_pulse_cache_v1)
+  // =========================================================================
+  const PulseCacheDB = (() => {
+    const DB_NAME = 'pixez_pulse_cache_v1';
+    const STORE = 'datasets';
+    let dbPromise = null;
+
+    function open() {
+      if (dbPromise) return dbPromise;
+      dbPromise = new Promise((resolve, reject) => {
+        if (typeof indexedDB === 'undefined') return reject(new Error('IndexedDB unavailable'));
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(STORE)) {
+            db.createObjectStore(STORE, { keyPath: 'key' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      return dbPromise;
+    }
+
+    async function getAll() {
+      try {
+        const db = await open();
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE, 'readonly');
+          const req = tx.objectStore(STORE).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (_) {
+        return [];
+      }
+    }
+
+    async function get(key) {
+      try {
+        const db = await open();
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE, 'readonly');
+          const req = tx.objectStore(STORE).get(key);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (_) {
+        return null;
+      }
+    }
+
+    async function remove(key) {
+      try {
+        const db = await open();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE, 'readwrite');
+          tx.objectStore(STORE).delete(key);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (_) {}
+    }
+
+    async function clearAll() {
+      try {
+        const db = await open();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE, 'readwrite');
+          tx.objectStore(STORE).clear();
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (_) {}
+    }
+
+    async function putWithEviction(record, maxBytes) {
+      try {
+        const approxBytes = new Blob([JSON.stringify(record)]).size;
+        record.bytes = approxBytes;
+        record.updatedAt = Date.now();
+        const existing = await getAll();
+        let totalBytes = approxBytes + existing.filter((r) => r.key !== record.key).reduce((s, r) => s + (r.bytes || 0), 0);
+        if (totalBytes > maxBytes) {
+          const oldest = existing.filter((r) => r.key !== record.key).sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
+          for (const old of oldest) {
+            if (totalBytes <= maxBytes) break;
+            await remove(old.key);
+            totalBytes -= old.bytes || 0;
+          }
+        }
+        const db = await open();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE, 'readwrite');
+          tx.objectStore(STORE).put(record);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (_) {}
+    }
+
+    return { getAll, get, remove, clearAll, putWithEviction };
+  })();
+
+  function makeCacheKey(source, tag, mode) {
+    return `${String(source || 'pixiv').toLowerCase()}::${String(tag || '').trim().toLowerCase()}::${mode || 'all'}`;
+  }
+
+  async function refreshCacheBadge() {
+    const records = await PulseCacheDB.getAll();
+    if ($('cacheCountBadge')) $('cacheCountBadge').textContent = String(records.length);
+    return records;
+  }
+
+  async function renderCacheModal() {
+    const records = (await refreshCacheBadge()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const totalBytes = records.reduce((s, r) => s + (r.bytes || 0), 0);
+    const usedMb = (totalBytes / (1024 * 1024)).toFixed(2);
+    if ($('cacheUsageSummary')) {
+      $('cacheUsageSummary').textContent = `本地已缓存 ${records.length} 份数据集 · 已占用 ${usedMb} MB / ${state.cacheLimitMb} MB (${(state.cacheLimitMb / 1024).toFixed(2)} GB)`;
+    }
+    if ($('cacheLimitMbSelect')) $('cacheLimitMbSelect').value = String(state.cacheLimitMb);
+    const listEl = $('cacheRecordsList');
+    if (!listEl) return;
+    if (!records.length) {
+      listEl.innerHTML = `<div class="empty-placeholder">暂无本地缓存记录（采样完成后会自动保存至本地 IndexedDB，支持断点分段续采与合并计算）</div>`;
+      return;
+    }
+    listEl.innerHTML = records
+      .map((rec) => {
+        const srcLabel = (SOURCE_META[rec.source] || {}).label || rec.source;
+        const cnt = (rec.artworks || []).length;
+        const mb = ((rec.bytes || 0) / (1024 * 1024)).toFixed(2);
+        const dt = rec.updatedAt ? new Date(rec.updatedAt).toLocaleString() : '';
+        const dateHint = rec.oldestDate ? ` · 最早至 ${rec.oldestDate}` : '';
+        const totalHint = rec.pixivTotal > 0 ? ` / 全站 ${Number(rec.pixivTotal).toLocaleString()}` : '';
+        return `
+          <div class="cache-record-card">
+            <div class="cache-record-info">
+              <div class="cache-record-title">[${escapeHtml(srcLabel)}] ${escapeHtml(rec.primaryTag)}</div>
+              <div class="cache-record-meta">已缓存 ${cnt.toLocaleString()} 作${totalHint} · ${rec.pagesScanned || 1}页${dateHint} · ${mb} MB · ${escapeHtml(dt)}</div>
+            </div>
+            <div class="cache-record-actions">
+              <button class="t-btn t-btn--sm t-btn--primary" data-cache-load="${escapeHtml(rec.key)}" type="button">载入计算</button>
+              <button class="t-btn t-btn--sm" data-cache-resume="${escapeHtml(rec.key)}" type="button">续采下一段</button>
+              <button class="t-btn t-btn--sm t-btn--danger" data-cache-del="${escapeHtml(rec.key)}" type="button">删除</button>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    listEl.querySelectorAll('[data-cache-load]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const rec = await PulseCacheDB.get(btn.dataset.cacheLoad);
+        if (!rec) return;
+        state.source = SOURCE_META[rec.source] ? rec.source : 'pixiv';
+        applySourceUI();
+        $('tagSearchInput').value = rec.primaryTag || '';
+        state.lockedSubTags.clear();
+        state.rawDataset = rec;
+        if (rec.danbooruMap) Object.assign(state.danbooruCache, rec.danbooruMap);
+        $('cacheModal')?.classList.add('hidden');
+        recomputeAndRender();
+        showToast(`已从本地缓存瞬间载入 [${rec.primaryTag}] (${(rec.artworks || []).length.toLocaleString()} 件作品)`);
+      });
+    });
+
+    listEl.querySelectorAll('[data-cache-resume]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const rec = await PulseCacheDB.get(btn.dataset.cacheResume);
+        if (!rec) return;
+        $('cacheModal')?.classList.add('hidden');
+        executeAnalysis(rec.primaryTag, {
+          source: rec.source,
+          overridePages: 'ALL',
+          skipConfirm: true,
+          resumeFromCache: rec
+        });
+      });
+    });
+
+    listEl.querySelectorAll('[data-cache-del]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await PulseCacheDB.remove(btn.dataset.cacheDel);
+        renderCacheModal();
+        showToast('已删除该条本地缓存');
+      });
+    });
   }
 
   // Direct-browser CORS adapters for Danbooru & Sankaku (bypass CF-Worker-to-CF WAF cleanly!)
@@ -2104,6 +2323,7 @@
 
     const commonHeaders = {};
     if (state.cookie) commonHeaders['X-Pixiv-Cookie'] = state.cookie;
+    if (state.accessToken) commonHeaders['X-Pixiv-Token'] = state.accessToken;
     if (state.r34Key) commonHeaders['X-R34-Key'] = state.r34Key;
     if (state.r34Uid) commonHeaders['X-R34-Uid'] = state.r34Uid;
 
@@ -2169,22 +2389,64 @@
     const abortCtrl = new AbortController();
     state.activeStreamAbort = abortCtrl;
 
+    const resumeRec = opts.resumeFromCache || null;
     const accumWorks = new Map();
-    const accumTrans = {};
-    const accumNativeCats = {};
-    const accumDanbooru = {};
-    let totalPagesScanned = 0;
-    let knownTotalPosts = Number(preflightInfo?.totalPosts || 0);
-    let primaryResolvedTag = preflightInfo?.resolvedTag || parsed.tag;
-    let lastEngine = `${srcMeta.label.toUpperCase()}-API`;
+    const accumTrans = { ...(resumeRec?.translations || {}) };
+    const accumNativeCats = { ...(resumeRec?.nativeTagCategories || {}) };
+    const accumDanbooru = { ...(resumeRec?.danbooruMap || {}) };
+    if (resumeRec && Array.isArray(resumeRec.artworks)) {
+      for (const w of resumeRec.artworks) {
+        if (w && w.id) accumWorks.set(String(w.id), w);
+      }
+    }
+    let totalPagesScanned = Number(resumeRec?.pagesScanned || 0);
+    let knownTotalPosts = Math.max(Number(preflightInfo?.totalPosts || 0), Number(resumeRec?.pixivTotal || 0));
+    let primaryResolvedTag = preflightInfo?.resolvedTag || resumeRec?.primaryTag || parsed.tag;
+    let lastEngine = resumeRec?.engine || `${srcMeta.label.toUpperCase()}-API`;
 
-    const requestedMaxPages = isAllMode ? 1000 : Math.max(1, parseInt(pages, 10) || 3);
+    const requestedMaxPages = isAllMode ? 2000 : Math.max(1, parseInt(pages, 10) || 3);
     const chunkSize = source === 'pixiv' ? 24 : 10;
     let startPage = 1;
-    let cursor = '';
+    let cursor = resumeRec?.nextCursor || '';
+    let activeEndDate = resumeRec?.oldestDate || '';
+    let activeOrder = order;
+    let didHibiReverseSegment = false;
     let hasMore = true;
     let chunkIndex = 0;
     let lastSnapshotRenderAt = 0;
+    let lastCheckpointSize = accumWorks.size;
+
+    const computeOldestDate = () => {
+      let oldest = '';
+      for (const w of accumWorks.values()) {
+        const d = String(w.createDate || '').slice(0, 10);
+        if (d && (!oldest || d < oldest)) oldest = d;
+      }
+      return oldest;
+    };
+
+    const checkpointToIndexedDb = async (stillHasMore = false) => {
+      const worksArr = Array.from(accumWorks.values());
+      if (!worksArr.length) return;
+      const cacheRecord = {
+        key: makeCacheKey(source, primaryResolvedTag, mode),
+        source,
+        primaryTag: primaryResolvedTag,
+        mode,
+        pixivTotal: knownTotalPosts,
+        pagesScanned: totalPagesScanned,
+        engine: lastEngine,
+        hasMore: stillHasMore,
+        oldestDate: computeOldestDate(),
+        nextCursor: cursor,
+        artworks: worksArr,
+        translations: accumTrans,
+        nativeTagCategories: accumNativeCats,
+        danbooruMap: accumDanbooru
+      };
+      await PulseCacheDB.putWithEviction(cacheRecord, state.cacheLimitMb * 1024 * 1024);
+      refreshCacheBadge();
+    };
 
     const flushDataset = (forceRender = false, stillHasMore = false) => {
       const worksArr = Array.from(accumWorks.values());
@@ -2195,12 +2457,17 @@
         pagesScanned: totalPagesScanned,
         engine: lastEngine,
         hasMore: stillHasMore,
+        oldestDate: computeOldestDate(),
         artworks: worksArr,
         translations: accumTrans,
         nativeTagCategories: accumNativeCats,
         danbooruMap: accumDanbooru
       };
       $('engineSourceIndicator').textContent = `${lastEngine} · ${totalPagesScanned}P`;
+      if (worksArr.length - lastCheckpointSize >= 1500) {
+        lastCheckpointSize = worksArr.length;
+        checkpointToIndexedDb(stillHasMore);
+      }
       const now = Date.now();
       if (forceRender || now - lastSnapshotRenderAt >= 420) {
         lastSnapshotRenderAt = now;
@@ -2211,23 +2478,33 @@
 
     try {
       const useDirectBrowserBooru = Boolean(API_BASE && (source === 'danbooru' || source === 'sankaku'));
-      while (hasMore && !abortCtrl.signal.aborted && chunkIndex < 120) {
+      while (hasMore && !abortCtrl.signal.aborted && chunkIndex < 160) {
         chunkIndex++;
         if (useDirectBrowserBooru) {
           const stepChunk = isAllMode ? 6 : Math.min(6, Math.max(1, requestedMaxPages - totalPagesScanned));
+          // Danbooru keyset cursor (`b<minId>`) automatically breaks the 1000-page / 100k ceiling!
+          let effectivePageArg = startPage;
+          if (source === 'danbooru' && startPage > 1000) {
+            let minId = Infinity;
+            for (const w of accumWorks.values()) {
+              const nid = Number(w.externalId || String(w.id).replace(/\D+/g, ''));
+              if (nid > 0 && nid < minId) minId = nid;
+            }
+            if (Number.isFinite(minId)) effectivePageArg = `b${minId}`;
+          }
           const ch = await directBrowserSampleChunk({
             source,
             tag: primaryResolvedTag,
-            startPage,
+            startPage: typeof effectivePageArg === 'number' ? effectivePageArg : 1,
             chunkPages: stepChunk,
             cursor,
             mode,
-            order,
+            order: activeOrder,
             signal: abortCtrl.signal,
             onProgress: (curP, inChunk) => {
               const curTotal = accumWorks.size + inChunk;
               const targetWorks = isAllMode
-                ? (knownTotalPosts > 0 ? Math.min(knownTotalPosts, 100000) : Math.max(curTotal + 200, 1000))
+                ? (knownTotalPosts > 0 ? knownTotalPosts : Math.max(curTotal + 200, 1000))
                 : Math.min(knownTotalPosts > 0 ? knownTotalPosts : requestedMaxPages * srcMeta.pageSize, requestedMaxPages * srcMeta.pageSize);
               const pct = targetWorks > 0 ? Math.min(96, Math.max(4, Math.round((curTotal / targetWorks) * 96))) : 35;
               progressText.textContent = knownTotalPosts > 0
@@ -2240,12 +2517,13 @@
           lastEngine = ch.engine;
           Object.assign(accumNativeCats, ch.nativeTagCategories || {});
           Object.assign(accumTrans, ch.translations || {});
+          const beforeCount = accumWorks.size;
           for (const w of ch.artworks || []) {
             if (w && w.id) accumWorks.set(String(w.id), w);
           }
           totalPagesScanned += ch.pagesScanned || 0;
           flushDataset(true, ch.hasMore);
-          if (!ch.hasMore || (!isAllMode && totalPagesScanned >= requestedMaxPages)) {
+          if (!ch.hasMore || accumWorks.size === beforeCount || (!isAllMode && totalPagesScanned >= requestedMaxPages)) {
             hasMore = false;
           } else {
             startPage = ch.nextPage;
@@ -2257,10 +2535,11 @@
           source,
           tag: primaryResolvedTag,
           pages,
-          order,
+          order: activeOrder,
           startPage: String(startPage),
           chunkPages: String(chunkSize),
           cursor,
+          endDate: activeEndDate,
           mode,
           s_mode: sMode,
           type,
@@ -2277,9 +2556,11 @@
         const decoder = new TextDecoder('utf-8');
         let buffer = '';
         let chunkHasMore = false;
+        let chunkHitOffsetCeiling = false;
         let chunkNextPage = startPage;
         let chunkNextCursor = '';
         let chunkPagesDone = 0;
+        const beforeChunkSize = accumWorks.size;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -2305,18 +2586,18 @@
                 if (payload.totalMatches && Number(payload.totalMatches) > knownTotalPosts) {
                   knownTotalPosts = Number(payload.totalMatches);
                 }
-                const ceilingWorks = Number(preflightInfo?.apiCeilingWorks || 60000);
                 const targetWorks = isAllMode
-                  ? (knownTotalPosts > 0 ? Math.min(knownTotalPosts, ceilingWorks) : Math.max(accumWorks.size + 300, 1200))
+                  ? (knownTotalPosts > 0 ? knownTotalPosts : Math.max(accumWorks.size + 300, 1200))
                   : Math.min(knownTotalPosts > 0 ? knownTotalPosts : requestedMaxPages * srcMeta.pageSize, requestedMaxPages * srcMeta.pageSize);
                 const curWorks = Math.max(accumWorks.size, Number(payload.sampledArtworks || 0));
                 const pct = targetWorks > 0
                   ? Math.min(96, Math.max(4, Math.round((curWorks / targetWorks) * 96)))
                   : (payload.totalPages ? Math.min(95, Math.round((payload.currentPage / payload.totalPages) * 95)) : 35);
+                const segHint = activeEndDate ? ` [截止 ${activeEndDate}]` : (didHibiReverseSegment ? ' [最早回溯段]' : '');
                 progressText.textContent =
                   knownTotalPosts > 0
-                    ? `[${srcMeta.label}] 第 ${payload.currentPage || startPage} 页 · 已采集 ${curWorks.toLocaleString()} / ${knownTotalPosts.toLocaleString()} 件作品`
-                    : (payload.message || `[${srcMeta.label}] 正在采集第 ${payload.currentPage || startPage} 页 (已采 ${curWorks.toLocaleString()} 作)...`);
+                    ? `[${srcMeta.label}]${segHint} 第 ${payload.currentPage || startPage} 页 · 已采集 ${curWorks.toLocaleString()} / ${knownTotalPosts.toLocaleString()} 件作品`
+                    : (payload.message || `[${srcMeta.label}]${segHint} 正在采集第 ${payload.currentPage || startPage} 页 (已采 ${curWorks.toLocaleString()} 作)...`);
                 progressPct.textContent = `${pct}%`;
                 progressFill.style.width = `${pct}%`;
               } else if (eventType === 'snapshot' || eventType === 'complete') {
@@ -2339,6 +2620,7 @@
                 if (eventType === 'complete') {
                   chunkPagesDone = Number(ds.pagesScanned || ds.meta?.pagesFetched || 1);
                   chunkHasMore = Boolean(payload.hasMore ?? ds.hasMore);
+                  chunkHitOffsetCeiling = Boolean(payload.hitOffsetCeiling ?? ds.hitOffsetCeiling);
                   chunkNextPage = Number(payload.nextPage || ds.nextPage || (startPage + chunkPagesDone));
                   chunkNextCursor = String(payload.nextCursor || ds.nextCursor || '');
                   totalPagesScanned += chunkPagesDone;
@@ -2356,35 +2638,52 @@
           }
         }
 
-        if (!chunkHasMore) {
-          hasMore = false;
-        } else if (!isAllMode && totalPagesScanned >= requestedMaxPages) {
-          hasMore = false;
-        } else if (chunkNextPage <= startPage && !chunkNextCursor) {
-          hasMore = false;
-        } else {
+        const newlyAddedInChunk = accumWorks.size - beforeChunkSize;
+        if (chunkHasMore && newlyAddedInChunk > 0 && (isAllMode || totalPagesScanned < requestedMaxPages)) {
           startPage = chunkNextPage;
           cursor = chunkNextCursor;
+        } else if (isAllMode && source === 'pixiv' && newlyAddedInChunk > 0 && (chunkHitOffsetCeiling || (lastEngine === 'PIXIV-OAUTH-APP-API' && chunkNextPage > 160) || (lastEngine === 'WEB-AJAX' && chunkNextPage >= 1000))) {
+          // Date-Window Segmentation: save checkpoint to 1GB IndexedDB cache and continue older date segment past 5,000!
+          const oldest = computeOldestDate();
+          if (oldest && oldest !== activeEndDate) {
+            await checkpointToIndexedDb(true);
+            activeEndDate = oldest;
+            startPage = 1;
+            showToast(`已保存前段 ${accumWorks.size.toLocaleString()} 件作品至本地缓存，自动切换下一时间段 (截止 ${activeEndDate}) 继续采集...`, 3500);
+          } else {
+            hasMore = false;
+          }
+        } else if (isAllMode && source === 'pixiv' && lastEngine === 'HIBI-APP-API' && !didHibiReverseSegment && accumWorks.size >= 4200 && activeOrder === 'date_d') {
+          // Guest HibiAPI dual-segment: save newest ~5,000 to local cache and also merge oldest ~5,000 (up to 10,000 works!)
+          await checkpointToIndexedDb(true);
+          didHibiReverseSegment = true;
+          activeOrder = 'date';
+          startPage = 1;
+          showToast(`已缓存最新段 ${accumWorks.size.toLocaleString()} 作，自动启动最早段回溯合并采集...`, 3500);
+        } else {
+          hasMore = false;
         }
       }
 
       flushDataset(true, false);
+      await checkpointToIndexedDb(false);
       progressFill.style.width = '100%';
       progressPct.textContent = '100%';
       const finalCount = accumWorks.size;
       progressText.textContent =
         knownTotalPosts > 0
-          ? `完成 [${srcMeta.label}] [${primaryResolvedTag}] 采样：已采集 ${finalCount.toLocaleString()} 件 (全站共 ${knownTotalPosts.toLocaleString()} 件 / ${totalPagesScanned} 页)`
-          : `完成 [${srcMeta.label}] [${primaryResolvedTag}] 采样：共 ${finalCount.toLocaleString()} 件作品 (${totalPagesScanned} 页)`;
+          ? `完成 [${srcMeta.label}] [${primaryResolvedTag}] 采样：已采集 ${finalCount.toLocaleString()} 件 (全站共 ${knownTotalPosts.toLocaleString()} 件 / ${totalPagesScanned} 页，已存入本地缓存)`
+          : `完成 [${srcMeta.label}] [${primaryResolvedTag}] 采样：共 ${finalCount.toLocaleString()} 件作品 (${totalPagesScanned} 页，已存入本地缓存)`;
 
-      // Auto-enrich Pixiv / Safebooru / Zerochan / Rule34 top tags via Danbooru semantic wiki
+      // Auto-enrich top 180 co-tags via Danbooru Wiki ontology (with persistent local cache!)
       if (['pixiv', 'safebooru', 'zerochan', 'rule34'].includes(source) && finalCount > 0) {
         enrichTopTagsViaDanbooru(Array.from(accumWorks.values()), primaryResolvedTag);
       }
     } catch (err) {
       if (err.name === 'AbortError') {
         flushDataset(true, false);
-        showToast(`已停止翻页并锁定当前已采集的 ${accumWorks.size.toLocaleString()} 件样本`);
+        await checkpointToIndexedDb(true);
+        showToast(`已停止翻页并保存当前 ${accumWorks.size.toLocaleString()} 件样本至本地缓存（可在「缓存」中随时续采）`);
       } else {
         showToast(`采样中断: ${err.message}`);
       }
@@ -3009,6 +3308,10 @@
       });
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.message || d.error || '自动授权交换失败');
+      if (d.accessToken) {
+        state.accessToken = d.accessToken;
+        localStorage.setItem('pixez_access_token_v4', d.accessToken);
+      }
       if (d.refreshToken) {
         state.refreshToken = d.refreshToken;
         localStorage.setItem('pixez_refresh_token_v4', d.refreshToken);
@@ -3883,6 +4186,7 @@
       ['openAuthModalBtn', 'closeAuthModalBtn', 'authModal'],
       ['openReverseModalBtn', 'closeReverseModalBtn', 'reverseModal'],
       ['openBasketBtn', 'closeBasketModalBtn', 'basketModal'],
+      ['openCacheModalBtn', 'closeCacheModalBtn', 'cacheModal'],
       ['openClientDownloadBtn', 'closeClientDownloadBtn', 'clientDownloadModal'],
       [null, 'closeModalBtn', 'inspectModal'],
       [null, 'closeIllustViewerBtn', 'illustViewerModal']
@@ -3906,6 +4210,7 @@
             return;
           }
           if (modalId === 'basketModal') renderBasketModal();
+          if (modalId === 'cacheModal') renderCacheModal();
           if (modalId === 'rulesModal') populateRulesModal();
           m.classList.remove('hidden');
         });
@@ -4097,12 +4402,25 @@
       renderBasketModal();
       renderTable(state.computedCoTags);
     });
+
+    $('clearAllCacheBtn')?.addEventListener('click', async () => {
+      await PulseCacheDB.clearAll();
+      renderCacheModal();
+      showToast('已清空全部本地缓存');
+    });
+    $('cacheLimitMbSelect')?.addEventListener('change', (e) => {
+      state.cacheLimitMb = Math.max(128, parseInt(e.target.value, 10) || 1024);
+      localStorage.setItem('pixez_cache_limit_mb', String(state.cacheLimitMb));
+      renderCacheModal();
+      showToast(`本地缓存上限已设置为 ${state.cacheLimitMb} MB`);
+    });
   }
 
   // Startup initialization
   applyVisualSettings();
   initOpticalScrollbar();
   saveBasket();
+  refreshCacheBadge();
   initCustomSelects();
   applySourceUI();
   initQuickJumpRail();

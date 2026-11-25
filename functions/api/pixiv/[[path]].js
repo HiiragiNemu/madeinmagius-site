@@ -955,7 +955,7 @@ export async function onRequest(context) {
 
   // 0. Health / status endpoint
   if (subPath === 'status' || subPath === '') {
-    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.3' }, 200, request);
+    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.4' }, 200, request);
   }
 
   // 0B. Danbooru semantic taxonomy batch enrichment (/api/pixiv/danbooru/enrich)
@@ -1257,7 +1257,16 @@ export async function onRequest(context) {
           u.profile_image_urls?.medium ||
           '',
       };
-      return jsonResponse({ error: false, user: normalizedUser, refreshToken: resp.refresh_token || '' }, 200, request);
+      return jsonResponse(
+        {
+          error: false,
+          user: normalizedUser,
+          accessToken: resp.access_token || '',
+          refreshToken: resp.refresh_token || '',
+        },
+        200,
+        request
+      );
     } catch (e) {
       return jsonResponse({ error: true, message: e.message || 'OAuth 请求失败' }, 502, request);
     }
@@ -1420,6 +1429,9 @@ export async function onRequest(context) {
     const startPage = Math.max(1, parseInt(url.searchParams.get('startPage') || '1', 10) || 1);
     const chunkPagesParam = parseInt(url.searchParams.get('chunkPages') || '0', 10) || 0;
     const cursor = url.searchParams.get('cursor') || '';
+    const endDate = (url.searchParams.get('endDate') || '').trim();
+    const startDate = (url.searchParams.get('startDate') || '').trim();
+    const accessToken = (request.headers.get('x-pixiv-token') || '').trim();
     const mode = url.searchParams.get('mode') || 'all';
     const order = url.searchParams.get('order') || 'date_d';
     const s_mode = url.searchParams.get('s_mode') || 's_tag';
@@ -1500,7 +1512,83 @@ export async function onRequest(context) {
             message: `正在连接 Pixiv 采样 [${tag}] 第 ${startPage} 页...`,
           });
 
-          const firstDirectUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
+          // Strategy 0 (BEST when logged in via PixEz OAuth): Official Pixiv App API with search_ai_type=0 + end_date segmentation!
+          if (accessToken) {
+            engine = 'PIXIV-OAUTH-APP-API';
+            const appTarget = mapHibiSearchMode(s_mode);
+            const appSort = order === 'date' ? 'date_asc' : 'date_desc';
+            const maxSteps = chunkPagesParam > 0 ? Math.min(20, chunkPagesParam) : 20;
+            const totalWantedSteps = isAll ? 166 : Math.min(166, (parseInt(pagesParam, 10) || 3) * 2);
+            const endStep = Math.min(totalWantedSteps, startPage + maxSteps - 1);
+            let reachedEnd = false;
+            for (let step = startPage; step <= endStep && !reachedEnd; step++) {
+              const offset = (step - 1) * 30;
+              const qs = new URLSearchParams({
+                word: tag,
+                search_target: appTarget,
+                sort: appSort,
+                search_ai_type: '0',
+                filter: 'for_android',
+                include_translated_tag_results: 'true',
+                merge_plain_keyword_results: 'true',
+                offset: String(offset),
+              });
+              if (endDate) qs.set('end_date', endDate);
+              if (startDate) qs.set('start_date', startDate);
+              sendEvent('progress', {
+                currentPage: step,
+                totalPages: totalWantedSteps,
+                message: `PixEz OAuth 采样 [${tag}]${endDate ? ` (截止 ${endDate})` : ''} 第 ${step} 批 (本段 ${artworks.length} 作)...`,
+              });
+              const appJson = await fetchJsonSafe(`https://app-api.pixiv.net/v1/search/illust?${qs.toString()}`, {
+                Authorization: `Bearer ${accessToken}`,
+                'User-Agent': 'PixivAndroidApp/5.0.234 (Android 14; Pixel 8)',
+                'Accept-Language': 'zh-CN,zh;q=0.9',
+              });
+              if (!appJson || !Array.isArray(appJson.illusts) || appJson.illusts.length === 0) {
+                reachedEnd = true;
+                break;
+              }
+              pagesScanned++;
+              nextPage = step + 1;
+              for (const item of appJson.illusts) {
+                const w = normalizeHibiIllust(item, translations);
+                if (w && !seenIds.has(w.id) && matchesFilters(w, mode, type)) {
+                  seenIds.add(w.id);
+                  artworks.push(w);
+                }
+              }
+              if (step % 3 === 0) {
+                sendEvent('snapshot', { source: 'pixiv', primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
+              }
+              if (!appJson.next_url || offset >= 4920) {
+                reachedEnd = true;
+              }
+            }
+            let oldestDate = '';
+            for (const w of artworks) {
+              if (w.createDate && (!oldestDate || w.createDate < oldestDate)) oldestDate = w.createDate;
+            }
+            const hitOffsetCeiling = nextPage > 164;
+            hasMore = !reachedEnd && nextPage <= totalWantedSteps;
+            sendEvent('complete', {
+              source: 'pixiv',
+              primaryTag: tag,
+              pixivTotal,
+              pagesScanned,
+              engine,
+              hasMore,
+              hitOffsetCeiling,
+              oldestDate: oldestDate ? oldestDate.slice(0, 10) : '',
+              nextPage,
+              artworks,
+              translations,
+            });
+            return;
+          }
+
+          const dateSuffix = `${startDate ? `&scd=${encodeURIComponent(startDate)}` : ''}${endDate ? `&ecd=${encodeURIComponent(endDate)}` : ''}`;
+          const firstDirectUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(tag)}?word=${encodeURIComponent(tag)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${startPage}&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateSuffix}`;
           const firstDirect = await fetchJsonSafe(firstDirectUrl, pixivHeaders(cookie));
 
           const ingestDirectBody = (body) => {
@@ -1580,7 +1668,7 @@ export async function onRequest(context) {
               });
               const batchPromises = [];
               for (let p = pStart; p <= pEnd; p++) {
-                const apiUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(queryTagForFetch)}?word=${encodeURIComponent(queryTagForFetch)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${p}&s_mode=${encodeURIComponent(effSMode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
+                const apiUrl = `https://www.pixiv.net/ajax/search/artworks/${encodeURIComponent(queryTagForFetch)}?word=${encodeURIComponent(queryTagForFetch)}&order=${encodeURIComponent(webOrder)}&mode=${encodeURIComponent(mode)}&p=${p}&s_mode=${encodeURIComponent(effSMode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateSuffix}`;
                 batchPromises.push(fetchJsonSafe(apiUrl, pixivHeaders(cookie)));
               }
               const results = await Promise.all(batchPromises);
@@ -1691,6 +1779,10 @@ export async function onRequest(context) {
             hasMore = !reachedEnd && nextPage <= totalWantedHibiPages;
           }
 
+          let oldestDate = '';
+          for (const w of artworks) {
+            if (w.createDate && (!oldestDate || w.createDate < oldestDate)) oldestDate = w.createDate;
+          }
           sendEvent('complete', {
             source: 'pixiv',
             primaryTag: tag,
@@ -1698,6 +1790,7 @@ export async function onRequest(context) {
             pagesScanned,
             engine,
             hasMore,
+            oldestDate: oldestDate ? oldestDate.slice(0, 10) : '',
             nextPage,
             artworks,
             translations,

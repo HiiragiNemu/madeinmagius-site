@@ -48,8 +48,8 @@
       root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=4.3" />
-  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.3" />
+  <link rel="stylesheet" href="./styles.css?v=4.4" />
+  <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.4" />
 </head>
 <body class="call-screen-host-v7">
   <!-- Single Bounded CRT Optical Viewport (Exact magireco-call-search-cn / MagiReader v14 architecture) -->
@@ -97,6 +97,7 @@
         <button class="t-btn" id="openRulesModalBtn" type="button">词表</button>
         <button class="t-btn" id="openReverseModalBtn" type="button">搜源</button>
         <button class="t-btn" id="openBasketBtn" type="button">收集篮 <span class="t-count" id="basketBadge">0</span></button>
+        <button class="t-btn" id="openCacheModalBtn" type="button" title="本地 1GB 分段采样缓存与断点续采">缓存 <span class="t-count" id="cacheCountBadge">0</span></button>
         <button class="t-btn t-btn--auth" id="openAuthModalBtn" type="button" title="Pixiv 账号与登录状态">
           <img class="header-auth-avatar hidden" id="headerAuthAvatar" alt="" decoding="async" />
           <span class="header-auth-dot hidden" id="headerAuthDot" aria-hidden="true"></span>
@@ -1022,11 +1023,46 @@
     </div>
   </div>
 
+  <!-- ===================================================================== -->
+  <!-- MODAL 10: LOCAL 1GB SEGMENTED CACHE & RESUME MANAGER                  -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop hidden" id="cacheModal">
+    <div class="modal-window modal-window--lg">
+      <div class="modal-titlebar">
+        <div>
+          <h3>本地分段采集缓存管理 (最高支持 1GB / 断点续采合并)</h3>
+        </div>
+        <button class="btn-modal-close" id="closeCacheModalBtn" type="button">[X] 关闭</button>
+      </div>
+      <div class="modal-content">
+        <div class="cache-summary-bar">
+          <div id="cacheUsageSummary">本地缓存占用: 计算中...</div>
+          <div class="cache-limit-controls">
+            <label>缓存上限:
+              <select id="cacheLimitMbSelect" class="t-select-sm">
+                <option value="256">256 MB</option>
+                <option value="512">512 MB</option>
+                <option value="1024" selected>1024 MB (1 GB)</option>
+              </select>
+            </label>
+            <button class="t-btn t-btn--sm t-btn--danger" id="clearAllCacheBtn" type="button">清空全部缓存</button>
+          </div>
+        </div>
+        <p class="modal-note">
+          采样超过 5,000 件作品时系统会自动按时间窗口分段（或倒序+正序双段）截断保存至本地 IndexedDB，并自动去重合并计算全量共现统计；即使中途停止或刷新页面，也可随时从下方载入或继续分段续采。
+        </p>
+        <div class="cache-records-list" id="cacheRecordsList">
+          <div class="empty-placeholder">暂无本地缓存记录</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toastContainer"></div>
   <script src="./optics/reader-optics-graphs-v14.js?v=4.1"></script>
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.3.1"></script>
+  <script src="./app.js?v=4.4"></script>
 </body>
 </html>

@@ -2418,7 +2418,8 @@
     const chunkSize = source === 'pixiv' ? 24 : 10;
     let startPage = 1;
     let cursor = resumeRec?.nextCursor || '';
-    let activeEndDate = resumeRec?.oldestDate || '';
+    let activeEndDate = order === 'date' ? '' : (resumeRec?.oldestDate || '');
+    let activeStartDate = '';
     let activeOrder = order;
     let didHibiReverseSegment = false;
     let hasMore = true;
@@ -2433,6 +2434,15 @@
         if (d && (!oldest || d < oldest)) oldest = d;
       }
       return oldest;
+    };
+
+    const computeNewestDate = () => {
+      let newest = '';
+      for (const w of accumWorks.values()) {
+        const d = String(w.createDate || '').slice(0, 10);
+        if (d && (!newest || d > newest)) newest = d;
+      }
+      return newest;
     };
 
     const checkpointToIndexedDb = async (stillHasMore = false) => {
@@ -2550,6 +2560,7 @@
           chunkPages: String(chunkSize),
           cursor,
           endDate: activeEndDate,
+          startDate: activeStartDate,
           mode,
           s_mode: sMode,
           type,
@@ -2603,7 +2614,7 @@
                 const pct = targetWorks > 0
                   ? Math.min(96, Math.max(4, Math.round((curWorks / targetWorks) * 96)))
                   : (payload.totalPages ? Math.min(95, Math.round((payload.currentPage / payload.totalPages) * 95)) : 35);
-                const segHint = activeEndDate ? ` [截止 ${activeEndDate}]` : (didHibiReverseSegment ? ' [最早回溯段]' : '');
+                const segHint = activeEndDate ? ` [截止 ${activeEndDate}]` : activeStartDate ? ` [起始 ${activeStartDate}]` : (didHibiReverseSegment ? ' [最早回溯段]' : '');
                 progressText.textContent =
                   knownTotalPosts > 0
                     ? `[${srcMeta.label}]${segHint} 第 ${payload.currentPage || startPage} 页 · 已采集 ${curWorks.toLocaleString()} / ${knownTotalPosts.toLocaleString()} 件作品`
@@ -2641,7 +2652,8 @@
                   flushDataset(false, true);
                 }
               } else if (eventType === 'error') {
-                showToast(`采样提示: ${payload.message || '请求异常'}`);
+                showToast(`采样提示: ${payload.message || '请求异常'}`, payload.needsAuth ? 6000 : 3000);
+                if (payload.needsAuth) $('authModal')?.classList.remove('hidden');
                 chunkHasMore = false;
               }
             } catch (_) {}
@@ -2653,7 +2665,7 @@
           startPage = chunkNextPage;
           cursor = chunkNextCursor;
         } else if (
-          isAllMode &&
+          (isAllMode || totalPagesScanned < requestedMaxPages) &&
           source === 'pixiv' &&
           newlyAddedInChunk > 0 &&
           (
@@ -2663,17 +2675,22 @@
               (chunkNextPage >= 1000 || (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts)))
           )
         ) {
-          // Date-Window Segmentation: save checkpoint to 1GB IndexedDB cache and continue older date segment!
-          let oldest = computeOldestDate();
-          if (oldest && oldest === activeEndDate) {
-            const prevTs = Date.parse(`${oldest}T00:00:00Z`) - 86400000;
-            if (Number.isFinite(prevTs)) oldest = new Date(prevTs).toISOString().slice(0, 10);
-          }
-          if (oldest && oldest !== activeEndDate) {
+          // Date-Window Segmentation: checkpoint to 1GB IndexedDB cache, then continue the next date window.
+          // Newest-first steps the end date (ecd) backward; oldest-first steps the start date (scd) forward.
+          const ascending = activeOrder === 'date';
+          const shiftDay = (d, delta) => {
+            const ts = Date.parse(`${d}T00:00:00Z`) + delta * 86400000;
+            return Number.isFinite(ts) ? new Date(ts).toISOString().slice(0, 10) : '';
+          };
+          const current = ascending ? activeStartDate : activeEndDate;
+          let edge = ascending ? computeNewestDate() : computeOldestDate();
+          if (edge && edge === current) edge = shiftDay(edge, ascending ? 1 : -1);
+          if (edge && edge !== current) {
             await checkpointToIndexedDb(true);
-            activeEndDate = oldest;
+            if (ascending) activeStartDate = edge;
+            else activeEndDate = edge;
             startPage = 1;
-            showToast(`已保存前段 ${accumWorks.size.toLocaleString()} 件作品至本地缓存，自动切换下一时间段 (截止 ${activeEndDate}) 继续采集...`, 3500);
+            showToast(`已保存前段 ${accumWorks.size.toLocaleString()} 件作品至本地缓存，自动切换下一时间段 (${ascending ? '起始' : '截止'} ${edge}) 继续采集...`, 3500);
           } else {
             hasMore = false;
           }

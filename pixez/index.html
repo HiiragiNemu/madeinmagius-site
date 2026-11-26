@@ -48,7 +48,7 @@
       root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=4.14" />
+  <link rel="stylesheet" href="./styles.css?v=4.15" />
   <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.5" />
 </head>
 <body class="call-screen-host-v7">
@@ -167,6 +167,7 @@
               <option value="100">100页 (~6,000作)</option>
               <option value="ALL">全部页 (全量分段)</option>
               <option value="CUSTOM">自定义 (页/作)...</option>
+              <option value="DATE_RANGE">按时间范围 (起止日期)...</option>
             </select>
           </div>
           <div class="inline-select-chip custom-depth-chip hidden" id="customDepthWrap" title="自定义采样页数或具体作品数量">
@@ -176,6 +177,13 @@
               <option value="pages">页</option>
             </select>
             <span class="custom-depth-hint" id="customDepthHint">约60作/页</span>
+          </div>
+          <div class="inline-select-chip date-range-depth-chip hidden" id="dateRangeDepthWrap" title="按投稿起止日期决定采样范围与件数（留空表示不限该端）">
+            <input type="date" id="customStartDateInput" class="date-range-input" aria-label="起始日期" />
+            <span class="date-range-sep">~</span>
+            <input type="date" id="customEndDateInput" class="date-range-input" aria-label="结束日期" />
+            <button class="t-btn t-btn--sm" id="datePreset30dBtn" type="button" title="设为最近 30 天">30天</button>
+            <button class="t-btn t-btn--sm" id="datePreset1yBtn" type="button" title="设为最近 1 年">1年</button>
           </div>
           <div class="inline-select-chip">
             <span>顺序</span>
@@ -223,6 +231,8 @@
           <label class="check-node"><input type="checkbox" id="hideBookmarkTagCheck" checked /><span>隐藏*users入り</span></label>
           <label class="check-node"><input type="checkbox" id="excludeAiWorksCheck" /><span>剔除AI作品</span></label>
           <label class="check-node"><input type="checkbox" id="hideAiTagCheck" /><span>隐藏AI标签</span></label>
+          <label class="check-node" title="不计入 R-18 / R-18G 作品（画廊与共现统计仅计算全年龄作品）"><input type="checkbox" id="excludeR18WorksCheck" /><span>剔除R-18作品</span></label>
+          <label class="check-node" title="保留 R-18 作品参与角色/属性共现计算，仅在排行榜与拓扑图中隐藏 R-18 / R-18G 标签"><input type="checkbox" id="hideR18TagCheck" /><span>隐藏R-18标签</span></label>
           <label class="check-node"><input type="checkbox" id="hideMetaTagCheck" /><span>隐藏元标签</span></label>
           <label class="check-node" id="includePopularWrap"><input type="checkbox" id="includePopularCheck" checked /><span>含热门</span></label>
           <label class="threshold-node"><span>最低共现≥</span><input type="number" id="minCountInput" value="2" min="1" max="500" /></label>
@@ -1084,6 +1094,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.14"></script>
+  <script src="./app.js?v=4.15"></script>
 </body>
 </html>

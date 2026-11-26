@@ -806,11 +806,17 @@
     const excludeAiWorks = $('excludeAiWorksCheck').checked;
     const hideBookmarkTags = $('hideBookmarkTagCheck').checked;
     const hideAiTags = $('hideAiTagCheck').checked;
+    const excludeR18Works = Boolean($('excludeR18WorksCheck')?.checked);
+    const hideR18Tags = Boolean($('hideR18TagCheck')?.checked);
     const hideMetaTags = $('hideMetaTagCheck').checked;
     const minCount = Math.max(1, parseInt($('minCountInput').value, 10) || 1);
+    const isR18TagName = (t) => /^r-?18g?$/i.test(String(t || '').trim());
+    const isR18Artwork = (w) =>
+      Number(w?.xRestrict || 0) > 0 || (Array.isArray(w?.tags) && w.tags.some(isR18TagName));
 
     const activeWorks = allWorks.filter((w) => {
       if (excludeAiWorks && w.isAi) return false;
+      if (excludeR18Works && isR18Artwork(w)) return false;
       if (state.lockedSubTags.size > 0) {
         const wTags = new Set(w.tags || []);
         for (const reqTag of state.lockedSubTags) {
@@ -881,6 +887,7 @@
       if (!isLocked) {
         if (hideBookmarkTags && cat === 'bookmark_milestone') continue;
         if (hideAiTags && cat === 'ai_meta') continue;
+        if (hideR18Tags && isR18TagName(item.tag)) continue;
         if (hideMetaTags && (cat === 'meta_general' || cat === 'ai_meta')) continue;
       }
 
@@ -892,6 +899,7 @@
           const c3 = classifyTagClient(t3);
           if (hideBookmarkTags && c3 === 'bookmark_milestone') return false;
           if (hideAiTags && c3 === 'ai_meta') return false;
+          if (hideR18Tags && isR18TagName(t3)) return false;
           return true;
         })
         .sort((a, b) => b[1] - a[1])
@@ -1056,13 +1064,19 @@
       : `(AI ${aiWorksCount})`;
 
     const isR18Work = (w) => Number(w.xRestrict || 0) > 0 || (Array.isArray(w.tags) && w.tags.some((t) => /^r-?18g?$/i.test(String(t))));
+    const excludeR18 = Boolean($('excludeR18WorksCheck')?.checked);
+    const poolR18Count = allPool.filter(isR18Work).length;
     const r18WorksCount = activeWorks.filter(isR18Work).length;
     const r18Pct = activeWorks.length > 0 ? ((r18WorksCount / activeWorks.length) * 100).toFixed(1) : '0.0';
     const humanPool = activeWorks.filter((w) => !w.isAi);
     const humanR18Count = humanPool.filter(isR18Work).length;
     const humanR18Pct = humanPool.length > 0 ? ((humanR18Count / humanPool.length) * 100).toFixed(1) : '0.0';
     if ($('statR18Rate')) $('statR18Rate').textContent = `${r18Pct}% (${r18WorksCount}作)`;
-    if ($('statR18HumanSub')) $('statR18HumanSub').textContent = `手绘${humanR18Pct}%`;
+    if ($('statR18HumanSub')) {
+      $('statR18HumanSub').textContent = excludeR18 && poolR18Count > 0
+        ? `(已剔R-18 ${poolR18Count})`
+        : `手绘${humanR18Pct}%`;
+    }
 
     let minDateStr = '';
     let maxDateStr = '';
@@ -2346,8 +2360,21 @@
     hideAutocomplete();
 
     const rawPagesChoice = opts.overridePages || $('pagesSelect').value;
-    const isAllMode = String(rawPagesChoice).toUpperCase() === 'ALL';
+    const isAllModeRaw = String(rawPagesChoice).toUpperCase() === 'ALL';
     const isCustomDepth = String(rawPagesChoice).toUpperCase() === 'CUSTOM';
+    const isDateRangeDepth = String(rawPagesChoice).toUpperCase() === 'DATE_RANGE';
+    let userStartDate = isDateRangeDepth ? String($('customStartDateInput')?.value || '').trim() : '';
+    let userEndDate = isDateRangeDepth ? String($('customEndDateInput')?.value || '').trim() : '';
+    if (userStartDate && userEndDate && userStartDate > userEndDate) {
+      const tmp = userStartDate;
+      userStartDate = userEndDate;
+      userEndDate = tmp;
+    }
+    if (isDateRangeDepth && !userStartDate && !userEndDate) {
+      showToast('请至少填写起始日期或结束日期');
+      return;
+    }
+    const isAllMode = isAllModeRaw || isDateRangeDepth;
     const customUnit = $('customDepthUnit')?.value === 'pages' ? 'pages' : 'works';
     const customNumRaw = parseInt($('customDepthValue')?.value || '2000', 10);
     const customNum = Number.isFinite(customNumRaw) && customNumRaw > 0 ? customNumRaw : (customUnit === 'works' ? 2000 : 20);
@@ -2392,7 +2419,8 @@
         if (source === 'pixiv' && state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function' && hasVerifiedChromePixivSession) {
           const encP = encodeURIComponent(parsed.tag).replace(/%2F/gi, '%252F');
           const encW = encodeURIComponent(parsed.tag);
-          const mkU = (m, aiT) => `https://www.pixiv.net/ajax/search/artworks/${encP}?word=${encW}&order=date_d&mode=${encodeURIComponent(m)}&p=1&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(type)}&ai_type=${aiT}&lang=zh`;
+          const preDateQs = `${userStartDate ? `&scd=${encodeURIComponent(userStartDate)}` : ''}${userEndDate ? `&ecd=${encodeURIComponent(userEndDate)}` : ''}`;
+          const mkU = (m, aiT) => `https://www.pixiv.net/ajax/search/artworks/${encP}?word=${encW}&order=date_d&mode=${encodeURIComponent(m)}&p=1&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(type)}&ai_type=${aiT}&lang=zh${preDateQs}`;
           const probes = [
             window._pixezBridgeFetch(mkU(mode, 0), { timeout: 9000 }),
             window._pixezBridgeFetch(mkU(mode, 1), { timeout: 9000 })
@@ -2412,6 +2440,7 @@
             const totalAi = totalHuman > 0 && totalAllAi >= totalHuman ? totalAllAi - totalHuman : 0;
             const r18RateStr = mode === 'all' && totalAllAi > 0 && totalSafe > 0 ? ` (${((totalR18 / totalAllAi) * 100).toFixed(1)}%)` : '';
             const modeDesc = mode === 'safe' ? '全年龄含AI' : mode === 'r18' ? '仅R-18含AI' : '全量含R-18与AI';
+            const rangeBadge = isDateRangeDepth ? ` [${userStartDate || '最早'}~${userEndDate || '至今'}]` : '';
             const detailParts = [];
             if (mode === 'all' && totalSafe > 0) detailParts.push(`全年龄 ${totalSafe.toLocaleString()} + R-18 ${totalR18.toLocaleString()}${r18RateStr}`);
             if (totalHuman > 0) detailParts.push(`纯手绘 ${totalHuman.toLocaleString()} / AI ${totalAi.toLocaleString()}`);
@@ -2431,7 +2460,7 @@
                 includesR18: mode !== 'safe',
                 isSafeBaselineOnly: false
               },
-              note: `Pixiv [${parsed.tag}] ${modeDesc}共 ${totalAllAi.toLocaleString()} 件${detailParts.length ? `（${detailParts.join(' · ')}）` : ''} · 油猴已登录直连 (60作/页·支持日期分段)`
+              note: `Pixiv [${parsed.tag}]${rangeBadge} ${modeDesc}共 ${totalAllAi.toLocaleString()} 件${detailParts.length ? `（${detailParts.join(' · ')}）` : ''} · 油猴已登录直连 (60作/页·支持日期分段)`
             };
           }
         }
@@ -2485,7 +2514,8 @@
           : `[${srcMeta.label}] 已连接 [${preflightInfo.resolvedTag || parsed.tag}]`);
 
       const isHugeAll =
-        isAllMode &&
+        isAllModeRaw &&
+        !isDateRangeDepth &&
         !opts.skipConfirm &&
         (totalPosts > 2400 || estPages > 40 || Boolean(preflightInfo.totalIsApproximate));
 
@@ -2536,10 +2566,21 @@
       isAllMode || (targetWorksLimit > 0 && accumWorks.size < targetWorksLimit) || (targetWorksLimit === 0 && totalPagesScanned < requestedMaxPages);
     let startPage = 1;
     let cursor = resumeRec?.nextCursor || '';
-    let activeEndDate = order === 'date' ? '' : (resumeRec?.oldestDate || '');
-    let activeStartDate = '';
+    let activeEndDate = userEndDate || (order === 'date' ? '' : (resumeRec?.oldestDate || ''));
+    let activeStartDate = userStartDate || '';
+    const isWorkInDateRange = (w) => {
+      if (!isDateRangeDepth) return true;
+      const ymd = String(w?.createDate || '').slice(0, 10);
+      if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return true;
+      if (userStartDate && ymd < userStartDate) return false;
+      if (userEndDate && ymd > userEndDate) return false;
+      return true;
+    };
     let activeOrder = order;
-    let activeQueryTag = primaryResolvedTag;
+    let activeQueryTag =
+      isDateRangeDepth && source === 'danbooru'
+        ? `${primaryResolvedTag} date:${userStartDate || ''}..${userEndDate || ''}`
+        : primaryResolvedTag;
     let activeAiFilter = '0';
     let activePhaseLabel = '';
     let hibiQueue = null;
@@ -2767,6 +2808,16 @@
                 if (ymd) {
                   if (!segOldest || ymd < segOldest) segOldest = ymd;
                   if (!segNewest || ymd > segNewest) segNewest = ymd;
+                  if (isDateRangeDepth) {
+                    if (userStartDate && ymd < userStartDate) {
+                      if (webOrd === 'date_d') segNaturalEnd = true;
+                      continue;
+                    }
+                    if (userEndDate && ymd > userEndDate) {
+                      if (webOrd === 'date') segNaturalEnd = true;
+                      continue;
+                    }
+                  }
                 }
                 if (accumWorks.has(idStr)) continue;
                 const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
@@ -2808,12 +2859,13 @@
           if (webOrd === 'date_d') {
             const cand = segOldest || computeOldestDate();
             const nextEnd = cand && cand === bEndDate ? shiftYmd(cand, -1) : cand;
-            if (!nextEnd || nextEnd < '2007-09-01') break;
+            const minStop = userStartDate || '2007-09-01';
+            if (!nextEnd || nextEnd < minStop) break;
             bEndDate = nextEnd;
           } else {
             const cand = segNewest || computeNewestDate();
             const nextStart = cand && cand === bStartDate ? shiftYmd(cand, 1) : cand;
-            if (!nextStart) break;
+            if (!nextStart || (userEndDate && nextStart > userEndDate)) break;
             bStartDate = nextStart;
           }
         }
@@ -2841,7 +2893,7 @@
           }
           const ch = await directBrowserSampleChunk({
             source,
-            tag: primaryResolvedTag,
+            tag: activeQueryTag,
             startPage: typeof effectivePageArg === 'number' ? effectivePageArg : 1,
             chunkPages: stepChunk,
             cursor,
@@ -2866,13 +2918,22 @@
           Object.assign(accumNativeCats, ch.nativeTagCategories || {});
           Object.assign(accumTrans, ch.translations || {});
           const beforeCount = accumWorks.size;
+          let booruPassedBound = false;
           for (const w of ch.artworks || []) {
             if (!canAcceptMoreWorks()) break;
-            if (w && w.id) accumWorks.set(String(w.id), w);
+            if (!w || !w.id) continue;
+            if (!isWorkInDateRange(w)) {
+              const y = String(w.createDate || '').slice(0, 10);
+              if (y && ((activeOrder === 'date_d' && userStartDate && y < userStartDate) || (activeOrder === 'date' && userEndDate && y > userEndDate))) {
+                booruPassedBound = true;
+              }
+              continue;
+            }
+            accumWorks.set(String(w.id), w);
           }
           totalPagesScanned += ch.pagesScanned || 0;
-          flushDataset(true, ch.hasMore && !reachedDepthCap());
-          if (!ch.hasMore || accumWorks.size === beforeCount || reachedDepthCap()) {
+          flushDataset(true, ch.hasMore && !reachedDepthCap() && !booruPassedBound);
+          if (!ch.hasMore || booruPassedBound || (accumWorks.size === beforeCount && !isDateRangeDepth) || reachedDepthCap()) {
             hasMore = false;
           } else {
             startPage = ch.nextPage;
@@ -2919,6 +2980,9 @@
         let chunkNextCursor = '';
         let chunkPagesDone = 0;
         const beforeChunkSize = accumWorks.size;
+
+        let chunkPassedDateBound = false;
+        let chunkSawRawWorks = 0;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -2994,7 +3058,16 @@
                 if (!isSafeOnlyContaminant) {
                   for (const w of ds.artworks || []) {
                     if (!canAcceptMoreWorks()) break;
-                    if (w && w.id) accumWorks.set(String(w.id), w);
+                    if (!w || !w.id) continue;
+                    chunkSawRawWorks++;
+                    if (!isWorkInDateRange(w)) {
+                      const y = String(w.createDate || '').slice(0, 10);
+                      if (y && ((activeOrder === 'date_d' && userStartDate && y < userStartDate) || (activeOrder === 'date' && userEndDate && y > userEndDate))) {
+                        chunkPassedDateBound = true;
+                      }
+                      continue;
+                    }
+                    accumWorks.set(String(w.id), w);
                   }
                 }
 
@@ -3030,7 +3103,7 @@
         // Keep knownTotalPosts >= accumWorks.size (guest Web AJAX total can undercount R-18 works!)
         if (accumWorks.size > knownTotalPosts) knownTotalPosts = accumWorks.size;
 
-        if (reachedDepthCap()) {
+        if (reachedDepthCap() || (isDateRangeDepth && chunkPassedDateBound && lastEngine === 'HIBI-APP-API')) {
           hasMore = false;
           break;
         }
@@ -3062,7 +3135,7 @@
         }
         if (chunkHasMore && chunkRateLimited) {
           // Already handled above (retrying or skipping)
-        } else if (chunkHasMore && (newlyAddedInChunk > 0 || activePhaseLabel) && wantContinueBeyondSingleWindow()) {
+        } else if (chunkHasMore && (newlyAddedInChunk > 0 || activePhaseLabel || (isDateRangeDepth && chunkSawRawWorks > 0 && !chunkPassedDateBound)) && wantContinueBeyondSingleWindow()) {
           startPage = chunkNextPage;
           cursor = chunkNextCursor;
         } else if (
@@ -3085,7 +3158,10 @@
           const current = ascending ? activeStartDate : activeEndDate;
           let edge = ascending ? computeNewestDate() : computeOldestDate();
           if (edge && edge === current) edge = shiftDay(edge, ascending ? 1 : -1);
-          if (edge && edge !== current) {
+          const outOfRange =
+            (ascending && userEndDate && edge > userEndDate) ||
+            (!ascending && userStartDate && edge < userStartDate);
+          if (edge && edge !== current && !outOfRange) {
             await checkpointToIndexedDb(true);
             if (ascending) activeStartDate = edge;
             else activeEndDate = edge;
@@ -4243,6 +4319,10 @@
     if (wrap && sel) {
       wrap.classList.toggle('hidden', sel.value !== 'CUSTOM');
     }
+    const dateWrap = $('dateRangeDepthWrap');
+    if (dateWrap && sel) {
+      dateWrap.classList.toggle('hidden', sel.value !== 'DATE_RANGE');
+    }
     const valInput = $('customDepthValue');
     const unitSel = $('customDepthUnit');
     const hint = $('customDepthHint');
@@ -4576,6 +4656,12 @@
     $('pagesSelect')?.addEventListener('change', () => {
       updateDepthOptionLabels();
       if ($('pagesSelect').value === 'CUSTOM') $('customDepthValue')?.focus();
+      if ($('pagesSelect').value === 'DATE_RANGE' && $('customStartDateInput') && !$('customStartDateInput').value && !$('customEndDateInput')?.value) {
+        const now = new Date();
+        const prev = new Date(now.getTime() - 90 * 86400000);
+        $('customStartDateInput').value = prev.toISOString().slice(0, 10);
+        if ($('customEndDateInput')) $('customEndDateInput').value = now.toISOString().slice(0, 10);
+      }
     });
     $('customDepthValue')?.addEventListener('input', persistCustomDepth);
     $('customDepthUnit')?.addEventListener('change', persistCustomDepth);
@@ -4585,6 +4671,34 @@
         executeAnalysis();
       }
     });
+
+    // Custom Date Range Depth Persistence & Quick Presets
+    try {
+      const savedRange = JSON.parse(localStorage.getItem('pixez_date_range_depth_v415') || 'null');
+      if (savedRange) {
+        if ($('customStartDateInput') && savedRange.start) $('customStartDateInput').value = savedRange.start;
+        if ($('customEndDateInput') && savedRange.end) $('customEndDateInput').value = savedRange.end;
+      }
+    } catch (_) {}
+    const persistDateRange = () => {
+      try {
+        localStorage.setItem('pixez_date_range_depth_v415', JSON.stringify({
+          start: $('customStartDateInput')?.value || '',
+          end: $('customEndDateInput')?.value || ''
+        }));
+      } catch (_) {}
+    };
+    const applyDatePresetDays = (days) => {
+      const now = new Date();
+      const from = new Date(now.getTime() - days * 86400000);
+      if ($('customStartDateInput')) $('customStartDateInput').value = from.toISOString().slice(0, 10);
+      if ($('customEndDateInput')) $('customEndDateInput').value = now.toISOString().slice(0, 10);
+      persistDateRange();
+    };
+    $('customStartDateInput')?.addEventListener('change', persistDateRange);
+    $('customEndDateInput')?.addEventListener('change', persistDateRange);
+    $('datePreset30dBtn')?.addEventListener('click', () => applyDatePresetDays(30));
+    $('datePreset1yBtn')?.addEventListener('click', () => applyDatePresetDays(365));
 
     // Subsystem View Tabs (Automatically suspends CRT grid/distortion ONLY in Artwork Gallery!)
     document.querySelectorAll('.subsystem-tabs .sub-tab').forEach((tab) => {
@@ -4736,8 +4850,8 @@
     window.addEventListener('resize', () => hideAutocomplete(), { passive: true });
 
     // Filter Checkboxes & Controls
-    ['hideBookmarkTagCheck', 'excludeAiWorksCheck', 'hideAiTagCheck', 'hideMetaTagCheck', 'minCountInput', 'tableSortSelect'].forEach((id) => {
-      $(id).addEventListener('change', recomputeAndRender);
+    ['hideBookmarkTagCheck', 'excludeAiWorksCheck', 'hideAiTagCheck', 'excludeR18WorksCheck', 'hideR18TagCheck', 'hideMetaTagCheck', 'minCountInput', 'tableSortSelect'].forEach((id) => {
+      if ($(id)) $(id).addEventListener('change', recomputeAndRender);
     });
     $('tableFilterInput').addEventListener('input', () => renderTable(state.computedCoTags));
     $('clearAllSubFiltersBtn').addEventListener('click', () => {

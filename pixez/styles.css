@@ -3499,3 +3499,26 @@ a, a:hover, a:focus-visible {
 .telemetry-sub {
   font-size: 10.5px !important;
 }
+
+/* v4.15 Custom Date Range Depth Chip */
+.date-range-depth-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+}
+.date-range-input {
+  height: 20px;
+  padding: 0 3px;
+  border: 1px solid var(--t-border-strong, var(--t-border));
+  background: var(--t-surface);
+  color: var(--t-text);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono, Consolas, monospace);
+}
+.date-range-sep {
+  font-size: 11px;
+  color: var(--t-muted);
+  font-weight: 700;
+}

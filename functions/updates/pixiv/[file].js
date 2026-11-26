@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.1.3',
-  versionCode: 10010230,
+  version: '2.1.4',
+  versionCode: 10010240,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55283924,
-  sha256: '06c352c771ed39657c0594b46189e5fcdb2df326521a5a5aacc68ce718f00791',
+  size: 55331920,
+  sha256: '5afcaa3ca4b37ee01db448e5b06c28fab3ba18896c65777ca5197c1f36dd3f7b',
   releaseNotes:
-    'PixEz Pulse v2.1.3：全面对齐网页端——采前全站总数与纯手绘基准探测 + 大标签全量分段确认弹窗、中断后「接着采集/清空重采」、登录态 R-18 双开关、按时间范围(起止日期)与自定义(页/作)深度、常驻主过滤条、拓扑图 5~40 节点拨杆、Pixiv 官方 CPS 罗马音与按需译名补全。',
+    'PixEz Pulse v2.1.4：修复「臭がる」等日语送假名动词/形容词误判为角色；词表页新增「我的分类纠错记录（原分类→修正为/还原/JSON导入导出）」与 Plan A 全站公共纠错词表自动同步、免口令提交待审建议与管理员口令直推全站；并完整包含 v2.1.3 采前总数基准探测与全量确认弹窗、中断后「接着采集/清空重采」、登录态 R-18 双开关、按时间范围深度、拓扑 5~40 拨杆与 Pixiv 官方 CPS 罗马音。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

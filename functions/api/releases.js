@@ -74,21 +74,21 @@ const NETEASE_LEGACY_251 = {
 
 const PIXIV_FALLBACK_V100 = {
   tag: 'v1.0.0',
-  name: 'MadeInMagius PixEz Pulse v2.1.3',
-  published_at: '2026-11-26T03:43:00Z',
+  name: 'MadeInMagius PixEz Pulse v2.1.4',
+  published_at: '2026-11-26T03:55:00Z',
   release_url: 'https://madeinmagius-site.pages.dev/#pixiv',
   assets: {
     android: {
       name: 'PixEz-Pulse-v1.0.0-android-release.apk',
-      size: 55283924,
-      digest: 'sha256:06c352c771ed39657c0594b46189e5fcdb2df326521a5a5aacc68ce718f00791',
+      size: 55331920,
+      digest: 'sha256:5afcaa3ca4b37ee01db448e5b06c28fab3ba18896c65777ca5197c1f36dd3f7b',
       content_type: 'application/vnd.android.package-archive',
       download: './downloads/pixiv/android',
     },
     source: {
       name: 'PixEz-Pulse-v1.0.0-source.tar.gz',
-      size: 14765191,
-      digest: 'sha256:5e1184dff4919043792afc37a15e2c459b97a3efa32fa0c5bd3f2c5754c75649',
+      size: 14771046,
+      digest: 'sha256:2c17f1a1b80633852ec104bb31c3f18f74c40e4998bbaf06f43d055480372d4a',
       content_type: 'application/gzip',
       download: './downloads/pixiv/source',
     },

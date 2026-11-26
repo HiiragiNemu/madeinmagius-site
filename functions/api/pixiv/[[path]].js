@@ -1028,6 +1028,29 @@ export async function onRequest(context) {
   const r34Uid = request.headers.get('x-r34-uid') || url.searchParams.get('r34Uid') || '';
 
   // 0. Health / status endpoint
+  if (subPath === 'upstream-check') {
+    const probe = async (u, init) => {
+      try {
+        const r = await fetch(u, { ...init, signal: AbortSignal.timeout(8000) });
+        const t = await r.text();
+        let json = false;
+        try { JSON.parse(t); json = true; } catch {}
+        return { status: r.status, json };
+      } catch (e) {
+        return { status: 0, error: e.name };
+      }
+    };
+    const [oauth, appApi, mirror] = await Promise.all([
+      probe('https://oauth.secure.pixiv.net/auth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'PixivAndroidApp/5.0.234 (Android 14; Pixel 8)' },
+        body: 'grant_type=refresh_token&refresh_token=probe&client_id=MOBrBDS8blbauoSck0ZfDbtuzpyT',
+      }),
+      probe('https://app-api.pixiv.net/v1/search/illust?word=test', { headers: { 'User-Agent': 'PixivAndroidApp/5.0.234 (Android 14; Pixel 8)' } }),
+      probe('https://pixiv.js.org/ajax/search/artworks/test?word=test&p=1', { headers: { 'User-Agent': DEFAULT_UA } }),
+    ]);
+    return jsonResponse({ oauth, appApi, mirror }, 200, request);
+  }
   if (subPath === 'status' || subPath === '') {
     return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.7' }, 200, request);
   }
@@ -1330,7 +1353,25 @@ export async function onRequest(context) {
         },
         body: form.toString(),
       });
-      const td = await tokenRes.json();
+      const rawTokenText = await tokenRes.text();
+      let td = null;
+      try {
+        td = JSON.parse(rawTokenText);
+      } catch {
+        td = null;
+      }
+      if (!td) {
+        return jsonResponse(
+          {
+            error: true,
+            edgeBlocked: true,
+            upstreamStatus: tokenRes.status,
+            message: `Pixiv OAuth 服务器拒绝了 Cloudflare 云端节点的请求 (HTTP ${tokenRes.status})。网页云端版暂无法完成登录换取令牌；请改用 APK 版登录，或在电脑运行本地版 (localhost:3456) 登录。游客模式仍可正常采集全年龄作品。`,
+          },
+          502,
+          request
+        );
+      }
       const resp = td?.response || td;
       if (!tokenRes.ok || td?.has_error || !resp?.access_token) {
         return jsonResponse({ error: true, message: td?.errors?.system?.message || 'Pixiv OAuth 验证失败' }, 400, request);

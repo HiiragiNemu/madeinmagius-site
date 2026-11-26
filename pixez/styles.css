@@ -3258,7 +3258,7 @@ a, a:hover, a:focus-visible {
 
 .preflight-banner {
   margin: 0 8px 6px 8px;
-  padding: 6px 8px;
+  padding: 6px 48px 6px 8px;
   border: 1px solid var(--t-accent-strong);
   background: color-mix(in srgb, var(--t-surface-raised) 88%, transparent);
   display: flex;

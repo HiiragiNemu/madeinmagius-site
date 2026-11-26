@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         MadeInMagius PixEz Pulse — Pixiv 全量标签共现分析 & 全自动授权登录桥接
 // @namespace    https://madeinmagius-site.pages.dev/
-// @version      4.0.0
-// @description  在 Pixiv (/tags/ 与 /search?q= 全格式链接) 嵌入纸张档案风全量共现分析抽屉；自动同步 Chrome Pixiv 登录态并全自动接管 OAuth 授权回调回传原页面（零空白页、零 F12）。
+// @version      4.1.0
+// @description  在 Pixiv (/tags/ 与 /search?q= 全格式链接) 嵌入纸张档案风全量共现分析抽屉；自动同步 Chrome Pixiv 登录态、直连 Pixiv 全量分段接口 (绕过云端403、含完整R-18/AI突破3万+上限) 并全自动接管 OAuth 授权回调回传原页面。
 // @author       MadeInMagius
 // @match        https://www.pixiv.net/*
 // @match        https://accounts.pixiv.net/*
@@ -19,6 +19,7 @@
 // @connect      www.pixiv.net
 // @connect      accounts.pixiv.net
 // @connect      app-api.pixiv.net
+// @connect      oauth.secure.pixiv.net
 // @connect      danbooru.donmai.us
 // @run-at       document-start
 // ==/UserScript==
@@ -26,7 +27,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '4.0.0';
+  const VERSION = '4.1.0';
   const DEFAULT_WEB_ORIGIN = 'http://localhost:3456';
 
   function isAppHost(host) {
@@ -210,7 +211,7 @@
     } catch (_) {}
 
     function announceAndSync() {
-      window.postMessage({ type: 'PIXEZ_USERSCRIPT_ALIVE', version: VERSION }, '*');
+      window.postMessage({ type: 'PIXEZ_USERSCRIPT_ALIVE', version: VERSION, canFetch: typeof GM_xmlhttpRequest === 'function' }, '*');
       // 1) 优先直接读取 Chrome 当前 pixiv.net PHPSESSID
       readChromePixivCookie((cookieStr) => {
         if (cookieStr) {
@@ -275,8 +276,40 @@
     setTimeout(announceAndSync, 600);
 
     window.addEventListener('message', (ev) => {
-      if (ev.data && ev.data.type === 'PIXEZ_REQUEST_CHROME_BRIDGE') {
+      if (!ev.data) return;
+      if (ev.data.type === 'PIXEZ_REQUEST_CHROME_BRIDGE') {
         announceAndSync();
+      } else if (ev.data.type === 'PIXEZ_BRIDGE_FETCH_REQ' && ev.data.reqId && typeof ev.data.url === 'string') {
+        const reqId = ev.data.reqId;
+        const targetUrl = ev.data.url;
+        const allowed = /^https:\/\/(www\.pixiv\.net|app-api\.pixiv\.net|oauth\.secure\.pixiv\.net)\//i.test(targetUrl);
+        if (!allowed || typeof GM_xmlhttpRequest !== 'function') {
+          window.postMessage({ type: 'PIXEZ_BRIDGE_FETCH_RES', reqId, ok: false, status: 403, error: 'Host not allowed' }, '*');
+          return;
+        }
+        GM_xmlhttpRequest({
+          method: ev.data.method || 'GET',
+          url: targetUrl,
+          headers: ev.data.headers || { Referer: 'https://www.pixiv.net/', Accept: 'application/json' },
+          data: ev.data.body || undefined,
+          anonymous: Boolean(ev.data.anonymous),
+          timeout: Number(ev.data.timeout || 15000),
+          onload: (res) => {
+            window.postMessage({
+              type: 'PIXEZ_BRIDGE_FETCH_RES',
+              reqId,
+              ok: res.status >= 200 && res.status < 300,
+              status: res.status,
+              text: res.responseText || ''
+            }, '*');
+          },
+          onerror: () => {
+            window.postMessage({ type: 'PIXEZ_BRIDGE_FETCH_RES', reqId, ok: false, status: 0, error: 'Network error' }, '*');
+          },
+          ontimeout: () => {
+            window.postMessage({ type: 'PIXEZ_BRIDGE_FETCH_RES', reqId, ok: false, status: 0, error: 'Timeout' }, '*');
+          }
+        });
       }
     });
     return;

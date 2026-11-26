@@ -1070,7 +1070,7 @@ export async function onRequest(context) {
     return jsonResponse({ oauth, appApi, mirror }, 200, request);
   }
   if (subPath === 'status' || subPath === '') {
-    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.8' }, 200, request);
+    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.9' }, 200, request);
   }
 
   // 0B. Danbooru semantic taxonomy batch enrichment (/api/pixiv/danbooru/enrich)
@@ -1127,9 +1127,9 @@ export async function onRequest(context) {
     const guestR18Note = hasOAuthToken
       ? '已登录：通过官方 App API 采集，包含 R-18 与 AI 作品'
       : mode === 'safe'
-      ? '仅全年龄模式'
+      ? '仅全年龄模式（支持日期分段突破上限）'
       : hibiUp
-      ? '经 HibiAPI 采集，包含 R-18 与 AI 作品（单方向深度 5,000 件，超过时自动最新段 + 最早段合并，最多 10,000 件）'
+      ? '经 HibiAPI 采集，完整包含 R-18 与 AI 作品（支持最新+最早+R-18/全年龄分片合并，最高 20,000 作 + 本地 1GB 缓存）'
       : 'HibiAPI 暂时无响应，本次只能采集全年龄作品（R-18 占比将为 0）';
     if (webRace && webRace.data && !webRace.data.error && webRace.data.body) {
       const block = webRace.data.body.illustManga || webRace.data.body.illust || webRace.data.body.manga || {};
@@ -1766,29 +1766,85 @@ export async function onRequest(context) {
 
           const dateSuffix = `${startDate ? `&scd=${encodeURIComponent(startDate)}` : ''}${endDate ? `&ecd=${encodeURIComponent(endDate)}` : ''}`;
 
-          // Strategy 0B (restores pre-v4.5 behaviour): HibiAPI App API relay — its server account has R-18 enabled,
-          // so R-18 + AI (search_ai_type=0) works are included. Used for every age mode except all-ages-only.
-          // HibiAPI ignores end_date/start_date, so depth is 5,000 newest + 5,000 oldest (client dual segment).
+          // Strategy 0B: HibiAPI App API relay — its server account has R-18 enabled,
+          // so R-18 + AI (search_ai_type=0) works are included for all & r18 modes.
+          // Handles Pixiv Rate Limit (HTTP 403/429 or JSON {"error":{"message":"Rate Limit"}}) cleanly via cooldown & resume
+          // without EVER silently switching engines mid-crawl!
           if (mode !== 'safe' && !endDate && !startDate) {
             const hibiTarget = mapHibiSearchMode(s_mode);
             const hibiSort = order === 'date' ? 'date_asc' : 'date_desc';
-            const hibiWord = isPopOrder ? `${tag} (10000users入り OR 5000users入り OR 1000users入り OR 500users入り)` : tag;
+            const aiFilterParam = url.searchParams.get('aiFilter') === '1' ? '1' : '0';
+            const baseTagForHibi =
+              mode === 'r18' && !/\br-?18\b/i.test(tag) ? `${tag} R-18` : tag;
+            const hibiWord = isPopOrder
+              ? `${baseTagForHibi} (10000users入り OR 5000users入り OR 1000users入り OR 500users入り)`
+              : baseTagForHibi;
             const hibiUrl = (word, page) =>
-              `${HIBI_BASE}/search?word=${encodeURIComponent(word)}&mode=${encodeURIComponent(hibiTarget)}&order=${hibiSort}&search_ai_type=0&page=${page}&size=30&include_translated_tag_results=true`;
+              `${HIBI_BASE}/search?word=${encodeURIComponent(word)}&mode=${encodeURIComponent(hibiTarget)}&order=${hibiSort}&search_ai_type=${aiFilterParam}&page=${page}&size=30&include_translated_tag_results=true`;
+            const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+            const hibiFetchOnce = async (word, page) => {
+              const ctrl = new AbortController();
+              const tm = setTimeout(() => ctrl.abort(), 9000);
+              try {
+                const res = await fetch(hibiUrl(word, page), { headers: hibiHeaders(), signal: ctrl.signal });
+                const txt = await res.text();
+                let d = null;
+                try { d = JSON.parse(txt); } catch {}
+                if (res.status === 429 || res.status === 403) {
+                  return { ok: false, rateLimited: true, status: res.status };
+                }
+                const errMsg = String(d?.error?.message || d?.error?.user_message || '');
+                if (/rate.?limit/i.test(errMsg)) {
+                  return { ok: false, rateLimited: true, status: res.status };
+                }
+                if (res.ok && d && Array.isArray(d.illusts)) {
+                  return { ok: true, data: d };
+                }
+                return { ok: false, rateLimited: false, status: res.status };
+              } catch {
+                return { ok: false, rateLimited: false, status: 0 };
+              } finally {
+                clearTimeout(tm);
+              }
+            };
             const hibiFetch = async (word, page) => {
-              let d = await fetchJsonSafe(hibiUrl(word, page), hibiHeaders(), 9000);
-              if (!d || !Array.isArray(d.illusts)) d = await fetchJsonSafe(hibiUrl(word, page), hibiHeaders(), 9000);
-              return d && Array.isArray(d.illusts) ? d : null;
+              let r = await hibiFetchOnce(word, page);
+              if (!r.ok) {
+                await sleepMs(r.rateLimited ? 2200 : 900);
+                r = await hibiFetchOnce(word, page);
+              }
+              return r;
             };
             let effHibiWord = hibiWord;
-            let firstHibi = await hibiFetch(effHibiWord, startPage);
-            if (isPopOrder && (!firstHibi || firstHibi.illusts.length < 10)) {
-              effHibiWord = tag;
-              firstHibi = await hibiFetch(effHibiWord, startPage);
+            let firstRes = await hibiFetch(effHibiWord, startPage);
+            if (isPopOrder && (!firstRes.ok || firstRes.data.illusts.length < 10)) {
+              effHibiWord = baseTagForHibi;
+              firstRes = await hibiFetch(effHibiWord, startPage);
             }
-            if (firstHibi) {
+            // CRITICAL: If rate-limited or mid-crawl (startPage > 1), NEVER drop into WEB-AJAX-MIRROR!
+            if (!firstRes.ok && (firstRes.rateLimited || startPage > 1)) {
+              sendEvent('complete', {
+                source: 'pixiv',
+                primaryTag: tag,
+                pixivTotal,
+                pagesScanned: 0,
+                engine: 'HIBI-APP-API',
+                hasMore: true,
+                rateLimited: true,
+                retryAfterMs: firstRes.rateLimited ? 5000 : 2500,
+                hitOffsetCeiling: false,
+                includesR18: true,
+                oldestDate: '',
+                nextPage: startPage,
+                artworks: [],
+                translations,
+              });
+              return;
+            }
+            if (firstRes.ok) {
+              const firstHibi = firstRes.data;
               engine = 'HIBI-APP-API';
-              const maxSteps = chunkPagesParam > 0 ? Math.min(20, chunkPagesParam) : 20;
+              const maxSteps = chunkPagesParam > 0 ? Math.min(16, chunkPagesParam) : 16;
               const totalWantedSteps = isAll ? 167 : Math.min(167, (parseInt(pagesParam, 10) || 3) * 2);
               const endStep = Math.min(totalWantedSteps, startPage + maxSteps - 1);
               const ingestHibi = (json) => {
@@ -1807,9 +1863,11 @@ export async function onRequest(context) {
               nextPage = startPage + 1;
               let reachedEnd = !firstHibi.next_url || firstHibi.illusts.length === 0;
               let failedAt = 0;
+              let hitRateLimit = false;
               sendEvent('snapshot', { source: 'pixiv', primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
-              const batch = 3;
+              const batch = 2;
               for (let pStart = startPage + 1; pStart <= endStep && !reachedEnd && !failedAt; pStart += batch) {
+                await sleepMs(260);
                 const pEnd = Math.min(endStep, pStart + batch - 1);
                 sendEvent('progress', {
                   currentPage: pStart,
@@ -1821,12 +1879,14 @@ export async function onRequest(context) {
                 const results = await Promise.all(ps);
                 let rawInBatch = 0;
                 for (let idx = 0; idx < results.length; idx++) {
-                  const json = results[idx];
-                  if (!json) {
+                  const resObj = results[idx];
+                  if (!resObj.ok) {
                     if (!failedAt) failedAt = pStart + idx;
+                    if (resObj.rateLimited) hitRateLimit = true;
                     continue;
                   }
                   if (failedAt) continue;
+                  const json = resObj.data;
                   pagesScanned++;
                   nextPage = Math.max(nextPage, pStart + idx + 1);
                   rawInBatch += ingestHibi(json);
@@ -1851,7 +1911,9 @@ export async function onRequest(context) {
                 pagesScanned,
                 engine,
                 hasMore,
-                hitOffsetCeiling: false,
+                rateLimited: hitRateLimit || Boolean(failedAt),
+                retryAfterMs: hitRateLimit ? 5000 : 2500,
+                hitOffsetCeiling: !failedAt && nextPage > 165,
                 includesR18: true,
                 oldestDate: oldestDate ? oldestDate.slice(0, 10) : '',
                 nextPage,

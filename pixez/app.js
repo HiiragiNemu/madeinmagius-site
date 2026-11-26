@@ -150,6 +150,7 @@
     r34Uid: localStorage.getItem('pixez_r34_uid') || '',
     bridgeDetected: false,
     bridgeVersion: '',
+    bridgeFetchAvailable: false,
     authStatus: { loggedIn: false, user: null, mode: 'guest' },
     recentSearches: (() => {
       try {
@@ -2415,17 +2416,75 @@
     let lastEngine = resumeRec?.engine || `${srcMeta.label.toUpperCase()}-API`;
 
     const requestedMaxPages = isAllMode ? 2000 : Math.max(1, parseInt(pages, 10) || 3);
-    const chunkSize = source === 'pixiv' ? 24 : 10;
+    const chunkSize = source === 'pixiv' ? 16 : 10;
     let startPage = 1;
     let cursor = resumeRec?.nextCursor || '';
     let activeEndDate = order === 'date' ? '' : (resumeRec?.oldestDate || '');
     let activeStartDate = '';
     let activeOrder = order;
-    let didHibiReverseSegment = false;
+    let activeQueryTag = primaryResolvedTag;
+    let activeAiFilter = '0';
+    let activePhaseLabel = '';
+    let hibiQueue = null;
+    let currentHibiPhase = null;
+    const exhaustedHibiPairs = new Set();
+    let consecutiveRateLimits = 0;
     let hasMore = true;
     let chunkIndex = 0;
     let lastSnapshotRenderAt = 0;
     let lastCheckpointSize = accumWorks.size;
+
+    const abortableSleep = (ms) =>
+      new Promise((resolve, reject) => {
+        if (abortCtrl.signal.aborted) {
+          const e = new Error('Aborted');
+          e.name = 'AbortError';
+          return reject(e);
+        }
+        const t = setTimeout(() => {
+          abortCtrl.signal.removeEventListener('abort', onAbort);
+          resolve();
+        }, ms);
+        const onAbort = () => {
+          clearTimeout(t);
+          const e = new Error('Aborted');
+          e.name = 'AbortError';
+          reject(e);
+        };
+        abortCtrl.signal.addEventListener('abort', onAbort, { once: true });
+      });
+
+    const buildHibiPartitionQueue = (baseTag, initialOrder, ageMode) => {
+      const q = [];
+      const cleanBase = baseTag.trim();
+      const oppOrder = initialOrder === 'date' ? 'date_d' : 'date';
+      // Phase 2: Opposite direction of base query (up to 10,000 works -> 100% of tags <= 10,000)
+      if (initialOrder !== 'popular_d') {
+        q.push({ tag: cleanBase, order: oppOrder, aiFilter: '0', label: oppOrder === 'date' ? '最早回溯段' : '最新补充段' });
+      }
+      if (ageMode === 'r18') {
+        const r18Tag = /\br-?18\b/i.test(cleanBase) ? cleanBase : `${cleanBase} R-18`;
+        q.push({ tag: r18Tag, order: 'date_d', aiFilter: '1', label: '手绘 R-18 最新段', pairKey: 'nonai_r18' });
+        q.push({ tag: r18Tag, order: 'date', aiFilter: '1', label: '手绘 R-18 最早段', pairOf: 'nonai_r18' });
+        q.push({ tag: `${r18Tag} (AIイラスト OR AI生成 OR NovelAI OR AIart)`, order: 'date_d', aiFilter: '0', label: 'AI R-18 最新段', pairKey: 'ai_r18' });
+        q.push({ tag: `${r18Tag} (AIイラスト OR AI生成 OR NovelAI OR AIart)`, order: 'date', aiFilter: '0', label: 'AI R-18 最早段', pairOf: 'ai_r18' });
+      } else if (ageMode === 'all') {
+        // 4 Disjoint Quadrants (Non-AI R-18, Non-AI Safe, AI R-18, AI Safe) + R-18/-R-18 full backfill -> up to 40,000+ balanced works!
+        q.push({ tag: `${cleanBase} R-18`, order: 'date_d', aiFilter: '1', label: '手绘 R-18 最新段', pairKey: 'nonai_r18' });
+        q.push({ tag: `${cleanBase} R-18`, order: 'date', aiFilter: '1', label: '手绘 R-18 最早段', pairOf: 'nonai_r18' });
+        q.push({ tag: `${cleanBase} -R-18`, order: 'date_d', aiFilter: '1', label: '手绘全年龄 最新段', pairKey: 'nonai_safe' });
+        q.push({ tag: `${cleanBase} -R-18`, order: 'date', aiFilter: '1', label: '手绘全年龄 最早段', pairOf: 'nonai_safe' });
+        q.push({ tag: `${cleanBase} R-18 (AIイラスト OR AI生成 OR NovelAI OR AIart)`, order: 'date_d', aiFilter: '0', label: 'AI R-18 最新段', pairKey: 'ai_r18' });
+        q.push({ tag: `${cleanBase} R-18 (AIイラスト OR AI生成 OR NovelAI OR AIart)`, order: 'date', aiFilter: '0', label: 'AI R-18 最早段', pairOf: 'ai_r18' });
+        q.push({ tag: `${cleanBase} -R-18 (AIイラスト OR AI生成 OR NovelAI OR AIart)`, order: 'date_d', aiFilter: '0', label: 'AI全年龄 最新段', pairKey: 'ai_safe' });
+        q.push({ tag: `${cleanBase} -R-18 (AIイラスト OR AI生成 OR NovelAI OR AIart)`, order: 'date', aiFilter: '0', label: 'AI全年龄 最早段', pairOf: 'ai_safe' });
+        q.push({ tag: `${cleanBase} R-18`, order: 'date_d', aiFilter: '0', label: 'R-18 全量补充(最新)', pairKey: 'all_r18' });
+        q.push({ tag: `${cleanBase} R-18`, order: 'date', aiFilter: '0', label: 'R-18 全量补充(最早)', pairOf: 'all_r18' });
+        q.push({ tag: `${cleanBase} -R-18`, order: 'date_d', aiFilter: '0', label: '全年龄 全量补充(最新)', pairKey: 'all_safe' });
+        q.push({ tag: `${cleanBase} -R-18`, order: 'date', aiFilter: '0', label: '全年龄 全量补充(最早)', pairOf: 'all_safe' });
+      }
+      return q;
+    };
 
     const computeOldestDate = () => {
       let oldest = '';
@@ -2497,8 +2556,142 @@
     };
 
     try {
+      // Direct Chrome Userscript v4.1+ Pixiv Web AJAX mode: uses user's real Pixiv browser session!
+      // Full R-18 + True AI (ai_type=0) + unlimited ecd/scd date-window segmentation past 30k-500k works!
+      if (source === 'pixiv' && API_BASE && state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function') {
+        const encodePixivPath = (t) => encodeURIComponent(t).replace(/%2F/gi, '%252F');
+        const webOrd = order === 'date' ? 'date' : 'date_d';
+        const shiftYmd = (d, delta) => {
+          const ts = Date.parse(`${d}T00:00:00Z`) + delta * 86400000;
+          return Number.isFinite(ts) ? new Date(ts).toISOString().slice(0, 10) : '';
+        };
+        let bEndDate = activeEndDate;
+        let bStartDate = activeStartDate;
+        const maxSegs = isAllMode ? 90 : 12;
+        lastEngine = 'USERSCRIPT-PIXIV-DIRECT';
+        let bridgeWorked = false;
+
+        for (let seg = 1; seg <= maxSegs && !abortCtrl.signal.aborted; seg++) {
+          let segOldest = '';
+          let segNewest = '';
+          let segAdded = 0;
+          let segHitCeiling = false;
+          let segNaturalEnd = false;
+          const segPageLimit = isAllMode ? 1000 : Math.max(1, requestedMaxPages - totalPagesScanned);
+
+          for (let p = 1; p <= segPageLimit && !abortCtrl.signal.aborted; p += 2) {
+            const pBatch = [p];
+            if (p + 1 <= segPageLimit) pBatch.push(p + 1);
+            const segHint = bEndDate ? ` [截止 ${bEndDate}]` : bStartDate ? ` [起始 ${bStartDate}]` : '';
+            const curTotal = accumWorks.size;
+            const targetW = isAllMode ? (knownTotalPosts || curTotal + 600) : requestedMaxPages * 60;
+            const pct = Math.min(96, Math.max(4, Math.round((curTotal / Math.max(1, targetW)) * 96)));
+            progressText.textContent = `[油猴直连 Pixiv]${segHint} 第 ${totalPagesScanned + 1} 页 · 已采集 ${curTotal.toLocaleString()}${knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : ''} 件作品`;
+            progressPct.textContent = `${pct}%`;
+            progressFill.style.width = `${pct}%`;
+
+            const responses = await Promise.all(
+              pBatch.map(async (pageNum) => {
+                const dateQs = `${bStartDate ? `&scd=${encodeURIComponent(bStartDate)}` : ''}${bEndDate ? `&ecd=${encodeURIComponent(bEndDate)}` : ''}`;
+                const targetUrl = `https://www.pixiv.net/ajax/search/artworks/${encodePixivPath(primaryResolvedTag)}?word=${encodeURIComponent(primaryResolvedTag)}&order=${webOrd}&mode=${encodeURIComponent(mode)}&p=${pageNum}&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateQs}`;
+                for (let attempt = 0; attempt < 4; attempt++) {
+                  if (abortCtrl.signal.aborted) return null;
+                  const r = await window._pixezBridgeFetch(targetUrl);
+                  if (r && r.ok && r.json && !r.json.error && r.json.body) return r.json;
+                  if (r && (r.status === 429 || r.status === 403 || r.status >= 500 || r.status === 0)) {
+                    progressText.textContent = `[油猴直连 Pixiv] 限流冷却 ${3 + attempt * 3}s 后继续第 ${pageNum} 页 (已采 ${accumWorks.size.toLocaleString()} 作)...`;
+                    await abortableSleep((3 + attempt * 3) * 1000);
+                    continue;
+                  }
+                  break;
+                }
+                return null;
+              })
+            );
+
+            let batchNew = 0;
+            let batchRaw = 0;
+            for (const json of responses) {
+              if (!json || !json.body) continue;
+              bridgeWorked = true;
+              totalPagesScanned++;
+              const b = json.body;
+              const blk = b.illustManga || b.illust || b.manga || {};
+              if (seg === 1 && Number(blk.total || 0) > knownTotalPosts) knownTotalPosts = Number(blk.total);
+              if (b.tagTranslation) {
+                for (const [k, v] of Object.entries(b.tagTranslation)) {
+                  const tr = v.zh || v.zh_tw || v.en || '';
+                  if (tr) accumTrans[k] = tr;
+                }
+              }
+              const list = blk.data || [];
+              if (list.length < 20) segNaturalEnd = true;
+              for (const item of list) {
+                if (!item || !item.id || item.isAdContainer) continue;
+                batchRaw++;
+                const idStr = String(item.id);
+                const cDate = String(item.createDate || '');
+                const ymd = cDate.slice(0, 10);
+                if (ymd) {
+                  if (!segOldest || ymd < segOldest) segOldest = ymd;
+                  if (!segNewest || ymd > segNewest) segNewest = ymd;
+                }
+                if (accumWorks.has(idStr)) continue;
+                const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
+                accumWorks.set(idStr, {
+                  id: idStr,
+                  source: 'pixiv',
+                  title: item.title || '无题',
+                  tags,
+                  userId: String(item.userId || ''),
+                  userName: item.userName || '',
+                  thumbUrl: item.url || '',
+                  createDate: cDate,
+                  pageCount: Number(item.pageCount || 1),
+                  illustType: Number(item.illustType || 0),
+                  xRestrict: Number(item.xRestrict || 0),
+                  isAi: item.aiType === 2 || tags.some((t) => /^(AIイラスト|AI生成|AIart|NovelAI)$/i.test(t)),
+                  bookmarkCount: Number(item.bookmarkCount || item.totalBookmarks || 0)
+                });
+                batchNew++;
+                segAdded++;
+              }
+            }
+            flushDataset(false, true);
+            if (!bridgeWorked) break;
+            if (batchRaw === 0) { segNaturalEnd = true; break; }
+            if (batchNew === 0) { segHitCeiling = true; break; }
+            if (segNaturalEnd) break;
+            if (p + 2 > 1000) { segHitCeiling = true; break; }
+            await abortableSleep(180);
+          }
+
+          if (!bridgeWorked) break;
+          await checkpointToIndexedDb(true);
+          if (!isAllMode && totalPagesScanned >= requestedMaxPages) break;
+          if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 10) break;
+          if (segAdded === 0 && seg > 1) break;
+          if (segNaturalEnd && !segHitCeiling) break;
+
+          if (webOrd === 'date_d') {
+            const cand = segOldest || computeOldestDate();
+            const nextEnd = cand && cand === bEndDate ? shiftYmd(cand, -1) : cand;
+            if (!nextEnd || nextEnd < '2007-09-01') break;
+            bEndDate = nextEnd;
+          } else {
+            const cand = segNewest || computeNewestDate();
+            const nextStart = cand && cand === bStartDate ? shiftYmd(cand, 1) : cand;
+            if (!nextStart) break;
+            bStartDate = nextStart;
+          }
+        }
+        if (bridgeWorked) {
+          hasMore = false;
+        }
+      }
+
       const useDirectBrowserBooru = Boolean(API_BASE && (source === 'danbooru' || source === 'sankaku'));
-      while (hasMore && !abortCtrl.signal.aborted && chunkIndex < 160) {
+      while (hasMore && !abortCtrl.signal.aborted && chunkIndex < 650) {
         chunkIndex++;
         if (useDirectBrowserBooru) {
           const stepChunk = isAllMode ? 6 : Math.min(6, Math.max(1, requestedMaxPages - totalPagesScanned));
@@ -2553,7 +2746,7 @@
         }
         const qs = new URLSearchParams({
           source,
-          tag: primaryResolvedTag,
+          tag: activeQueryTag,
           pages,
           order: activeOrder,
           startPage: String(startPage),
@@ -2561,6 +2754,7 @@
           cursor,
           endDate: activeEndDate,
           startDate: activeStartDate,
+          aiFilter: activeAiFilter,
           mode,
           s_mode: sMode,
           type,
@@ -2578,6 +2772,8 @@
         let buffer = '';
         let chunkHasMore = false;
         let chunkHitOffsetCeiling = false;
+        let chunkRateLimited = false;
+        let chunkRetryAfterMs = 4500;
         let chunkNextPage = startPage;
         let chunkNextCursor = '';
         let chunkPagesDone = 0;
@@ -2614,7 +2810,13 @@
                 const pct = targetWorks > 0
                   ? Math.min(96, Math.max(4, Math.round((curWorks / targetWorks) * 96)))
                   : (payload.totalPages ? Math.min(95, Math.round((payload.currentPage / payload.totalPages) * 95)) : 35);
-                const segHint = activeEndDate ? ` [截止 ${activeEndDate}]` : activeStartDate ? ` [起始 ${activeStartDate}]` : (didHibiReverseSegment ? ' [最早回溯段]' : '');
+                const segHint = activeEndDate
+                  ? ` [截止 ${activeEndDate}]`
+                  : activeStartDate
+                  ? ` [起始 ${activeStartDate}]`
+                  : activePhaseLabel
+                  ? ` [${activePhaseLabel}]`
+                  : '';
                 progressText.textContent =
                   knownTotalPosts > 0
                     ? `[${srcMeta.label}]${segHint} 第 ${payload.currentPage || startPage} 页 · 已采集 ${curWorks.toLocaleString()} / ${knownTotalPosts.toLocaleString()} 件作品`
@@ -2629,7 +2831,7 @@
                 }
                 if (ds.nativeTagCategories) Object.assign(accumNativeCats, ds.nativeTagCategories);
                 if (ds.translations || ds.tagTranslations) Object.assign(accumTrans, ds.translations || ds.tagTranslations);
-                if (ds.primaryTag || ds.meta?.queryTag) primaryResolvedTag = ds.primaryTag || ds.meta?.queryTag;
+                if (!activePhaseLabel && (ds.primaryTag || ds.meta?.queryTag)) primaryResolvedTag = ds.primaryTag || ds.meta?.queryTag;
                 if (ds.engine || ds.meta?.engine) lastEngine = ds.engine || ds.meta?.engine;
                 const dsTotal = Number(ds.pixivTotal ?? ds.meta?.totalMatches ?? 0);
                 if (dsTotal > knownTotalPosts) knownTotalPosts = dsTotal;
@@ -2639,9 +2841,11 @@
                 }
 
                 if (eventType === 'complete') {
-                  chunkPagesDone = Number(ds.pagesScanned || ds.meta?.pagesFetched || 1);
+                  chunkPagesDone = Number(ds.pagesScanned || ds.meta?.pagesFetched || 0);
                   chunkHasMore = Boolean(payload.hasMore ?? ds.hasMore);
                   chunkHitOffsetCeiling = Boolean(payload.hitOffsetCeiling ?? ds.hitOffsetCeiling);
+                  chunkRateLimited = Boolean(payload.rateLimited ?? ds.rateLimited);
+                  chunkRetryAfterMs = Number(payload.retryAfterMs || ds.retryAfterMs || 4500);
                   chunkNextPage = Number(payload.nextPage || ds.nextPage || (startPage + chunkPagesDone));
                   chunkNextCursor = String(payload.nextCursor || ds.nextCursor || '');
                   totalPagesScanned += chunkPagesDone;
@@ -2661,9 +2865,25 @@
         }
 
         const newlyAddedInChunk = accumWorks.size - beforeChunkSize;
-        if (chunkHasMore && newlyAddedInChunk > 0 && (isAllMode || totalPagesScanned < requestedMaxPages)) {
+        if (newlyAddedInChunk > 0) consecutiveRateLimits = 0;
+
+        // 1) Upstream rate-limit cooldown & seamless retry (NEVER abandon crawl on Rate Limit!)
+        if (chunkHasMore && chunkRateLimited && consecutiveRateLimits < 8 && (isAllMode || totalPagesScanned < requestedMaxPages)) {
+          consecutiveRateLimits++;
+          const waitMs = Math.min(20000, chunkRetryAfterMs * Math.min(3, consecutiveRateLimits));
+          const waitSec = Math.round(waitMs / 1000);
+          progressText.textContent = `[${srcMeta.label}]${activePhaseLabel ? ` [${activePhaseLabel}]` : ''} 上游限流，冷却 ${waitSec}s 后自动续采第 ${chunkNextPage} 页 (已采 ${accumWorks.size.toLocaleString()}${knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : ''} 作)...`;
+          await abortableSleep(waitMs);
           startPage = chunkNextPage;
           cursor = chunkNextCursor;
+        } else if (chunkHasMore && (newlyAddedInChunk > 0 || activePhaseLabel) && (isAllMode || totalPagesScanned < requestedMaxPages)) {
+          // Continue next pages of the current segment (even if a partition chunk overlapped existing works, keep going up to its end!)
+          if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 10) {
+            hasMore = false;
+          } else {
+            startPage = chunkNextPage;
+            cursor = chunkNextCursor;
+          }
         } else if (
           (isAllMode || totalPagesScanned < requestedMaxPages) &&
           source === 'pixiv' &&
@@ -2675,8 +2895,7 @@
               (chunkNextPage >= 1000 || (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts)))
           )
         ) {
-          // Date-Window Segmentation: checkpoint to 1GB IndexedDB cache, then continue the next date window.
-          // Newest-first steps the end date (ecd) backward; oldest-first steps the start date (scd) forward.
+          // Date-Window Segmentation for Web AJAX / OAuth App API
           const ascending = activeOrder === 'date';
           const shiftDay = (d, delta) => {
             const ts = Date.parse(`${d}T00:00:00Z`) + delta * 86400000;
@@ -2694,13 +2913,45 @@
           } else {
             hasMore = false;
           }
-        } else if (isAllMode && source === 'pixiv' && lastEngine === 'HIBI-APP-API' && !didHibiReverseSegment && (chunkNextPage > 160 || accumWorks.size >= 4200) && activeOrder === 'date_d') {
-          // Guest HibiAPI dual-segment: save newest ~5,000 to local cache and also merge oldest ~5,000 (up to 10,000 works!)
-          await checkpointToIndexedDb(true);
-          didHibiReverseSegment = true;
-          activeOrder = 'date';
-          startPage = 1;
-          showToast(`已缓存最新段 ${accumWorks.size.toLocaleString()} 作，自动启动最早段回溯合并采集...`, 3500);
+        } else if (isAllMode && source === 'pixiv' && lastEngine === 'HIBI-APP-API') {
+          // Multi-Partition Balanced HibiAPI Full-History Queue (up to 40,000+ works with FULL R-18 + AI!)
+          if (currentHibiPhase?.pairKey && chunkNextPage <= 160 && !chunkHitOffsetCeiling) {
+            // This date_d partition finished under 4,800 works -> 100% captured, skip its paired date_asc pass!
+            exhaustedHibiPairs.add(currentHibiPhase.pairKey);
+          }
+          if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 10) {
+            hasMore = false;
+          } else {
+            if (!hibiQueue) {
+              // Only start extra partitions if we haven't already fetched the entire tag
+              const needMore =
+                (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts - 30) ||
+                chunkNextPage > 160 ||
+                accumWorks.size >= 4500;
+              hibiQueue = needMore ? buildHibiPartitionQueue(primaryResolvedTag, order, mode) : [];
+            }
+            let nextPhase = null;
+            while (hibiQueue.length > 0) {
+              const cand = hibiQueue.shift();
+              if (cand.pairOf && exhaustedHibiPairs.has(cand.pairOf)) continue;
+              nextPhase = cand;
+              break;
+            }
+            if (nextPhase) {
+              await checkpointToIndexedDb(true);
+              currentHibiPhase = nextPhase;
+              activeQueryTag = nextPhase.tag;
+              activeOrder = nextPhase.order;
+              activeAiFilter = nextPhase.aiFilter;
+              activePhaseLabel = nextPhase.label;
+              startPage = 1;
+              consecutiveRateLimits = 0;
+              showToast(`已缓存 ${accumWorks.size.toLocaleString()} 作，自动切换分段 [${nextPhase.label}] 继续全量合并...`, 3000);
+              await abortableSleep(1200);
+            } else {
+              hasMore = false;
+            }
+          }
         } else {
           hasMore = false;
         }
@@ -3338,17 +3589,86 @@
     showToast('已退出 Pixiv 账号，当前切换为免登录直连模式');
   }
 
-  async function completeAutomatedOAuthCode(code) {
-    if (!code || oauthExchanging) return;
-    oauthExchanging = true;
+  async function exchangeOAuthWithBridgeFallback(payload) {
     try {
       const r = await apiFetch('/api/oauth/exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, codeVerifier: state.codeVerifier || '' })
+        body: JSON.stringify(payload)
       });
-      const d = await r.json();
-      if (!r.ok || d.error) throw new Error(d.message || d.error || '自动授权交换失败');
+      const d = await r.json().catch(() => null);
+      if (r.ok && d && !d.error && (d.accessToken || d.user)) {
+        return { ok: true, data: d };
+      }
+      if (!d?.edgeBlocked || !state.bridgeFetchAvailable || typeof window._pixezBridgeFetch !== 'function') {
+        return { ok: false, data: d };
+      }
+    } catch (_) {
+      if (!state.bridgeFetchAvailable || typeof window._pixezBridgeFetch !== 'function') {
+        return { ok: false, data: null };
+      }
+    }
+    // Browser-direct OAuth token exchange via Userscript v4.1+ (bypasses Cloudflare 403 cleanly!)
+    const form = new URLSearchParams({
+      client_id: 'MOBrBDS8blbauoSck0ZfDbtuzpyT',
+      client_secret: 'lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj',
+      include_policy: 'true'
+    });
+    if (payload.refreshToken) {
+      form.set('grant_type', 'refresh_token');
+      form.set('refresh_token', String(payload.refreshToken).trim());
+    } else if (payload.code) {
+      const m = String(payload.code).match(/code=([A-Za-z0-9_-]+)/);
+      form.set('grant_type', 'authorization_code');
+      form.set('code', m ? m[1] : String(payload.code).trim());
+      form.set('code_verifier', String(payload.codeVerifier || ''));
+      form.set('redirect_uri', 'https://app-api.pixiv.net/web/v1/users/auth/pixiv/callback');
+    }
+    const br = await window._pixezBridgeFetch('https://oauth.secure.pixiv.net/auth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'PixivAndroidApp/5.0.234 (Android 14; Pixel 8)'
+      },
+      body: form.toString(),
+      anonymous: true
+    });
+    const td = br?.json;
+    const resp = td?.response || td;
+    if (!br?.ok || !resp?.access_token) {
+      return { ok: false, data: { error: true, message: td?.errors?.system?.message || 'Pixiv 浏览器直连 OAuth 验证失败' } };
+    }
+    const u = resp.user || {};
+    return {
+      ok: true,
+      data: {
+        error: false,
+        user: {
+          id: String(u.id || ''),
+          name: u.name || 'Pixiv User',
+          account: u.account || '',
+          isPremium: Boolean(u.is_premium),
+          xRestrict: Number(u.x_restrict ?? 2),
+          r18Verified: Number(u.x_restrict ?? 2) > 0,
+          profileImageUrl:
+            u.profile_image_urls?.px_170x170 ||
+            u.profile_image_urls?.px_50x50 ||
+            u.profile_image_urls?.medium ||
+            ''
+        },
+        accessToken: resp.access_token || '',
+        refreshToken: resp.refresh_token || ''
+      }
+    };
+  }
+
+  async function completeAutomatedOAuthCode(code) {
+    if (!code || oauthExchanging) return;
+    oauthExchanging = true;
+    try {
+      const ex = await exchangeOAuthWithBridgeFallback({ code, codeVerifier: state.codeVerifier || '' });
+      const d = ex.data || {};
+      if (!ex.ok || d.error) throw new Error(d.message || d.error || '自动授权交换失败');
       if (d.accessToken) {
         state.accessToken = d.accessToken;
         localStorage.setItem('pixez_access_token_v4', d.accessToken);
@@ -3507,11 +3827,48 @@
     }
   }
 
+  const _bridgePending = new Map();
+  let _bridgeReqSeq = 1;
+  window._pixezBridgeFetch = (url, opts = {}) =>
+    new Promise((resolve) => {
+      if (!state.bridgeFetchAvailable) return resolve({ ok: false, status: 0, json: null });
+      const reqId = `bf_${Date.now()}_${_bridgeReqSeq++}`;
+      const timer = setTimeout(() => {
+        _bridgePending.delete(reqId);
+        resolve({ ok: false, status: 0, json: null, error: 'timeout' });
+      }, Number(opts.timeout || 16000));
+      _bridgePending.set(reqId, (msg) => {
+        clearTimeout(timer);
+        let parsedJson = null;
+        try { parsedJson = msg.text ? JSON.parse(msg.text) : null; } catch (_) {}
+        resolve({ ok: Boolean(msg.ok), status: Number(msg.status || 0), text: msg.text || '', json: parsedJson });
+      });
+      window.postMessage({
+        type: 'PIXEZ_BRIDGE_FETCH_REQ',
+        reqId,
+        url,
+        method: opts.method || 'GET',
+        headers: opts.headers || undefined,
+        body: opts.body || undefined,
+        anonymous: Boolean(opts.anonymous),
+        timeout: Number(opts.timeout || 15000)
+      }, '*');
+    });
+
   window.addEventListener('message', async (ev) => {
     if (!ev.data || typeof ev.data !== 'object') return;
+    if (ev.data.type === 'PIXEZ_BRIDGE_FETCH_RES' && ev.data.reqId) {
+      const cb = _bridgePending.get(ev.data.reqId);
+      if (cb) {
+        _bridgePending.delete(ev.data.reqId);
+        cb(ev.data);
+      }
+      return;
+    }
     if (ev.data.type === 'PIXEZ_USERSCRIPT_ALIVE') {
       state.bridgeDetected = true;
       state.bridgeVersion = ev.data.version || '4.0';
+      state.bridgeFetchAvailable = Boolean(ev.data.canFetch);
       updateAuthUI();
       return;
     }

@@ -2455,22 +2455,26 @@
         abortCtrl.signal.addEventListener('abort', onAbort, { once: true });
       });
 
-    const buildHibiPartitionQueue = (baseTag, initialOrder, ageMode) => {
+    const buildHibiPartitionQueue = (baseTag, initialOrder, ageMode, safeBaseTotal) => {
       const q = [];
       const cleanBase = baseTag.trim();
       const oppOrder = initialOrder === 'date' ? 'date_d' : 'date';
-      // Phase 2: Opposite direction of base query (up to 10,000 works -> 100% of tags <= 10,000)
+      // Phase 2: Opposite direction of base query (5,000 newest + 5,000 oldest = 10,000 100%-unbiased works!)
       if (initialOrder !== 'popular_d') {
         q.push({ tag: cleanBase, order: oppOrder, aiFilter: '0', label: oppOrder === 'date' ? '最早回溯段' : '最新补充段' });
       }
-      if (ageMode === 'r18') {
+      // CRITICAL STATISTICAL ACCURACY GUARD:
+      // Only split into R-18 / -R-18 / AI / Non-AI quadrants when safeBaseTotal <= 22,000 (~35,000 true total incl. R-18),
+      // so ALL quadrants complete 100% without hitting the 10k per-quadrant cap (avoiding artificial 50% R-18 bias on mega-tags!).
+      const allowFullQuadrants = safeBaseTotal > 0 && safeBaseTotal <= 22000;
+      if (ageMode === 'r18' && allowFullQuadrants) {
         const r18Tag = /\br-?18\b/i.test(cleanBase) ? cleanBase : `${cleanBase} R-18`;
         q.push({ tag: r18Tag, order: 'date_d', aiFilter: '1', label: '手绘 R-18 最新段', pairKey: 'nonai_r18' });
         q.push({ tag: r18Tag, order: 'date', aiFilter: '1', label: '手绘 R-18 最早段', pairOf: 'nonai_r18' });
         q.push({ tag: `${r18Tag} (AIイラスト OR AI生成 OR NovelAI OR AIart)`, order: 'date_d', aiFilter: '0', label: 'AI R-18 最新段', pairKey: 'ai_r18' });
         q.push({ tag: `${r18Tag} (AIイラスト OR AI生成 OR NovelAI OR AIart)`, order: 'date', aiFilter: '0', label: 'AI R-18 最早段', pairOf: 'ai_r18' });
-      } else if (ageMode === 'all') {
-        // 4 Disjoint Quadrants (Non-AI R-18, Non-AI Safe, AI R-18, AI Safe) + R-18/-R-18 full backfill -> up to 40,000+ balanced works!
+      } else if (ageMode === 'all' && allowFullQuadrants) {
+        // 4 Disjoint Quadrants complete to ~100% -> exact unbiased counts + exact R-18% & AI%!
         q.push({ tag: `${cleanBase} R-18`, order: 'date_d', aiFilter: '1', label: '手绘 R-18 最新段', pairKey: 'nonai_r18' });
         q.push({ tag: `${cleanBase} R-18`, order: 'date', aiFilter: '1', label: '手绘 R-18 最早段', pairOf: 'nonai_r18' });
         q.push({ tag: `${cleanBase} -R-18`, order: 'date_d', aiFilter: '1', label: '手绘全年龄 最新段', pairKey: 'nonai_safe' });
@@ -2944,7 +2948,9 @@
               chunkNextPage > 155 ||
               accumWorks.size >= 3800 ||
               (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts - 30);
-            hibiQueue = needMore ? buildHibiPartitionQueue(primaryResolvedTag, order, mode) : [];
+            hibiQueue = needMore
+              ? buildHibiPartitionQueue(primaryResolvedTag, order, mode, Number(preflightInfo?.totalPosts || 0))
+              : [];
           }
           let nextPhase = null;
           while (hibiQueue.length > 0) {

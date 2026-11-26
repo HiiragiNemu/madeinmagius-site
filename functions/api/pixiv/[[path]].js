@@ -1070,7 +1070,7 @@ export async function onRequest(context) {
     return jsonResponse({ oauth, appApi, mirror }, 200, request);
   }
   if (subPath === 'status' || subPath === '') {
-    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.9' }, 200, request);
+    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.11' }, 200, request);
   }
 
   // 0B. Danbooru semantic taxonomy batch enrichment (/api/pixiv/danbooru/enrich)
@@ -1125,17 +1125,21 @@ export async function onRequest(context) {
       );
     }
     const guestR18Note = hasOAuthToken
-      ? '已登录：通过官方 App API 采集，包含 R-18 与 AI 作品'
+      ? '已登录：通过官方 App API 采集，包含 R-18 与 AI 作品（全量日期分段）'
       : mode === 'safe'
       ? '仅全年龄模式（支持日期分段突破上限）'
       : hibiUp
-      ? '经 HibiAPI 采集，完整包含 R-18 与 AI 作品（支持最新+最早+四象限全量分片合并，最高 40,000+ 作 + 本地 1GB 缓存）'
+      ? '经 HibiAPI 采集，完整包含 R-18 与 AI 作品（中大标签自动四象限全量合并，超大标签自动无偏双向采样保证 R-18/AI 比例零偏差；安装油猴 v4.1 或使用 APK 登录可突破日期分段采完数万作）'
       : 'HibiAPI 暂时无响应，本次只能采集全年龄作品（R-18 占比将为 0）';
     if (webRace && webRace.data && !webRace.data.error && webRace.data.body) {
       const block = webRace.data.body.illustManga || webRace.data.body.illust || webRace.data.body.manga || {};
       const totalPosts = Number(block.total || 0);
       const estimatedPages = totalPosts > 0 ? Math.ceil(totalPosts / 60) : 0;
       const engineName = webRace.origin.includes('pixiv.js.org') ? 'WEB-AJAX-MIRROR' : 'WEB-AJAX';
+      const totalLabel =
+        mode === 'safe' || cookie
+          ? `Pixiv 全站共 ${totalPosts.toLocaleString()} 件作品（约 ${estimatedPages.toLocaleString()} 页，每页 60 件）`
+          : `Pixiv 全年龄基准 ${totalPosts.toLocaleString()} 件（含 R-18 实际全量更高）`;
       return jsonResponse(
         {
           error: false,
@@ -1143,11 +1147,12 @@ export async function onRequest(context) {
           engine: engineName,
           resolvedTag: tag,
           totalPosts,
+          totalIsSafeBaseline: mode !== 'safe' && !cookie,
           pageSize: 60,
           estimatedPages,
           apiCeilingWorks: 60000,
           apiCeilingPages: 1000,
-          note: `Pixiv 全站共 ${totalPosts.toLocaleString()} 件作品（约 ${estimatedPages.toLocaleString()} 页，每页 60 件，支持日期分段突破上限）。${guestR18Note}`,
+          note: `${totalLabel}。${guestR18Note}`,
           guestNoR18: !hasOAuthToken && !hibiUp,
           includesR18: hasOAuthToken || hibiUp,
         },

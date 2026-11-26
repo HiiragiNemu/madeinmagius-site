@@ -151,6 +151,10 @@
     bridgeDetected: false,
     bridgeVersion: '',
     bridgeFetchAvailable: false,
+    chromeBridgeProfile: null,
+    bridgeAutoSyncBlocked: (() => {
+      try { return sessionStorage.getItem('pixez_manual_logout_v4') === '1'; } catch (_) { return false; }
+    })(),
     authStatus: { loggedIn: false, user: null, mode: 'guest' },
     recentSearches: (() => {
       try {
@@ -1002,8 +1006,19 @@
     const lockedArr = Array.from(state.lockedSubTags);
     const titleStr = lockedArr.length > 0 ? `${primaryTag} + ${lockedArr.join('+')}` : primaryTag;
     $('statPrimaryTag').textContent = `[${srcMeta.label}] ${titleStr}`;
+    const bd = ds.totalBreakdown || null;
     if (totalMatches > 0) {
-      $('statTotalMatched').textContent = `(全站 ${totalMatches.toLocaleString()})`;
+      if (bd && bd.includesR18) {
+        const parts = [`含R-18/AI ${totalMatches.toLocaleString()}`];
+        if (bd.totalSafe > 0 && bd.totalSafe < totalMatches) parts.push(`全年龄 ${bd.totalSafe.toLocaleString()}`);
+        if (bd.totalHuman > 0 && bd.totalHuman < totalMatches) parts.push(`纯手绘 ${bd.totalHuman.toLocaleString()}`);
+        $('statTotalMatched').textContent = `(${parts.join(' · ')})`;
+      } else if (bd && bd.isSafeBaselineOnly) {
+        const humanPart = bd.totalHuman > 0 && bd.totalHuman < totalMatches ? `·纯手绘 ${bd.totalHuman.toLocaleString()}` : '';
+        $('statTotalMatched').textContent = `(全年龄基准 ${totalMatches.toLocaleString()}${humanPart} · 含R-18更高)`;
+      } else {
+        $('statTotalMatched').textContent = `(全站 ${totalMatches.toLocaleString()})`;
+      }
     } else if (ds.hasMore) {
       $('statTotalMatched').textContent = `(全站 ${activeWorks.length.toLocaleString()}+ 续翻中)`;
     } else {
@@ -1011,13 +1026,13 @@
     }
 
     const uniqueArtists = new Set(activeWorks.map((w) => w.userId).filter(Boolean)).size;
-    $('statSampledCount').textContent = `${activeWorks.length} 作`;
+    $('statSampledCount').textContent = `${activeWorks.length.toLocaleString()} 作`;
     $('statUniqueArtists').textContent = `(${uniqueArtists}画师/${pagesScanned}页)`;
 
     const totalTagsInWorks = activeWorks.reduce((acc, w) => acc + (w.tags ? w.tags.length : 0), 0);
     const avgTags = activeWorks.length > 0 ? (totalTagsInWorks / activeWorks.length).toFixed(1) : '0.0';
     $('statUniqueCoTags').textContent = `${fullList.length} 个`;
-    $('statAvgTagsPerWork').textContent = `(可见 ${scopedList.length} · 均${avgTags}/作)`;
+    $('statAvgTagsPerWork').textContent = `(可见${scopedList.length}·均${avgTags})`;
 
     const topUnlocked = scopedList.find((r) => !r.isPinnedLocked) || scopedList[0];
     if (topUnlocked) {
@@ -1035,10 +1050,10 @@
     const aiWorksCount = activeWorks.filter((w) => w.isAi).length;
     const origCount = activeWorks.length - aiWorksCount;
     const origRate = activeWorks.length > 0 ? ((origCount / activeWorks.length) * 100).toFixed(1) : '100.0';
-    $('statOriginalRate').textContent = `${origRate}% 手绘`;
+    $('statOriginalRate').textContent = `${origRate}%`;
     $('statAiBreakdown').textContent = excludeAi && poolAiCount > 0
-      ? `(已剔除 AI ${poolAiCount}作)`
-      : `(AI ${aiWorksCount}作)`;
+      ? `(已剔AI ${poolAiCount})`
+      : `(AI ${aiWorksCount})`;
 
     const isR18Work = (w) => Number(w.xRestrict || 0) > 0 || (Array.isArray(w.tags) && w.tags.some((t) => /^r-?18g?$/i.test(String(t))));
     const r18WorksCount = activeWorks.filter(isR18Work).length;
@@ -1047,7 +1062,7 @@
     const humanR18Count = humanPool.filter(isR18Work).length;
     const humanR18Pct = humanPool.length > 0 ? ((humanR18Count / humanPool.length) * 100).toFixed(1) : '0.0';
     if ($('statR18Rate')) $('statR18Rate').textContent = `${r18Pct}% (${r18WorksCount}作)`;
-    if ($('statR18HumanSub')) $('statR18HumanSub').textContent = `手绘R-18: ${humanR18Pct}%`;
+    if ($('statR18HumanSub')) $('statR18HumanSub').textContent = `手绘${humanR18Pct}%`;
 
     let minDateStr = '';
     let maxDateStr = '';
@@ -2330,8 +2345,21 @@
     syncCustomSelects();
     hideAutocomplete();
 
-    const pages = opts.overridePages || $('pagesSelect').value;
-    const isAllMode = String(pages).toUpperCase() === 'ALL';
+    const rawPagesChoice = opts.overridePages || $('pagesSelect').value;
+    const isAllMode = String(rawPagesChoice).toUpperCase() === 'ALL';
+    const isCustomDepth = String(rawPagesChoice).toUpperCase() === 'CUSTOM';
+    const customUnit = $('customDepthUnit')?.value === 'pages' ? 'pages' : 'works';
+    const customNumRaw = parseInt($('customDepthValue')?.value || '2000', 10);
+    const customNum = Number.isFinite(customNumRaw) && customNumRaw > 0 ? customNumRaw : (customUnit === 'works' ? 2000 : 20);
+    const targetWorksLimit = isCustomDepth && customUnit === 'works' ? Math.max(10, Math.min(200000, customNum)) : 0;
+    const requestedMaxPages = isAllMode
+      ? 2000
+      : isCustomDepth
+      ? (customUnit === 'works'
+          ? Math.max(1, Math.min(8000, Math.ceil(targetWorksLimit / 25)))
+          : Math.max(1, Math.min(5000, customNum)))
+      : Math.max(1, parseInt(rawPagesChoice, 10) || 3);
+    const pages = isAllMode || targetWorksLimit > 0 || requestedMaxPages > 1000 ? 'ALL' : String(requestedMaxPages);
     const order = $('orderSelect')?.value || 'date_d';
     const mode = $('modeSelect').value;
     const sMode = $('sModeSelect').value;
@@ -2352,12 +2380,63 @@
     if (state.r34Uid) commonHeaders['X-R34-Uid'] = state.r34Uid;
 
     // Step 1: Pre-flight tag total count lookup BEFORE running progress bar!
+    const hasVerifiedChromePixivSession = Boolean(
+      state.authStatus?.loggedIn &&
+      (state.chromeBridgeProfile || state.authStatus.mode === 'chrome_bridge' || state.authStatus.mode === 'cookie')
+    );
     let preflightInfo = opts.preflightInfo || null;
     if (!preflightInfo) {
       showPreflightBanner(`正在探测 [${srcMeta.label}] 标签 [${parsed.tag}] 的全站作品总数...`, false);
       try {
+        // Logged-in Chrome Userscript direct preflight: gives EXACT 4-way breakdown (全量含R-18/AI vs 全年龄 vs R-18 vs 纯手绘)!
+        if (source === 'pixiv' && state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function' && hasVerifiedChromePixivSession) {
+          const encP = encodeURIComponent(parsed.tag).replace(/%2F/gi, '%252F');
+          const encW = encodeURIComponent(parsed.tag);
+          const mkU = (m, aiT) => `https://www.pixiv.net/ajax/search/artworks/${encP}?word=${encW}&order=date_d&mode=${encodeURIComponent(m)}&p=1&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(type)}&ai_type=${aiT}&lang=zh`;
+          const probes = [
+            window._pixezBridgeFetch(mkU(mode, 0), { timeout: 9000 }),
+            window._pixezBridgeFetch(mkU(mode, 1), { timeout: 9000 })
+          ];
+          if (mode === 'all') probes.push(window._pixezBridgeFetch(mkU('safe', 0), { timeout: 9000 }));
+          const [rAll, rHuman, rSafe] = await Promise.all(probes);
+          const getTot = (r) => {
+            const b = r?.json?.body;
+            const blk = b?.illustManga || b?.illust || b?.manga || {};
+            return Number(blk.total || 0);
+          };
+          const totalAllAi = getTot(rAll);
+          const totalHuman = getTot(rHuman);
+          const totalSafe = mode === 'all' ? getTot(rSafe) : (mode === 'safe' ? totalAllAi : 0);
+          if (totalAllAi > 0) {
+            const totalR18 = mode === 'all' && totalSafe > 0 && totalAllAi >= totalSafe ? totalAllAi - totalSafe : (mode === 'r18' ? totalAllAi : 0);
+            const totalAi = totalHuman > 0 && totalAllAi >= totalHuman ? totalAllAi - totalHuman : 0;
+            const r18RateStr = mode === 'all' && totalAllAi > 0 && totalSafe > 0 ? ` (${((totalR18 / totalAllAi) * 100).toFixed(1)}%)` : '';
+            const modeDesc = mode === 'safe' ? '全年龄含AI' : mode === 'r18' ? '仅R-18含AI' : '全量含R-18与AI';
+            const detailParts = [];
+            if (mode === 'all' && totalSafe > 0) detailParts.push(`全年龄 ${totalSafe.toLocaleString()} + R-18 ${totalR18.toLocaleString()}${r18RateStr}`);
+            if (totalHuman > 0) detailParts.push(`纯手绘 ${totalHuman.toLocaleString()} / AI ${totalAi.toLocaleString()}`);
+            preflightInfo = {
+              error: false,
+              source: 'pixiv',
+              resolvedTag: parsed.tag,
+              totalPosts: totalAllAi,
+              pageSize: 60,
+              estimatedPages: Math.ceil(totalAllAi / 60),
+              totalBreakdown: {
+                totalAllAi,
+                totalSafe,
+                totalR18,
+                totalHuman,
+                totalAi,
+                includesR18: mode !== 'safe',
+                isSafeBaselineOnly: false
+              },
+              note: `Pixiv [${parsed.tag}] ${modeDesc}共 ${totalAllAi.toLocaleString()} 件${detailParts.length ? `（${detailParts.join(' · ')}）` : ''} · 油猴已登录直连 (60作/页·支持日期分段)`
+            };
+          }
+        }
         // Danbooru & Sankaku support direct browser CORS cleanly (avoids CF-Worker egress WAF)
-        if ((source === 'danbooru' || source === 'sankaku') && API_BASE) {
+        if (!preflightInfo && (source === 'danbooru' || source === 'sankaku') && API_BASE) {
           preflightInfo = await directBrowserTagInfo(source, parsed.tag, mode);
         }
         if (!preflightInfo) {
@@ -2381,6 +2460,15 @@
               $('authModal')?.classList.remove('hidden');
             }
             return;
+          }
+          if (idata && source === 'pixiv' && !idata.totalBreakdown && idata.totalPosts > 0) {
+            idata.totalBreakdown = {
+              totalAllAi: Number(idata.totalPosts),
+              totalSafe: Number(idata.totalPosts),
+              totalHuman: Number(idata.totalHuman || 0),
+              includesR18: Boolean(!idata.totalIsSafeBaseline && (state.cookie || state.accessToken)),
+              isSafeBaselineOnly: Boolean(idata.totalIsSafeBaseline || (!state.cookie && !state.accessToken && mode !== 'safe'))
+            };
           }
           preflightInfo = idata || null;
         }
@@ -2435,11 +2523,17 @@
     }
     let totalPagesScanned = Number(resumeRec?.pagesScanned || 0);
     let knownTotalPosts = Math.max(Number(preflightInfo?.totalPosts || 0), Number(resumeRec?.pixivTotal || 0));
+    let knownBreakdown = preflightInfo?.totalBreakdown || resumeRec?.totalBreakdown || null;
     let primaryResolvedTag = preflightInfo?.resolvedTag || resumeRec?.primaryTag || parsed.tag;
     let lastEngine = resumeRec?.engine || `${srcMeta.label.toUpperCase()}-API`;
 
-    const requestedMaxPages = isAllMode ? 2000 : Math.max(1, parseInt(pages, 10) || 3);
     const chunkSize = source === 'pixiv' ? 16 : 10;
+    const reachedDepthCap = () =>
+      (targetWorksLimit > 0 && accumWorks.size >= targetWorksLimit) ||
+      (!isAllMode && targetWorksLimit === 0 && totalPagesScanned >= requestedMaxPages);
+    const canAcceptMoreWorks = () => targetWorksLimit <= 0 || accumWorks.size < targetWorksLimit;
+    const wantContinueBeyondSingleWindow = () =>
+      isAllMode || (targetWorksLimit > 0 && accumWorks.size < targetWorksLimit) || (targetWorksLimit === 0 && totalPagesScanned < requestedMaxPages);
     let startPage = 1;
     let cursor = resumeRec?.nextCursor || '';
     let activeEndDate = order === 'date' ? '' : (resumeRec?.oldestDate || '');
@@ -2542,6 +2636,7 @@
         primaryTag: primaryResolvedTag,
         mode,
         pixivTotal: knownTotalPosts,
+        totalBreakdown: knownBreakdown,
         pagesScanned: totalPagesScanned,
         engine: lastEngine,
         hasMore: stillHasMore,
@@ -2562,6 +2657,7 @@
         source,
         primaryTag: primaryResolvedTag,
         pixivTotal: knownTotalPosts,
+        totalBreakdown: knownBreakdown,
         pagesScanned: totalPagesScanned,
         engine: lastEngine,
         hasMore: stillHasMore,
@@ -2585,9 +2681,10 @@
     };
 
     try {
-      // Direct Chrome Userscript v4.1+ Pixiv Web AJAX mode: uses user's real Pixiv browser session!
+      // Direct Chrome Userscript v4.1+ Pixiv Web AJAX mode: uses user's REAL logged-in Chrome Pixiv session!
       // Full R-18 + True AI (ai_type=0) + unlimited ecd/scd date-window segmentation past 30k-500k works!
-      if (source === 'pixiv' && API_BASE && state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function') {
+      // CRITICAL: ONLY run when Chrome actually has a verified Pixiv session (so Guest mode NEVER hits 0%-R18 Web AJAX!).
+      if (source === 'pixiv' && state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function' && hasVerifiedChromePixivSession) {
         const encodePixivPath = (t) => encodeURIComponent(t).replace(/%2F/gi, '%252F');
         const webOrd = order === 'date' ? 'date' : 'date_d';
         const shiftYmd = (d, delta) => {
@@ -2596,26 +2693,31 @@
         };
         let bEndDate = activeEndDate;
         let bStartDate = activeStartDate;
-        const maxSegs = isAllMode ? 90 : 12;
+        const maxSegs = isAllMode || targetWorksLimit > 0 ? 90 : 18;
         lastEngine = 'USERSCRIPT-PIXIV-DIRECT';
         let bridgeWorked = false;
 
-        for (let seg = 1; seg <= maxSegs && !abortCtrl.signal.aborted; seg++) {
+        for (let seg = 1; seg <= maxSegs && !abortCtrl.signal.aborted && !reachedDepthCap(); seg++) {
           let segOldest = '';
           let segNewest = '';
           let segAdded = 0;
           let segHitCeiling = false;
           let segNaturalEnd = false;
-          const segPageLimit = isAllMode ? 1000 : Math.max(1, requestedMaxPages - totalPagesScanned);
+          const segPageLimit = isAllMode || targetWorksLimit > 0 ? 1000 : Math.max(1, requestedMaxPages - totalPagesScanned);
 
-          for (let p = 1; p <= segPageLimit && !abortCtrl.signal.aborted; p += 2) {
+          for (let p = 1; p <= segPageLimit && !abortCtrl.signal.aborted && !reachedDepthCap(); p += 2) {
             const pBatch = [p];
-            if (p + 1 <= segPageLimit) pBatch.push(p + 1);
+            if (p + 1 <= segPageLimit && (targetWorksLimit <= 0 || targetWorksLimit - accumWorks.size > 60)) pBatch.push(p + 1);
             const segHint = bEndDate ? ` [截止 ${bEndDate}]` : bStartDate ? ` [起始 ${bStartDate}]` : '';
             const curTotal = accumWorks.size;
-            const targetW = isAllMode ? (knownTotalPosts || curTotal + 600) : requestedMaxPages * 60;
+            const targetW = targetWorksLimit > 0
+              ? targetWorksLimit
+              : isAllMode ? (knownTotalPosts || curTotal + 600) : requestedMaxPages * 60;
             const pct = Math.min(96, Math.max(4, Math.round((curTotal / Math.max(1, targetW)) * 96)));
-            progressText.textContent = `[油猴直连 Pixiv]${segHint} 第 ${totalPagesScanned + 1} 页 · 已采集 ${curTotal.toLocaleString()}${knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : ''} 件作品`;
+            const denomLabel = targetWorksLimit > 0
+              ? ` / 目标 ${targetWorksLimit.toLocaleString()}`
+              : knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : '';
+            progressText.textContent = `[油猴直连 Pixiv]${segHint} 第 ${totalPagesScanned + 1} 页 · 已采集 ${curTotal.toLocaleString()}${denomLabel} 件作品`;
             progressPct.textContent = `${pct}%`;
             progressFill.style.width = `${pct}%`;
 
@@ -2656,6 +2758,7 @@
               const list = blk.data || [];
               if (list.length < 20) segNaturalEnd = true;
               for (const item of list) {
+                if (!canAcceptMoreWorks()) break;
                 if (!item || !item.id || item.isAdContainer) continue;
                 batchRaw++;
                 const idStr = String(item.id);
@@ -2687,7 +2790,7 @@
               }
             }
             flushDataset(false, true);
-            if (!bridgeWorked) break;
+            if (!bridgeWorked || reachedDepthCap()) break;
             if (batchRaw === 0) { segNaturalEnd = true; break; }
             if (batchNew === 0) { segHitCeiling = true; break; }
             if (segNaturalEnd) break;
@@ -2697,7 +2800,7 @@
 
           if (!bridgeWorked) break;
           await checkpointToIndexedDb(true);
-          if (!isAllMode && totalPagesScanned >= requestedMaxPages) break;
+          if (reachedDepthCap()) break;
           if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 10) break;
           if (segAdded === 0 && seg > 1) break;
           if (segNaturalEnd && !segHitCeiling) break;
@@ -2720,10 +2823,12 @@
       }
 
       const useDirectBrowserBooru = Boolean(API_BASE && (source === 'danbooru' || source === 'sankaku'));
-      while (hasMore && !abortCtrl.signal.aborted && chunkIndex < 650) {
+      while (hasMore && !abortCtrl.signal.aborted && !reachedDepthCap() && chunkIndex < 650) {
         chunkIndex++;
         if (useDirectBrowserBooru) {
-          const stepChunk = isAllMode ? 6 : Math.min(6, Math.max(1, requestedMaxPages - totalPagesScanned));
+          const stepChunk = targetWorksLimit > 0
+            ? Math.min(6, Math.max(1, Math.ceil((targetWorksLimit - accumWorks.size) / Math.max(1, srcMeta.pageSize))))
+            : isAllMode ? 6 : Math.min(6, Math.max(1, requestedMaxPages - totalPagesScanned));
           // Danbooru keyset cursor (`b<minId>`) automatically breaks the 1000-page / 100k ceiling!
           let effectivePageArg = startPage;
           if (source === 'danbooru' && startPage > 1000) {
@@ -2744,14 +2849,15 @@
             order: activeOrder,
             signal: abortCtrl.signal,
             onProgress: (curP, inChunk) => {
-              const curTotal = accumWorks.size + inChunk;
-              const targetWorks = isAllMode
+              const curTotal = targetWorksLimit > 0 ? Math.min(targetWorksLimit, accumWorks.size + inChunk) : accumWorks.size + inChunk;
+              const targetWorks = targetWorksLimit > 0
+                ? targetWorksLimit
+                : isAllMode
                 ? (knownTotalPosts > 0 ? knownTotalPosts : Math.max(curTotal + 200, 1000))
                 : Math.min(knownTotalPosts > 0 ? knownTotalPosts : requestedMaxPages * srcMeta.pageSize, requestedMaxPages * srcMeta.pageSize);
               const pct = targetWorks > 0 ? Math.min(96, Math.max(4, Math.round((curTotal / targetWorks) * 96))) : 35;
-              progressText.textContent = knownTotalPosts > 0
-                ? `[${srcMeta.label}] 第 ${curP} 页 · 已采集 ${curTotal.toLocaleString()} / ${knownTotalPosts.toLocaleString()} 件作品`
-                : `[${srcMeta.label}] 正在采集第 ${curP} 页 (已采 ${curTotal.toLocaleString()} 作)...`;
+              const denom = targetWorksLimit > 0 ? ` / 目标 ${targetWorksLimit.toLocaleString()}` : knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : '';
+              progressText.textContent = `[${srcMeta.label}] 第 ${curP} 页 · 已采集 ${curTotal.toLocaleString()}${denom} 件作品`;
               progressPct.textContent = `${pct}%`;
               progressFill.style.width = `${pct}%`;
             }
@@ -2761,11 +2867,12 @@
           Object.assign(accumTrans, ch.translations || {});
           const beforeCount = accumWorks.size;
           for (const w of ch.artworks || []) {
+            if (!canAcceptMoreWorks()) break;
             if (w && w.id) accumWorks.set(String(w.id), w);
           }
           totalPagesScanned += ch.pagesScanned || 0;
-          flushDataset(true, ch.hasMore);
-          if (!ch.hasMore || accumWorks.size === beforeCount || (!isAllMode && totalPagesScanned >= requestedMaxPages)) {
+          flushDataset(true, ch.hasMore && !reachedDepthCap());
+          if (!ch.hasMore || accumWorks.size === beforeCount || reachedDepthCap()) {
             hasMore = false;
           } else {
             startPage = ch.nextPage;
@@ -2773,13 +2880,18 @@
           }
           continue;
         }
+        const effChunkPages = targetWorksLimit > 0
+          ? Math.min(chunkSize, Math.max(2, Math.ceil((targetWorksLimit - accumWorks.size) / 28)))
+          : isAllMode
+          ? chunkSize
+          : Math.min(chunkSize, Math.max(1, requestedMaxPages - totalPagesScanned));
         const qs = new URLSearchParams({
           source,
           tag: activeQueryTag,
           pages,
           order: activeOrder,
           startPage: String(startPage),
-          chunkPages: String(chunkSize),
+          chunkPages: String(effChunkPages),
           cursor,
           endDate: activeEndDate,
           startDate: activeStartDate,
@@ -2832,10 +2944,14 @@
                 if (payload.totalMatches && Number(payload.totalMatches) > knownTotalPosts) {
                   knownTotalPosts = Number(payload.totalMatches);
                 }
-                const targetWorks = isAllMode
+                const targetWorks = targetWorksLimit > 0
+                  ? targetWorksLimit
+                  : isAllMode
                   ? (knownTotalPosts > 0 ? knownTotalPosts : Math.max(accumWorks.size + 300, 1200))
                   : Math.min(knownTotalPosts > 0 ? knownTotalPosts : requestedMaxPages * srcMeta.pageSize, requestedMaxPages * srcMeta.pageSize);
-                const curWorks = Math.max(accumWorks.size, Number(payload.sampledArtworks || 0));
+                const curWorks = targetWorksLimit > 0
+                  ? Math.min(targetWorksLimit, Math.max(accumWorks.size, Number(payload.sampledArtworks || 0)))
+                  : Math.max(accumWorks.size, Number(payload.sampledArtworks || 0));
                 const pct = targetWorks > 0
                   ? Math.min(96, Math.max(4, Math.round((curWorks / targetWorks) * 96)))
                   : (payload.totalPages ? Math.min(95, Math.round((payload.currentPage / payload.totalPages) * 95)) : 35);
@@ -2846,9 +2962,12 @@
                   : activePhaseLabel
                   ? ` [${activePhaseLabel}]`
                   : '';
+                const denomText = targetWorksLimit > 0
+                  ? ` / 目标 ${targetWorksLimit.toLocaleString()}`
+                  : knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : '';
                 progressText.textContent =
-                  knownTotalPosts > 0
-                    ? `[${srcMeta.label}]${segHint} 第 ${payload.currentPage || startPage} 页 · 已采集 ${curWorks.toLocaleString()} / ${knownTotalPosts.toLocaleString()} 件作品`
+                  denomText
+                    ? `[${srcMeta.label}]${segHint} 第 ${payload.currentPage || startPage} 页 · 已采集 ${curWorks.toLocaleString()}${denomText} 件作品`
                     : (payload.message || `[${srcMeta.label}]${segHint} 正在采集第 ${payload.currentPage || startPage} 页 (已采 ${curWorks.toLocaleString()} 作)...`);
                 progressPct.textContent = `${pct}%`;
                 progressFill.style.width = `${pct}%`;
@@ -2874,13 +2993,14 @@
 
                 if (!isSafeOnlyContaminant) {
                   for (const w of ds.artworks || []) {
+                    if (!canAcceptMoreWorks()) break;
                     if (w && w.id) accumWorks.set(String(w.id), w);
                   }
                 }
 
                 if (eventType === 'complete') {
                   chunkPagesDone = Number(ds.pagesScanned || ds.meta?.pagesFetched || 0);
-                  chunkHasMore = Boolean(payload.hasMore ?? ds.hasMore);
+                  chunkHasMore = Boolean(payload.hasMore ?? ds.hasMore) && !reachedDepthCap();
                   chunkHitOffsetCeiling = Boolean(payload.hitOffsetCeiling ?? ds.hitOffsetCeiling);
                   chunkRateLimited = Boolean(payload.rateLimited ?? ds.rateLimited);
                   chunkRetryAfterMs = Number(payload.retryAfterMs || ds.retryAfterMs || 4500);
@@ -2891,7 +3011,7 @@
                 } else {
                   const snapPages = Number(ds.pagesScanned || ds.meta?.pagesFetched || 1);
                   totalPagesScanned = Math.max(totalPagesScanned, snapPages);
-                  flushDataset(false, true);
+                  flushDataset(false, !reachedDepthCap());
                 }
               } else if (eventType === 'error') {
                 showToast(`采样提示: ${payload.message || '请求异常'}`, payload.needsAuth ? 6000 : 3000);
@@ -2910,8 +3030,13 @@
         // Keep knownTotalPosts >= accumWorks.size (guest Web AJAX total can undercount R-18 works!)
         if (accumWorks.size > knownTotalPosts) knownTotalPosts = accumWorks.size;
 
+        if (reachedDepthCap()) {
+          hasMore = false;
+          break;
+        }
+
         // 1) Upstream rate-limit cooldown & cached-error page skip (HibiAPI caches 429 JSON per page!)
-        if (chunkHasMore && chunkRateLimited && (isAllMode || totalPagesScanned < requestedMaxPages)) {
+        if (chunkHasMore && chunkRateLimited && wantContinueBeyondSingleWindow()) {
           consecutiveRateLimits++;
           if (consecutiveRateLimits <= 2) {
             const waitMs = Math.min(8000, chunkRetryAfterMs * consecutiveRateLimits);
@@ -2937,11 +3062,11 @@
         }
         if (chunkHasMore && chunkRateLimited) {
           // Already handled above (retrying or skipping)
-        } else if (chunkHasMore && (newlyAddedInChunk > 0 || activePhaseLabel) && (isAllMode || totalPagesScanned < requestedMaxPages)) {
+        } else if (chunkHasMore && (newlyAddedInChunk > 0 || activePhaseLabel) && wantContinueBeyondSingleWindow()) {
           startPage = chunkNextPage;
           cursor = chunkNextCursor;
         } else if (
-          (isAllMode || totalPagesScanned < requestedMaxPages) &&
+          wantContinueBeyondSingleWindow() &&
           source === 'pixiv' &&
           newlyAddedInChunk > 0 &&
           (
@@ -2969,7 +3094,7 @@
           } else {
             hasMore = false;
           }
-        } else if (isAllMode && source === 'pixiv' && lastEngine === 'HIBI-APP-API') {
+        } else if ((isAllMode || (targetWorksLimit > 0 && accumWorks.size < targetWorksLimit)) && source === 'pixiv' && lastEngine === 'HIBI-APP-API') {
           // Multi-Partition Balanced HibiAPI Full-History Queue (up to 40,000+ works with FULL R-18 + AI!)
           if (currentHibiPhase?.pairKey && chunkNextPage <= 160 && !chunkHitOffsetCeiling) {
             // This date_d partition finished under 4,800 works -> 100% captured, skip its paired date_asc pass!
@@ -3632,16 +3757,20 @@
 
   async function performAuthLogout() {
     state.cookie = '';
+    state.accessToken = '';
     state.refreshToken = '';
+    state.bridgeAutoSyncBlocked = true;
     state.authStatus = { loggedIn: false, mode: 'guest', user: null };
     localStorage.removeItem('pixez_cookie');
+    localStorage.removeItem('pixez_access_token_v4');
     localStorage.removeItem('pixez_refresh_token_v4');
     localStorage.removeItem('pixez_auth_user_v4');
+    try { sessionStorage.setItem('pixez_manual_logout_v4', '1'); } catch (_) {}
     if ($('cookieInput')) $('cookieInput').value = '';
     if ($('refreshTokenInput')) $('refreshTokenInput').value = '';
     await apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     updateAuthUI();
-    showToast('已退出 Pixiv 账号，当前切换为免登录直连模式');
+    showToast('已退出 Pixiv 账号，当前切换为免登录直连模式（可随时点击「登录」重新同步或换号）');
   }
 
   async function exchangeOAuthWithBridgeFallback(payload) {
@@ -3794,7 +3923,9 @@
           }
         } catch (_) {}
       } else if (!data.loggedIn && !state.refreshToken && !state.cookie) {
-        state.authStatus = { loggedIn: false, mode: 'guest', user: null };
+        if (!(state.authStatus?.mode === 'chrome_bridge' && state.authStatus?.loggedIn && !state.bridgeAutoSyncBlocked)) {
+          state.authStatus = { loggedIn: false, mode: 'guest', user: null };
+        }
       }
 
       persistCachedAuthUser(state.authStatus);
@@ -3814,7 +3945,14 @@
       user.profile_image_urls?.px_50x50 ||
       user.profile_image_urls?.medium ||
       '';
-    const modeLabel = d.mode === 'oauth' ? 'PixEz OAuth' : d.mode === 'cookie' ? 'Chrome Cookie' : '已连接';
+    const modeLabel =
+      d.mode === 'oauth'
+        ? 'PixEz OAuth'
+        : d.mode === 'chrome_bridge'
+        ? 'Chrome 直连'
+        : d.mode === 'cookie'
+        ? 'Chrome Cookie'
+        : '已连接';
 
     const authBtn = $('openAuthModalBtn');
     const authDot = $('headerAuthDot');
@@ -3885,7 +4023,11 @@
 
     if ($('bridgeStatusTitle')) {
       if (state.bridgeDetected) {
-        $('bridgeStatusTitle').textContent = `油猴桥接已就绪 (v${state.bridgeVersion || '4.0'})`;
+        const ver = state.bridgeVersion || '4.1.1';
+        const isOutdated = /^4\.(0\b|1\.0\b)/.test(ver);
+        $('bridgeStatusTitle').textContent = isOutdated
+          ? `检测到旧版油猴脚本 (v${ver}) — 请点击下方更新至 v4.1.1 以自动识别头像/ID并修复授权弹窗`
+          : `油猴桥接已就绪 (v${ver})`;
       } else {
         $('bridgeStatusTitle').textContent = '三种使用方式说明';
       }
@@ -3932,16 +4074,46 @@
     }
     if (ev.data.type === 'PIXEZ_USERSCRIPT_ALIVE') {
       state.bridgeDetected = true;
-      state.bridgeVersion = ev.data.version || '4.0';
+      state.bridgeVersion = ev.data.version || '4.1.0';
       state.bridgeFetchAvailable = Boolean(ev.data.canFetch);
       updateAuthUI();
       return;
     }
+    if (ev.data.type === 'PIXEZ_BRIDGE_USER_PROFILE') {
+      if (ev.data.user && ev.data.user.id) {
+        const u = ev.data.user;
+        state.chromeBridgeProfile = u;
+        if (!state.bridgeAutoSyncBlocked || ev.data.manual) {
+          state.bridgeAutoSyncBlocked = false;
+          try { sessionStorage.removeItem('pixez_manual_logout_v4'); } catch (_) {}
+          const wasLogged = Boolean(state.authStatus?.loggedIn);
+          const prevUid = String(state.authStatus?.user?.id || '');
+          const keepOAuth = state.authStatus?.mode === 'oauth' && wasLogged;
+          state.authStatus = {
+            loggedIn: true,
+            mode: keepOAuth ? 'oauth' : 'chrome_bridge',
+            user: { ...(state.authStatus?.user || {}), ...u }
+          };
+          persistCachedAuthUser(state.authStatus);
+          updateAuthUI();
+          if (ev.data.manual || !wasLogged || prevUid !== String(u.id)) {
+            $('authModal')?.classList.add('hidden');
+            showToast(`已同步 Chrome Pixiv 账号: ${u.name} (ID: ${u.id})`);
+          }
+        }
+      } else if (ev.data.loggedOut && ev.data.manual) {
+        showToast('未检测到 Chrome 已登录 pixiv.net，请先点击「一键授权登录」或在浏览器中登录 pixiv.net', 4200);
+      }
+      return;
+    }
     if (ev.data.type === 'PIXEZ_OAUTH_CODE' && ev.data.code) {
+      state.bridgeAutoSyncBlocked = false;
+      try { sessionStorage.removeItem('pixez_manual_logout_v4'); } catch (_) {}
       await completeAutomatedOAuthCode(ev.data.code);
       return;
     }
     if (ev.data.type === 'PIXEZ_USERSCRIPT_BRIDGE_READY' && ev.data.cookie) {
+      if (state.bridgeAutoSyncBlocked) return;
       const changed = ev.data.cookie !== state.cookie || !state.authStatus.loggedIn;
       if (changed) {
         state.cookie = ev.data.cookie;
@@ -4049,6 +4221,42 @@
   let acItems = [];
   let acActiveIndex = -1;
 
+  function updateDepthOptionLabels() {
+    const srcMeta = SOURCE_META[state.source] || SOURCE_META.pixiv;
+    const ps = Number(srcMeta.pageSize || 60);
+    const sel = $('pagesSelect');
+    if (sel) {
+      for (const opt of sel.options) {
+        const n = parseInt(opt.value, 10);
+        if (Number.isFinite(n) && n > 0) {
+          opt.textContent = `${n}页 (~${(n * ps).toLocaleString()}作)`;
+        }
+      }
+    }
+    const lbl = $('pagesSelectLabel');
+    if (lbl) {
+      lbl.title = state.source === 'pixiv'
+        ? `Pixiv 每页约 ${ps} 作（访客 HibiAPI 每批约 30 作；选择自定义「作」可按精确作品数停止）`
+        : `${srcMeta.label} 每页约 ${ps} 件作品`;
+    }
+    const wrap = $('customDepthWrap');
+    if (wrap && sel) {
+      wrap.classList.toggle('hidden', sel.value !== 'CUSTOM');
+    }
+    const valInput = $('customDepthValue');
+    const unitSel = $('customDepthUnit');
+    const hint = $('customDepthHint');
+    if (valInput && unitSel && hint) {
+      const v = Math.max(1, parseInt(valInput.value, 10) || 1);
+      if (unitSel.value === 'pages') {
+        hint.textContent = `≈${(v * ps).toLocaleString()}作 (${ps}作/页)`;
+      } else {
+        hint.textContent = `≈${Math.max(1, Math.ceil(v / ps)).toLocaleString()}页 (${ps}作/页)`;
+      }
+    }
+    syncCustomSelects();
+  }
+
   function applySourceUI() {
     const srcMeta = SOURCE_META[state.source] || SOURCE_META.pixiv;
     const isPixiv = state.source === 'pixiv';
@@ -4059,7 +4267,7 @@
     if ($('sourceSelect') && $('sourceSelect').value !== state.source) {
       $('sourceSelect').value = state.source;
     }
-    syncCustomSelects();
+    updateDepthOptionLabels();
   }
 
   function persistRecentSearches() {
@@ -4324,27 +4532,59 @@
 
     if ($('syncChromeBridgeNowBtn')) {
       $('syncChromeBridgeNowBtn').addEventListener('click', () => {
+        state.bridgeAutoSyncBlocked = false;
+        try { sessionStorage.removeItem('pixez_manual_logout_v4'); } catch (_) {}
         window.postMessage({ type: 'PIXEZ_REQUEST_CHROME_BRIDGE' }, '*');
-        showToast(state.bridgeDetected ? '正在同步当前浏览器 Pixiv 登录态...' : '未检测到 v4.0 油猴桥接脚本，请先点击右侧安装/更新');
+        showToast(state.bridgeDetected ? '正在检测并同步当前浏览器 Pixiv 登录态...' : '未检测到 v4.1.1 油猴桥接脚本，请先点击左侧安装/更新');
       });
     }
 
     if ($('copyUserscriptSourceBtn')) {
       $('copyUserscriptSourceBtn').addEventListener('click', async () => {
         try {
-          const resp = await fetch('./downloads/pixtag-companion.user.js');
+          const resp = await fetch('./downloads/pixtag-companion.user.js?v=4.1.1', { cache: 'no-store' });
           const code = await resp.text();
           await navigator.clipboard.writeText(code);
-          $('copyUserscriptSourceBtn').textContent = '已复制油猴脚本 ✓';
-          showToast('已一键复制油猴脚本完整代码至剪贴板');
+          $('copyUserscriptSourceBtn').textContent = '已复制 v4.1.1 ✓';
+          showToast('已一键复制油猴脚本 v4.1.1 完整代码至剪贴板');
           setTimeout(() => {
-            $('copyUserscriptSourceBtn').textContent = '一键复制油猴脚本代码';
+            $('copyUserscriptSourceBtn').textContent = '一键复制油猴脚本 v4.1.1';
           }, 2200);
         } catch (err) {
           showToast('复制失败，请点击右侧下载脚本');
         }
       });
     }
+
+    // Custom Depth Selector (Pages / Exact Works Count + Live Per-Page Hint)
+    try {
+      const savedDepth = JSON.parse(localStorage.getItem('pixez_custom_depth_v413') || 'null');
+      if (savedDepth && $('customDepthValue') && $('customDepthUnit')) {
+        if (savedDepth.value > 0) $('customDepthValue').value = String(savedDepth.value);
+        if (savedDepth.unit === 'pages' || savedDepth.unit === 'works') $('customDepthUnit').value = savedDepth.unit;
+      }
+    } catch (_) {}
+    const persistCustomDepth = () => {
+      try {
+        localStorage.setItem('pixez_custom_depth_v413', JSON.stringify({
+          value: parseInt($('customDepthValue')?.value || '2000', 10) || 2000,
+          unit: $('customDepthUnit')?.value === 'pages' ? 'pages' : 'works'
+        }));
+      } catch (_) {}
+      updateDepthOptionLabels();
+    };
+    $('pagesSelect')?.addEventListener('change', () => {
+      updateDepthOptionLabels();
+      if ($('pagesSelect').value === 'CUSTOM') $('customDepthValue')?.focus();
+    });
+    $('customDepthValue')?.addEventListener('input', persistCustomDepth);
+    $('customDepthUnit')?.addEventListener('change', persistCustomDepth);
+    $('customDepthValue')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        executeAnalysis();
+      }
+    });
 
     // Subsystem View Tabs (Automatically suspends CRT grid/distortion ONLY in Artwork Gallery!)
     document.querySelectorAll('.subsystem-tabs .sub-tab').forEach((tab) => {
@@ -4765,8 +5005,10 @@
     $('clearCookieBtn').addEventListener('click', performAuthLogout);
 
     $('startPixivOAuthBtn').addEventListener('click', async () => {
+      state.bridgeAutoSyncBlocked = false;
+      try { sessionStorage.removeItem('pixez_manual_logout_v4'); } catch (_) {}
       if (!state.bridgeDetected) {
-        showToast('未检测到油猴 v4.0：纯网页无法拦截 pixiv:// 回调（跳到 post-redirect 会变白屏）。请先安装油猴脚本或使用 Android APK。', 5200);
+        showToast('未检测到油猴 v4.1.1：纯网页无法拦截 pixiv:// 回调（跳到 post-redirect 会变白屏）。请先安装油猴脚本或使用 Android APK。', 5200);
         return;
       }
       try {
@@ -4834,6 +5076,9 @@
     $('headerQuickSwitchBtn')?.addEventListener('click', openSwitchAccountFlow);
     $('authSwitchAccountBtn')?.addEventListener('click', openSwitchAccountFlow);
     $('refreshAuthProfileBtn')?.addEventListener('click', async () => {
+      state.bridgeAutoSyncBlocked = false;
+      try { sessionStorage.removeItem('pixez_manual_logout_v4'); } catch (_) {}
+      if (state.bridgeDetected) window.postMessage({ type: 'PIXEZ_REQUEST_CHROME_BRIDGE' }, '*');
       await checkAuthStatus();
       showToast('已刷新账号资料');
     });

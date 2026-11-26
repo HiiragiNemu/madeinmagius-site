@@ -3426,3 +3426,76 @@ a, a:hover, a:focus-visible {
 .telemetry-item--r18 .telemetry-val {
   color: var(--t-danger, #b42318);
 }
+
+/* v4.13 Custom Depth Input Chip (Pages / Exact Works Count) */
+.custom-depth-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+}
+.custom-depth-input {
+  width: 68px;
+  padding: 2px 4px;
+  border: 1px solid var(--t-border-strong, var(--t-border));
+  background: var(--t-surface);
+  color: var(--t-text);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono, Consolas, monospace);
+}
+.custom-depth-unit {
+  padding: 2px 4px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-raised, var(--t-surface));
+  color: var(--t-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.custom-depth-hint {
+  font-size: 11px;
+  color: var(--t-muted);
+  white-space: nowrap;
+}
+
+/* v4.14 Compact Top-Row Account Controls + Space-Efficient Preflight & Telemetry */
+.masthead__top-right {
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: 0;
+}
+.masthead__top-right .t-btn--auth {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.masthead__top-right .header-auth-avatar,
+.masthead__top-right .header-auth-initial {
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+}
+.preflight-banner {
+  padding: 4px 8px !important;
+  margin-top: 3px !important;
+  font-size: 11.5px !important;
+  line-height: 1.38 !important;
+  min-height: 0 !important;
+}
+.telemetry-strip {
+  gap: 3px 4px !important;
+  margin-top: 3px !important;
+}
+.telemetry-item {
+  padding: 2px 6px !important;
+  font-size: 11px !important;
+  gap: 4px !important;
+  min-height: 22px !important;
+}
+.telemetry-head {
+  font-size: 10.5px !important;
+  opacity: 0.78;
+}
+.telemetry-sub {
+  font-size: 10.5px !important;
+}

@@ -1108,9 +1108,14 @@ export async function onRequest(context) {
           8000
         );
 
-    // Pixiv Strategy 1: Race Direct Pixiv Web AJAX & live PixivNow mirror (pixiv.js.org) for exact total count!
+    // Pixiv Strategy 1: Race Direct Pixiv Web AJAX & live PixivNow mirror (pixiv.js.org) for exact total count (+ ai_type=1 pure-human baseline in parallel!)
     const ajaxPath = `/ajax/search/artworks/${pixivPathTag(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
-    const [webRace, hibiProbe] = await Promise.all([fetchPixivWebAjaxRace(ajaxPath, cookie, '', 9500), hibiProbePromise]);
+    const ajaxHumanPath = `/ajax/search/artworks/${pixivPathTag(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=1&lang=zh`;
+    const [webRace, webHumanRace, hibiProbe] = await Promise.all([
+      fetchPixivWebAjaxRace(ajaxPath, cookie, '', 9500),
+      fetchPixivWebAjaxRace(ajaxHumanPath, cookie, '', 6500).catch(() => null),
+      hibiProbePromise,
+    ]);
     const hibiUp = Boolean(hibiProbe && Array.isArray(hibiProbe.illusts) && hibiProbe.illusts.length > 0);
     if (mode === 'r18' && !hibiUp && !hasOAuthToken) {
       return jsonResponse(
@@ -1125,21 +1130,26 @@ export async function onRequest(context) {
       );
     }
     const guestR18Note = hasOAuthToken
-      ? '已登录：通过官方 App API 采集，包含 R-18 与 AI 作品（全量日期分段）'
+      ? '已登录官方 App API（含 R-18/AI · 日期分段）'
       : mode === 'safe'
-      ? '仅全年龄模式（支持日期分段突破上限）'
+      ? '仅全年龄（支持日期分段）'
       : hibiUp
-      ? '经 HibiAPI 采集，完整包含 R-18 与 AI 作品（中大标签自动四象限全量合并，超大标签自动无偏双向采样保证 R-18/AI 比例零偏差；安装油猴 v4.1 或使用 APK 登录可突破日期分段采完数万作）'
-      : 'HibiAPI 暂时无响应，本次只能采集全年龄作品（R-18 占比将为 0）';
+      ? '访客 HibiAPI 含 R-18/AI（安装油猴 v4.1.1 登录可直连全量日期分段与真实含 R-18 总数）'
+      : 'HibiAPI 暂不可用，当前仅全年龄（R-18 为 0）';
     if (webRace && webRace.data && !webRace.data.error && webRace.data.body) {
       const block = webRace.data.body.illustManga || webRace.data.body.illust || webRace.data.body.manga || {};
       const totalPosts = Number(block.total || 0);
+      const hBlock = webHumanRace?.data?.body?.illustManga || webHumanRace?.data?.body?.illust || webHumanRace?.data?.body?.manga || {};
+      const totalHuman = Number(hBlock.total || 0);
+      const humanSuffix = totalHuman > 0 && totalHuman <= totalPosts ? `，纯手绘 ${totalHuman.toLocaleString()}` : '';
       const estimatedPages = totalPosts > 0 ? Math.ceil(totalPosts / 60) : 0;
       const engineName = webRace.origin.includes('pixiv.js.org') ? 'WEB-AJAX-MIRROR' : 'WEB-AJAX';
       const totalLabel =
-        mode === 'safe' || cookie
-          ? `Pixiv 全站共 ${totalPosts.toLocaleString()} 件作品（约 ${estimatedPages.toLocaleString()} 页，每页 60 件）`
-          : `Pixiv 全年龄基准 ${totalPosts.toLocaleString()} 件（含 R-18 实际全量更高）`;
+        mode === 'safe'
+          ? `Pixiv 全年龄 ${totalPosts.toLocaleString()} 作（含AI${humanSuffix} · 约 ${estimatedPages.toLocaleString()} 页，60作/页）`
+          : cookie
+          ? `Pixiv 全站 ${totalPosts.toLocaleString()} 作（含R-18与AI${humanSuffix} · 约 ${estimatedPages.toLocaleString()} 页，60作/页）`
+          : `Pixiv 全年龄基准 ${totalPosts.toLocaleString()} 作（含AI${humanSuffix}；含R-18实际全量更高）`;
       return jsonResponse(
         {
           error: false,
@@ -1147,12 +1157,13 @@ export async function onRequest(context) {
           engine: engineName,
           resolvedTag: tag,
           totalPosts,
+          totalHuman,
           totalIsSafeBaseline: mode !== 'safe' && !cookie,
           pageSize: 60,
           estimatedPages,
           apiCeilingWorks: 60000,
           apiCeilingPages: 1000,
-          note: `${totalLabel}。${guestR18Note}`,
+          note: `${totalLabel} · ${guestR18Note}`,
           guestNoR18: !hasOAuthToken && !hibiUp,
           includesR18: hasOAuthToken || hibiUp,
         },

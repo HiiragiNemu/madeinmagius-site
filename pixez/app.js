@@ -919,10 +919,13 @@
   }
 
   function getTagOverridesEndpoint() {
-    // Prefer same-origin /api/tag-overrides (works on Cloudflare Pages AND localhost:3456 proxy),
-    // and fall back to madeinmagius-site.pages.dev when hosted on GitHub Pages!
-    if (API_BASE) return `${API_BASE}/api/tag-overrides`;
-    return '/api/tag-overrides';
+    // Same-origin /api/tag-overrides on Cloudflare Pages & localhost:3456 proxy;
+    // direct CF Pages API origin when opened from GitHub Pages (never under /api/pixiv!).
+    const host = window.location.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1' || host === 'madeinmagius-site.pages.dev') {
+      return '/api/tag-overrides';
+    }
+    return 'https://madeinmagius-site.pages.dev/api/tag-overrides';
   }
 
   async function syncCommunityTagOverrides(showFeedback = false) {

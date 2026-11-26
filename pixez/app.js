@@ -3710,15 +3710,24 @@
           const stepChunk = targetWorksLimit > 0
             ? Math.min(6, Math.max(1, Math.ceil((targetWorksLimit - accumWorks.size) / Math.max(1, srcMeta.pageSize))))
             : isAllMode ? 6 : Math.min(6, Math.max(1, requestedMaxPages - totalPagesScanned));
-          // Danbooru keyset cursor (`b<minId>`) automatically breaks the 1000-page / 100k ceiling!
+          // Danbooru keyset cursor (`b<minId>` / `a<maxId>`) automatically breaks the 1000-page / 100k ceiling!
           let effectivePageArg = startPage;
-          if (source === 'danbooru' && startPage > 1000) {
-            let minId = Infinity;
-            for (const w of accumWorks.values()) {
-              const nid = Number(w.externalId || String(w.id).replace(/\D+/g, ''));
-              if (nid > 0 && nid < minId) minId = nid;
+          if (source === 'danbooru' && typeof startPage === 'number' && startPage > 1000) {
+            if (activeOrder === 'date') {
+              let maxId = 0;
+              for (const w of accumWorks.values()) {
+                const nid = Number(w.externalId || String(w.id).replace(/\D+/g, ''));
+                if (nid > maxId) maxId = nid;
+              }
+              if (maxId > 0) effectivePageArg = `a${maxId}`;
+            } else {
+              let minId = Infinity;
+              for (const w of accumWorks.values()) {
+                const nid = Number(w.externalId || String(w.id).replace(/\D+/g, ''));
+                if (nid > 0 && nid < minId) minId = nid;
+              }
+              if (Number.isFinite(minId)) effectivePageArg = `b${minId}`;
             }
-            if (Number.isFinite(minId)) effectivePageArg = `b${minId}`;
           }
           const ch = await directBrowserSampleChunk({
             source,
@@ -3809,6 +3818,7 @@
         let chunkNextCursor = '';
         let chunkPagesDone = 0;
         const beforeChunkSize = accumWorks.size;
+        const basePagesBeforeChunk = totalPagesScanned;
 
         let chunkPassedDateBound = false;
         let chunkSawRawWorks = 0;
@@ -3908,11 +3918,11 @@
                   chunkRetryAfterMs = Number(payload.retryAfterMs || ds.retryAfterMs || 4500);
                   chunkNextPage = Number(payload.nextPage || ds.nextPage || (startPage + chunkPagesDone));
                   chunkNextCursor = String(payload.nextCursor || ds.nextCursor || '');
-                  totalPagesScanned += chunkPagesDone;
+                  totalPagesScanned = basePagesBeforeChunk + chunkPagesDone;
                   flushDataset(true, chunkHasMore);
                 } else {
                   const snapPages = Number(ds.pagesScanned || ds.meta?.pagesFetched || 1);
-                  totalPagesScanned = Math.max(totalPagesScanned, snapPages);
+                  totalPagesScanned = Math.max(totalPagesScanned, basePagesBeforeChunk + snapPages);
                   flushDataset(false, !reachedDepthCap());
                 }
               } else if (eventType === 'error') {
@@ -5641,7 +5651,7 @@
     $('customDepthValue')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        executeAnalysis();
+        e.target.blur();
       }
     });
 
@@ -5825,11 +5835,12 @@
       if (e.key === 'Enter') {
         if (e.isComposing || e.keyCode === 229) return;
         e.preventDefault();
+        e.stopPropagation();
         if (isOpen && acActiveIndex >= 0 && acItems[acActiveIndex]) {
           selectAutocompleteItem(acItems[acActiveIndex].tag_name);
         } else {
           hideAutocomplete();
-          $('analyzeBtn')?.focus();
+          $('tagSearchInput')?.blur();
         }
       }
     });

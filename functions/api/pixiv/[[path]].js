@@ -11,7 +11,7 @@ const PIXIV_WEB_ORIGINS = ['https://www.pixiv.net', 'https://pixiv.js.org'];
 const PIXIVIZ_APP_API = 'https://pixiviz-api-rn.pwp.link/v1';
 
 const ALLOWED_IMAGE_HOST_RE =
-  /^https:\/\/(i\.pximg\.net|s\.pximg\.net|cdn\.donmai\.us|v\.sankakucomplex\.com|s\.sankakucomplex\.com|cs\.sankakucomplex\.com|safebooru\.org|files\.yande\.re|assets\.yande\.re|konachan\.com|konachan\.net|s[0-9]*\.zerochan\.net|static\.zerochan\.net|api-cdn\.rule34\.xxx|us\.rule34\.xxx|wimg\.rule34\.xxx)\//i;
+  /^https:\/\/(i\.pximg\.net|i-cf\.pximg\.net|s\.pximg\.net|i\.pixiv\.re|cdn\.donmai\.us|raikou[0-9]*\.donmai\.us|danbooru\.donmai\.us|v\.sankakucomplex\.com|s\.sankakucomplex\.com|cs\.sankakucomplex\.com|c\.sankakucomplex\.com|s3\.amazonaws\.com|safebooru\.org|files\.yande\.re|assets\.yande\.re|konachan\.com|konachan\.net|s[0-9]*\.zerochan\.net|static\.zerochan\.net|api-cdn\.rule34\.xxx|api-cdn-mp4\.rule34\.xxx|us\.rule34\.xxx|wimg\.rule34\.xxx|img[0-9]*\.gelbooru\.com)\//i;
 
 const GENERIC_TRANSLATIONS = {
   'オリジナル': '原创',
@@ -225,17 +225,39 @@ async function fetchAppApiFallbackSearchLegacyRace({ word, mode = 'partial_match
   }
 }
 
+function isValidMediaResponse(res) {
+  if (!res || !res.ok) return false;
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  if (
+    ct.includes('text/html') ||
+    ct.includes('application/xhtml') ||
+    ct.includes('text/plain') ||
+    ct.includes('application/json')
+  ) {
+    return false;
+  }
+  return true;
+}
+
 async function fetchImageWithFallback(imgUrl) {
-  const h = { 'User-Agent': DEFAULT_UA };
+  const h = {
+    'User-Agent': DEFAULT_UA,
+    Accept: 'image/avif,image/webp,image/apng,image/*,application/zip,*/*;q=0.8',
+  };
   const ref = refererForImageUrl(imgUrl);
   if (ref) h.Referer = ref;
   const upstream = await fetch(imgUrl, { headers: h }).catch(() => null);
-  if (upstream && upstream.ok) return upstream;
+  if (isValidMediaResponse(upstream)) return upstream;
 
   if (/^https:\/\/i\.pximg\.net\//i.test(imgUrl)) {
     const mirrorUrl = imgUrl.replace(/^https:\/\/i\.pximg\.net\//i, 'https://i.pixiv.re/');
-    const mirrorRes = await fetch(mirrorUrl, { headers: { 'User-Agent': DEFAULT_UA } }).catch(() => null);
-    if (mirrorRes && mirrorRes.ok) return mirrorRes;
+    const mirrorRes = await fetch(mirrorUrl, {
+      headers: {
+        'User-Agent': DEFAULT_UA,
+        Accept: 'image/avif,image/webp,image/apng,image/*,application/zip,*/*;q=0.8',
+      },
+    }).catch(() => null);
+    if (isValidMediaResponse(mirrorRes)) return mirrorRes;
   }
   return upstream;
 }
@@ -1233,18 +1255,48 @@ export async function onRequest(context) {
   // 2. Original artwork download proxy (/api/pixiv/download?url=...&filename=...)
   if (subPath === 'download') {
     const imgUrl = url.searchParams.get('url');
-    const filename = url.searchParams.get('filename') || 'artwork.jpg';
+    const rawFilename = String(url.searchParams.get('filename') || 'artwork.jpg').trim() || 'artwork.jpg';
     if (!imgUrl || !ALLOWED_IMAGE_HOST_RE.test(imgUrl)) {
-      return new Response('Invalid image URL', { status: 400, headers: cors });
+      return jsonResponse({ error: true, message: '无效或不受支持的图片源地址' }, 400, request);
     }
     const upstream = await fetchImageWithFallback(imgUrl);
-    if (!upstream) {
-      return new Response('Download upstream error', { status: 502, headers: cors });
+    if (!isValidMediaResponse(upstream)) {
+      return jsonResponse(
+        {
+          error: true,
+          message: `上游未返回有效图片文件 (HTTP ${upstream?.status || 502})`,
+        },
+        upstream && upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502,
+        request
+      );
     }
+    const ct = (upstream.headers.get('Content-Type') || 'application/octet-stream').trim();
+    const ctLow = ct.toLowerCase();
+    const ctExtMap = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'image/gif': 'gif',
+      'image/avif': 'avif',
+      'application/zip': 'zip',
+      'application/x-zip-compressed': 'zip',
+    };
+    const inferredExt = Object.entries(ctExtMap).find(([k]) => ctLow.includes(k))?.[1] || '';
+    let finalName = rawFilename.replace(/[\\/:*?"<>|\r\n]+/g, '_');
+    if (!/\.(jpe?g|png|webp|gif|bmp|avif|zip|mp4|webm)$/i.test(finalName)) {
+      finalName = `${finalName.replace(/\.+$/, '')}.${inferredExt || 'jpg'}`;
+    }
+    const safeAscii = finalName.replace(/[^\w.-]/g, '_');
     const headers = new Headers(cors);
-    headers.set('Content-Type', upstream.headers.get('Content-Type') || 'application/octet-stream');
-    headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
-    return new Response(upstream.body, { status: upstream.status, headers });
+    headers.set('Content-Type', ct);
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('Access-Control-Expose-Headers', 'Content-Disposition, Content-Type');
+    headers.set(
+      'Content-Disposition',
+      `attachment; filename="${safeAscii}"; filename*=UTF-8''${encodeURIComponent(finalName)}`
+    );
+    return new Response(upstream.body, { status: 200, headers });
   }
 
   // 3. Multi-Site Autocomplete (/api/pixiv/autocomplete?source=...&q=...)
@@ -1467,49 +1519,71 @@ export async function onRequest(context) {
     );
     const infoJson = detailRace?.data;
     if (infoJson && !infoJson.error && infoJson.body) {
-      const pagesRace = await fetchPixivWebAjaxRace(
-        `/ajax/illust/${encodeURIComponent(id)}/pages?lang=zh`,
-        cookie,
-        detailRace.origin,
-        5000
-      );
-      const pagesJson = pagesRace?.data;
       const b = infoJson.body;
-      const tags = (b.tags?.tags || []).map((t) => t.tag).filter(Boolean);
-      const pages = Array.isArray(pagesJson?.body)
-        ? pagesJson.body.map((p) => ({
-            thumb: p.urls?.thumb_mini || p.urls?.small || '',
-            regular: p.urls?.regular || '',
-            large: p.urls?.regular || '',
-            original: p.urls?.original || '',
-          }))
-        : [];
-      return jsonResponse(
-        {
-          id: String(b.illustId || b.id),
-          title: b.illustTitle || b.title || '',
-          description: b.illustComment || b.description || '',
-          userName: b.userName || '',
-          userId: String(b.userId || ''),
-          width: b.width || 0,
-          height: b.height || 0,
-          pageCount: b.pageCount || pages.length || 1,
-          illustType: b.illustType || 0,
-          isAi: b.aiType === 2,
-          bookmarkCount: b.bookmarkCount || 0,
-          viewCount: b.viewCount || 0,
-          thumbUrl: b.urls?.thumb || b.urls?.small || '',
-          regularUrl: b.urls?.regular || '',
-          originalUrl: b.urls?.original || '',
-          tags,
-          pages,
-        },
-        200,
-        request
-      );
+      const singleOrig = b.urls?.original || '';
+      const singleReg = b.urls?.regular || '';
+      const singleThumb = b.urls?.thumb || b.urls?.small || '';
+      let pages = [];
+      if (Number(b.pageCount || 1) > 1 || (!singleOrig && singleReg)) {
+        const pagesRace = await fetchPixivWebAjaxRace(
+          `/ajax/illust/${encodeURIComponent(id)}/pages?lang=zh`,
+          cookie,
+          detailRace.origin,
+          5000
+        );
+        const pagesJson = pagesRace?.data;
+        if (Array.isArray(pagesJson?.body)) {
+          pages = pagesJson.body
+            .map((p) => ({
+              thumb: p.urls?.thumb_mini || p.urls?.small || '',
+              regular: p.urls?.regular || '',
+              large: p.urls?.regular || '',
+              original: p.urls?.original || p.urls?.regular || '',
+            }))
+            .filter((p) => p.original || p.regular);
+        }
+      } else if (singleOrig || singleReg) {
+        pages = [
+          {
+            thumb: singleThumb,
+            regular: singleReg || singleOrig,
+            large: singleReg || singleOrig,
+            original: singleOrig || singleReg,
+          },
+        ];
+      }
+      const hasWebImages = Boolean(singleOrig || singleReg || pages.some((p) => p.original || p.regular));
+      // For R-18 works in guest mode, Pixiv Web AJAX returns error:false with all urls:null.
+      // Only return Web AJAX when actual image URLs exist; otherwise fall through to HibiAPI!
+      if (hasWebImages) {
+        const tags = (b.tags?.tags || []).map((t) => t.tag).filter(Boolean);
+        return jsonResponse(
+          {
+            id: String(b.illustId || b.id),
+            title: b.illustTitle || b.title || '',
+            description: b.illustComment || b.description || '',
+            userName: b.userName || '',
+            userId: String(b.userId || ''),
+            width: b.width || 0,
+            height: b.height || 0,
+            pageCount: b.pageCount || pages.length || 1,
+            illustType: b.illustType || 0,
+            isAi: b.aiType === 2,
+            bookmarkCount: b.bookmarkCount || 0,
+            viewCount: b.viewCount || 0,
+            thumbUrl: singleThumb,
+            regularUrl: singleReg || pages[0]?.regular || '',
+            originalUrl: singleOrig || pages[0]?.original || singleReg || '',
+            tags,
+            pages,
+          },
+          200,
+          request
+        );
+      }
     }
 
-    const hibiJson = await fetchJsonSafe(`${HIBI_BASE}/illust?id=${encodeURIComponent(id)}`, hibiHeaders());
+    const hibiJson = await fetchJsonSafe(`${HIBI_BASE}/illust?id=${encodeURIComponent(id)}`, hibiHeaders(), 7500);
     if (hibiJson && hibiJson.illust) {
       const ill = hibiJson.illust;
       const typeMap = { illust: 0, manga: 1, ugoira: 2 };
@@ -1521,7 +1595,12 @@ export async function onRequest(context) {
               thumb: p.image_urls?.square_medium || p.image_urls?.medium || '',
               regular: p.image_urls?.large || p.image_urls?.medium || '',
               large: p.image_urls?.large || p.image_urls?.medium || '',
-              original: p.image_urls?.original || p.image_urls?.large || '',
+              original:
+                p.image_urls?.original ||
+                p.image_urls?.original_image_url ||
+                p.image_urls?.large ||
+                p.image_urls?.medium ||
+                '',
             }))
           : [
               {
@@ -1529,7 +1608,12 @@ export async function onRequest(context) {
                 thumb: ill.image_urls?.square_medium || ill.image_urls?.medium || '',
                 regular: ill.image_urls?.large || ill.image_urls?.medium || '',
                 large: ill.image_urls?.large || ill.image_urls?.medium || '',
-                original: ill.meta_single_page?.original_image_url || ill.image_urls?.large || '',
+                original:
+                  ill.meta_single_page?.original_image_url ||
+                  ill.image_urls?.original ||
+                  ill.image_urls?.large ||
+                  ill.image_urls?.medium ||
+                  '',
               },
             ];
       return jsonResponse(

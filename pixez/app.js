@@ -330,8 +330,147 @@
   }
 
   function downloadImgUrl(url, filename) {
-    if (!url) return '#';
+    if (!url || !/^https?:\/\//i.test(String(url).trim())) return '';
     return apiUrl(`/api/pixiv/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename || 'pixiv-artwork.jpg')}`);
+  }
+
+  function sanitizeMediaExt(url, fallbackExt = 'jpg') {
+    try {
+      const cleanPath = String(url || '').split('?')[0].split('#')[0];
+      const m = cleanPath.match(/\.([a-z0-9]{2,5})$/i);
+      if (m && /^(jpe?g|png|webp|gif|bmp|avif|zip|mp4|webm)$/i.test(m[1])) {
+        return m[1].toLowerCase() === 'jpeg' ? 'jpg' : m[1].toLowerCase();
+      }
+    } catch (_) {}
+    return fallbackExt;
+  }
+
+  function clearViewerDownloadButton(btn, label) {
+    if (!btn) return;
+    btn.removeAttribute('href');
+    btn.removeAttribute('download');
+    delete btn.dataset.dlUrl;
+    delete btn.dataset.dlName;
+    btn.setAttribute('aria-disabled', 'true');
+    btn.classList.add('is-disabled');
+    if (label) btn.textContent = label;
+  }
+
+  function setViewerDownloadButton(btn, rawUrl, filename, label) {
+    if (!btn) return;
+    const cleanUrl = String(rawUrl || '').trim();
+    if (!/^https?:\/\//i.test(cleanUrl)) {
+      clearViewerDownloadButton(btn, label || btn.textContent);
+      return;
+    }
+    const safeName = String(filename || 'artwork.jpg').replace(/[\\/:*?"<>|\r\n]+/g, '_');
+    const proxyHref = downloadImgUrl(cleanUrl, safeName);
+    btn.dataset.dlUrl = cleanUrl;
+    btn.dataset.dlName = safeName;
+    btn.href = proxyHref;
+    btn.setAttribute('download', safeName);
+    btn.removeAttribute('aria-disabled');
+    btn.classList.remove('is-disabled');
+    if (label) btn.textContent = label;
+  }
+
+  async function triggerSafeMediaDownload(btn, evt) {
+    if (evt) evt.preventDefault();
+    if (!btn) return;
+    const rawUrl = String(btn.dataset.dlUrl || '').trim();
+    const baseName = String(btn.dataset.dlName || 'artwork.jpg').trim();
+    if (!/^https?:\/\//i.test(rawUrl)) {
+      showToast('原图地址仍在解析或暂不可用，请稍候或点击「打开原网页」');
+      return;
+    }
+    if (btn.dataset.downloading === '1') return;
+    const origText = btn.textContent;
+    btn.dataset.downloading = '1';
+    btn.textContent = '正在下载...';
+
+    const validateAndExtractBlob = async (res) => {
+      if (!res || !res.ok) return null;
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      if (
+        ct.includes('text/html') ||
+        ct.includes('application/xhtml') ||
+        ct.includes('text/plain') ||
+        ct.includes('application/json')
+      ) {
+        return null;
+      }
+      const blob = await res.blob();
+      if (!blob || blob.size < 64) return null;
+      try {
+        const headBuf = await blob.slice(0, 64).arrayBuffer();
+        const headText = new TextDecoder('utf-8', { fatal: false }).decode(headBuf).trimStart().toLowerCase();
+        if (
+          headText.startsWith('<!doctype') ||
+          headText.startsWith('<html') ||
+          headText.startsWith('<head') ||
+          headText.startsWith('<?xml') ||
+          headText.startsWith('{"error"')
+        ) {
+          return null;
+        }
+      } catch (_) {}
+      return { blob, ct: ct || (blob.type || '').toLowerCase() };
+    };
+
+    try {
+      const proxyHref = downloadImgUrl(rawUrl, baseName);
+      let media = null;
+      if (proxyHref) {
+        try {
+          const res = await fetch(proxyHref, {
+            headers: { Accept: 'image/avif,image/webp,image/apng,image/*,application/zip,*/*;q=0.8' }
+          });
+          media = await validateAndExtractBlob(res);
+        } catch (_) {}
+      }
+      if (!media) {
+        const fbUrl = directFallbackImg(rawUrl);
+        if (fbUrl && /^https?:\/\//i.test(fbUrl)) {
+          try {
+            const fbRes = await fetch(fbUrl, {
+              headers: { Accept: 'image/avif,image/webp,image/apng,image/*,application/zip,*/*;q=0.8' }
+            });
+            media = await validateAndExtractBlob(fbRes);
+          } catch (_) {}
+        }
+      }
+      if (!media) {
+        showToast('下载失败：上游未返回有效图片文件，请点「打开原网页」或长按预览图保存');
+        return;
+      }
+      let finalName = baseName;
+      const ctExt =
+        media.ct.includes('png') ? 'png' :
+        media.ct.includes('webp') ? 'webp' :
+        media.ct.includes('gif') ? 'gif' :
+        media.ct.includes('avif') ? 'avif' :
+        media.ct.includes('zip') ? 'zip' :
+        media.ct.includes('jpeg') || media.ct.includes('jpg') ? 'jpg' : '';
+      if (ctExt && !/\.(jpe?g|png|webp|gif|bmp|avif|zip|mp4|webm)$/i.test(finalName)) {
+        finalName = `${finalName.replace(/\.+$/, '')}.${ctExt}`;
+      }
+      const objUrl = URL.createObjectURL(media.blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = finalName;
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objUrl), 20000);
+      showToast(`已开始保存: ${finalName}`);
+    } catch (err) {
+      showToast(`原图下载失败: ${err.message || '网络异常'}`);
+    } finally {
+      delete btn.dataset.downloading;
+      btn.textContent = origText;
+    }
   }
 
   // =========================================================================
@@ -1950,6 +2089,9 @@
     loading.classList.remove('hidden');
     mainImg.classList.remove('hidden');
     canvas.classList.add('hidden');
+    clearViewerDownloadButton($('viewerDownloadCurrentBtn'), '正在解析原图...');
+    clearViewerDownloadButton($('viewerDownloadUgoiraZipBtn'), '下载 Ugoira 动图帧 ZIP');
+    $('viewerDownloadUgoiraZipBtn')?.classList.add('hidden');
 
     try {
       const localWork = (state.rawDataset?.artworks || []).find((w) => String(w.id) === String(illustId));
@@ -1981,12 +2123,52 @@
           pages: [{ thumb: localWork.thumbUrl || reg, regular: reg, large: reg, original: orig }]
         };
       } else {
-        const resp = await apiFetch(`/api/illust/detail?id=${encodeURIComponent(illustId)}`, {
-          headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {}
-        });
-        const rawJson = await resp.json();
-        if (!resp.ok || rawJson.error) throw new Error(rawJson.message || rawJson.error || '加载作品详情失败');
-        json = rawJson.data || rawJson;
+        let fetchedJson = null;
+        try {
+          const resp = await apiFetch(`/api/illust/detail?id=${encodeURIComponent(illustId)}`, {
+            headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {}
+          });
+          const rawJson = await resp.json();
+          if (resp.ok && !rawJson.error) {
+            fetchedJson = rawJson.data || rawJson;
+          }
+        } catch (_) {}
+
+        const hasFetchedMedia = Boolean(
+          fetchedJson &&
+            (fetchedJson.originalUrl ||
+              fetchedJson.regularUrl ||
+              fetchedJson.largeUrl ||
+              (Array.isArray(fetchedJson.pages) && fetchedJson.pages.some((p) => p && (p.original || p.regular || p.large))))
+        );
+        if (fetchedJson && hasFetchedMedia) {
+          json = fetchedJson;
+        } else if (localWork && (localWork.originalUrl || localWork.regularUrl || localWork.largeUrl || localWork.thumbUrl)) {
+          const fallbackReg = localWork.regularUrl || localWork.largeUrl || localWork.originalUrl || localWork.thumbUrl || '';
+          const fallbackOrig = localWork.originalUrl || fallbackReg;
+          json = {
+            ...(fetchedJson || {}),
+            id: String(localWork.id),
+            title: (fetchedJson && fetchedJson.title) || localWork.title || `Artwork #${localWork.id}`,
+            description: (fetchedJson && fetchedJson.description) || '',
+            userName: (fetchedJson && fetchedJson.userName) || localWork.userName || '',
+            userId: (fetchedJson && fetchedJson.userId) || localWork.userId || '',
+            width: (fetchedJson && fetchedJson.width) || localWork.width || 0,
+            height: (fetchedJson && fetchedJson.height) || localWork.height || 0,
+            pageCount: (fetchedJson && fetchedJson.pageCount) || localWork.pageCount || 1,
+            illustType: (fetchedJson && fetchedJson.illustType) ?? localWork.illustType ?? 0,
+            isAi: Boolean((fetchedJson && fetchedJson.isAi) || localWork.isAi),
+            bookmarkCount: (fetchedJson && (fetchedJson.totalBookmarks ?? fetchedJson.bookmarkCount)) || localWork.bookmarkCount || 0,
+            viewCount: (fetchedJson && (fetchedJson.totalView ?? fetchedJson.viewCount)) || 0,
+            thumbUrl: localWork.thumbUrl || fallbackReg,
+            regularUrl: fallbackReg,
+            originalUrl: fallbackOrig,
+            tags: (fetchedJson && Array.isArray(fetchedJson.tags) && fetchedJson.tags.length ? fetchedJson.tags : localWork.tags) || [],
+            pages: [{ thumb: localWork.thumbUrl || fallbackReg, regular: fallbackReg, large: fallbackReg, original: fallbackOrig }]
+          };
+        } else {
+          throw new Error('无法读取该作品的高清原图地址，请点击「打开原网页」查看');
+        }
         json.source = 'pixiv';
         json.externalUrl = `https://www.pixiv.net/artworks/${encodeURIComponent(json.id)}`;
       }
@@ -2050,6 +2232,14 @@
       }
 
       if (json.source === 'pixiv' && json.illustType === 2) {
+        const coverUrl = json.originalUrl || json.regularUrl || json.largeUrl || json.pages?.[0]?.original || json.pages?.[0]?.large || '';
+        const coverExt = sanitizeMediaExt(coverUrl, 'jpg');
+        setViewerDownloadButton(
+          $('viewerDownloadCurrentBtn'),
+          coverUrl,
+          `pixiv_${json.id}_ugoira_cover.${coverExt}`,
+          coverUrl ? '下载动图高清封面' : '暂无可下载原图'
+        );
         await playUgoiraInViewer(json.id);
       } else {
         $('viewerDownloadUgoiraZipBtn').classList.add('hidden');
@@ -2057,6 +2247,7 @@
       }
     } catch (err) {
       loading.classList.add('hidden');
+      clearViewerDownloadButton($('viewerDownloadCurrentBtn'), '原图解析失败');
       showToast(`看图加载失败: ${err.message}`);
     }
   }
@@ -2066,8 +2257,8 @@
     if (!ill) return;
     const pages = ill.pages || [];
     const page = pages[state.viewer.pageIndex] || {
-      large: ill.largeUrl || ill.regularUrl,
-      original: ill.originalUrl
+      large: ill.largeUrl || ill.regularUrl || ill.thumbUrl,
+      original: ill.originalUrl || ill.largeUrl || ill.regularUrl || ill.thumbUrl
     };
 
     const total = pages.length || 1;
@@ -2078,7 +2269,7 @@
       el.classList.toggle('active', idx === state.viewer.pageIndex);
     });
 
-    const regUrl = page.large || page.regular || page.medium || page.original;
+    const regUrl = page.large || page.regular || page.medium || page.original || ill.regularUrl || ill.thumbUrl || '';
     const origUrl = page.original || regUrl;
     const targetUrl = state.viewer.useOriginal ? origUrl : regUrl;
     const mainImg = $('viewerMainImg');
@@ -2094,11 +2285,22 @@
         loading.classList.add('hidden');
       }
     };
-    mainImg.src = proxyImg(targetUrl);
+    if (targetUrl) {
+      mainImg.src = proxyImg(targetUrl);
+    } else {
+      mainImg.removeAttribute('src');
+      loading.classList.add('hidden');
+    }
 
     const dlUrl = origUrl;
-    const ext = (dlUrl && dlUrl.split('.').pop().split('?')[0]) || 'jpg';
-    $('viewerDownloadCurrentBtn').href = downloadImgUrl(dlUrl, `pixiv_${ill.id}_p${state.viewer.pageIndex}.${ext}`);
+    const ext = sanitizeMediaExt(dlUrl, 'jpg');
+    const srcPrefix = (ill.source || 'pixiv').replace(/[^a-z0-9_-]/gi, '');
+    setViewerDownloadButton(
+      $('viewerDownloadCurrentBtn'),
+      dlUrl,
+      `${srcPrefix}_${ill.id}_p${state.viewer.pageIndex}.${ext}`,
+      dlUrl ? (ill.illustType === 2 ? '下载动图高清封面' : '下载当前页高清原图') : '暂无可下载原图'
+    );
   }
 
   async function playUgoiraInViewer(illustId) {
@@ -2112,15 +2314,14 @@
       });
       const rawData = await resp.json();
       const data = rawData.data || rawData;
+      if (resp.ok && !rawData.error && data.zipUrl) {
+        const zipBtn = $('viewerDownloadUgoiraZipBtn');
+        zipBtn.classList.remove('hidden');
+        setViewerDownloadButton(zipBtn, data.zipUrl, `pixiv_ugoira_${illustId}.zip`, '下载 Ugoira 动图帧 ZIP');
+      }
       if (!resp.ok || rawData.error || !data.frames || !data.frames.length) {
         updateViewerPage();
         return;
-      }
-
-      if (data.zipUrl) {
-        const zipBtn = $('viewerDownloadUgoiraZipBtn');
-        zipBtn.classList.remove('hidden');
-        zipBtn.href = downloadImgUrl(data.zipUrl, `pixiv_ugoira_${illustId}.zip`);
       }
 
       const images = await Promise.all(
@@ -5966,6 +6167,12 @@
     $('viewerQualityToggleBtn').addEventListener('click', () => {
       state.viewer.useOriginal = !state.viewer.useOriginal;
       updateViewerPage();
+    });
+    $('viewerDownloadCurrentBtn')?.addEventListener('click', (e) => {
+      triggerSafeMediaDownload($('viewerDownloadCurrentBtn'), e);
+    });
+    $('viewerDownloadUgoiraZipBtn')?.addEventListener('click', (e) => {
+      triggerSafeMediaDownload($('viewerDownloadUgoiraZipBtn'), e);
     });
     $('viewerSauceNaoBtn').addEventListener('click', () => {
       const ill = state.viewer.illust;

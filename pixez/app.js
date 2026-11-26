@@ -1628,9 +1628,12 @@
 
     tbody.querySelectorAll('[data-pivot]').forEach((el) => {
       el.addEventListener('click', () => {
-        $('tagSearchInput').value = el.dataset.pivot;
+        const nextTag = el.dataset.pivot;
+        $('tagSearchInput').value = nextTag;
         state.lockedSubTags.clear();
-        executeAnalysis(el.dataset.pivot);
+        hideAutocomplete();
+        $('queryConsolePanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        showToast(`已填入目标标签 [${nextTag}]，请确认采集深度后点击「开始采样」`);
       });
     });
 
@@ -2009,10 +2012,13 @@
 
       $('viewerTagsList').querySelectorAll('[data-viewer-tag]').forEach((pill) => {
         pill.addEventListener('click', () => {
+          const nextTag = pill.dataset.viewerTag;
           modal.classList.add('hidden');
-          $('tagSearchInput').value = pill.dataset.viewerTag;
+          $('tagSearchInput').value = nextTag;
           state.lockedSubTags.clear();
-          executeAnalysis(pill.dataset.viewerTag);
+          hideAutocomplete();
+          $('queryConsolePanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          showToast(`已填入目标标签 [${nextTag}]，请确认采集深度后点击「开始采样」`);
         });
       });
 
@@ -5315,9 +5321,17 @@
       btn.addEventListener('click', () => {
         const item = state.recentSearches[parseInt(btn.dataset.historyIdx, 10)];
         if (!item) return;
+        const targetSrc = SOURCE_META[item.source] ? item.source : 'pixiv';
+        if (targetSrc !== state.source) {
+          state.source = targetSrc;
+          localStorage.setItem('pixez_source_v43', state.source);
+          if ($('sourceSelect')) $('sourceSelect').value = state.source;
+          applySourceUI();
+        }
         $('tagSearchInput').value = item.tag;
         state.lockedSubTags.clear();
-        executeAnalysis(item.tag, { source: item.source || 'pixiv' });
+        hideAutocomplete();
+        showToast(`已填入历史标签 [${item.tag}]，请确认采集深度后点击「开始采样」`);
       });
     });
     list.querySelectorAll('[data-del-history-idx]').forEach((btn) => {
@@ -5376,12 +5390,13 @@
     });
   }
 
+  const acResultCache = new Map();
+
   function selectAutocompleteItem(tagName) {
     if (!tagName) return;
     $('tagSearchInput').value = tagName;
     hideAutocomplete();
     state.lockedSubTags.clear();
-    executeAnalysis(tagName);
   }
 
   function renderAutocomplete(candidates) {
@@ -5456,6 +5471,12 @@
       hideAutocomplete();
       return;
     }
+    const srcNow = state.source || 'pixiv';
+    const cacheKey = `${srcNow}::${q.toLowerCase()}`;
+    if (acResultCache.has(cacheKey)) {
+      renderAutocomplete(acResultCache.get(cacheKey));
+      return;
+    }
     acTimer = setTimeout(async () => {
       const ctrl = new AbortController();
       acAbort = ctrl;
@@ -5494,11 +5515,15 @@
           }
         }
         if ($('tagSearchInput')?.value.trim() !== q) return;
+        if (list.length) {
+          if (acResultCache.size > 120) acResultCache.clear();
+          acResultCache.set(`${src}::${q.toLowerCase()}`, list);
+        }
         renderAutocomplete(list);
       } catch (err) {
         if (err && err.name !== 'AbortError') hideAutocomplete();
       }
-    }, 180);
+    }, 320);
   }
 
   function bindFxToggleImpl(id, key) {
@@ -5795,21 +5820,18 @@
         return;
       }
       if (e.key === 'Enter') {
+        if (e.isComposing || e.keyCode === 229) return;
         e.preventDefault();
         if (isOpen && acActiveIndex >= 0 && acItems[acActiveIndex]) {
           selectAutocompleteItem(acItems[acActiveIndex].tag_name);
         } else {
           hideAutocomplete();
-          executeAnalysis();
+          $('analyzeBtn')?.focus();
         }
       }
     });
     $('tagSearchInput').addEventListener('input', () => {
       triggerAutocomplete($('tagSearchInput').value);
-    });
-    $('tagSearchInput').addEventListener('focus', () => {
-      const val = $('tagSearchInput').value.trim();
-      if (val) triggerAutocomplete(val);
     });
     $('clearInputBtn').addEventListener('click', () => {
       $('tagSearchInput').value = '';
@@ -6468,6 +6490,6 @@
   const initialQuery = (urlParams.get('q') || urlParams.get('tag') || '').trim();
   if (initialQuery) {
     $('tagSearchInput').value = initialQuery;
-    executeAnalysis(initialQuery);
+    showToast(`已填入标签 [${initialQuery}]，请确认采集深度后点击「开始采样」`);
   }
 })();

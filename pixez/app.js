@@ -181,6 +181,7 @@
     inspectorTag: '',
     inspectorLimit: 36,
     pendingPreflight: null,
+    interruptedCrawl: null,
     lockedSubTags: new Set(),
     basket: new Set(JSON.parse(localStorage.getItem('pixez_basket') || '[]')),
     userCategoryOverrides: JSON.parse(localStorage.getItem('pixez_cat_overrides') || '{}'),
@@ -188,6 +189,13 @@
     danbooruCache: (() => {
       try {
         return JSON.parse(localStorage.getItem('pixez_danbooru_wiki_cache_v1') || '{}') || {};
+      } catch (_) {
+        return {};
+      }
+    })(),
+    pixivTransCache: (() => {
+      try {
+        return JSON.parse(localStorage.getItem('pixez_pixiv_trans_cache_v1') || '{}') || {};
       } catch (_) {
         return {};
       }
@@ -843,7 +851,7 @@
         if (!entry) {
           entry = {
             tag: t,
-            translation: transLookup[t] || '',
+            translation: transLookup[t] || state.pixivTransCache[t] || '',
             count: 0,
             artists: new Set(),
             bookmarkSum: 0,
@@ -1193,6 +1201,84 @@
     return out.replace(/\s+/g, ' ').trim();
   }
 
+  // Phonetic Romaji normalizer so Hepburn / Kunrei / Pixiv CPS / Danbooru spellings all match cleanly
+  // (e.g. `tamakiiroha` == `tamaki_iroha`, `magireco` == `magireko`, `kyuapi-su` == `kyuapiisu`)
+  function normRomajiKey(raw) {
+    return String(raw || '')
+      .toLowerCase()
+      .replace(/[\s_\-·・'’`"()（）\[\]]+/g, '')
+      .replace(/l/g, 'r')
+      .replace(/shi/g, 'si')
+      .replace(/chi/g, 'ti')
+      .replace(/tsu/g, 'tu')
+      .replace(/fu/g, 'hu')
+      .replace(/ji/g, 'zi')
+      .replace(/sha/g, 'sya')
+      .replace(/shu/g, 'syu')
+      .replace(/sho/g, 'syo')
+      .replace(/cha/g, 'tya')
+      .replace(/chu/g, 'tyu')
+      .replace(/cho/g, 'tyo')
+      .replace(/ja/g, 'zya')
+      .replace(/ju/g, 'zyu')
+      .replace(/jo/g, 'zyo')
+      .replace(/ca/g, 'ka')
+      .replace(/co/g, 'ko')
+      .replace(/cu/g, 'ku')
+      .replace(/nn/g, 'n')
+      .replace(/ou|oo|oh/g, 'o')
+      .replace(/uu/g, 'u')
+      .replace(/aa/g, 'a')
+      .replace(/ee/g, 'e')
+      .replace(/ii/g, 'i');
+  }
+
+  const _tableCpsCache = new Map();
+  let _tableCpsTimer = null;
+
+  function scheduleTableCpsLookup(keyword) {
+    const q = String(keyword || '').trim().toLowerCase();
+    if (!q || q.length < 2) return;
+    if ((state.rawDataset?.source || state.source || 'pixiv') !== 'pixiv') return;
+    // Trigger Pixiv official /rpc/cps.php lookup for Romaji/English/Chinese keywords so Kanji tags
+    // (e.g. `hadaka`->`裸`, `rakugaki`->`落書き`, `tamakiiroha`->`環いろは`, `megaha-to`->`目がハート`) match cleanly!
+    const isAscii = /^[a-z0-9\s\-_'.]+$/i.test(q);
+    const hasCjkNoKana = /[\u4E00-\u9FFF]/.test(q) && !/[\u3040-\u30FF]/.test(q);
+    if (!isAscii && !hasCjkNoKana) return;
+    if (_tableCpsCache.has(q)) return;
+    if (_tableCpsTimer) clearTimeout(_tableCpsTimer);
+    _tableCpsTimer = setTimeout(async () => {
+      _tableCpsTimer = null;
+      if (_tableCpsCache.has(q)) return;
+      const hitSet = new Set();
+      try {
+        let cands = [];
+        if (state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function') {
+          const r = await window._pixezBridgeFetch(
+            `https://www.pixiv.net/rpc/cps.php?keyword=${encodeURIComponent(q)}&lang=zh`,
+            { timeout: 5000 }
+          );
+          if (Array.isArray(r?.json?.candidates)) cands = r.json.candidates;
+        }
+        if (!cands.length) {
+          const r = await apiFetch(`/api/pixiv/autocomplete?source=pixiv&q=${encodeURIComponent(q)}`);
+          if (r.ok) {
+            const d = await r.json();
+            cands = d.candidates || d.tags || [];
+          }
+        }
+        for (const c of cands) {
+          const tn = String(c?.tag_name || c?.name || '').trim();
+          if (tn) hitSet.add(tn.toLowerCase());
+        }
+      } catch (_) {}
+      _tableCpsCache.set(q, hitSet);
+      if (hitSet.size > 0 && ($('tableFilterInput')?.value || '').trim().toLowerCase() === q) {
+        renderTable();
+      }
+    }, 200);
+  }
+
   function renderTable(scopedList) {
     const tbody = $('coTagTableBody');
     const keyword = $('tableFilterInput').value.trim().toLowerCase();
@@ -1204,15 +1290,27 @@
       origRank: item.isPinnedLocked ? 0 : ++origRankSeq
     }));
 
+    if (keyword) scheduleTableCpsLookup(keyword);
+    const normKw = keyword ? normRomajiKey(keyword) : '';
+    const cpsHitSet = keyword ? _tableCpsCache.get(keyword) : null;
     const filtered = rankedAll.filter(({ item }) => {
       if (item.isPinnedLocked) return true;
       if (keyword) {
-        const matchTag = item.tag.toLowerCase().includes(keyword);
-        const matchTr = (item.translation || '').toLowerCase().includes(keyword);
-        const matchDb = (item.danbooruTag || '').toLowerCase().includes(keyword);
-        const rom = !item.translation && !item.danbooruTag ? kanaToRomaji(item.tag).toLowerCase() : '';
-        const matchRom = rom && rom.includes(keyword);
-        if (!matchTag && !matchTr && !matchDb && !matchRom) return false;
+        const tagLow = item.tag.toLowerCase();
+        const trLow = (item.translation || '').toLowerCase();
+        const dbLow = (item.danbooruTag || '').toLowerCase();
+        if (tagLow.includes(keyword) || trLow.includes(keyword) || dbLow.includes(keyword)) return true;
+        if (dbLow && dbLow.replace(/_/g, ' ').includes(keyword)) return true;
+        if (cpsHitSet && cpsHitSet.has(tagLow)) return true;
+        // ALWAYS compute Kana Romaji even when translation or danbooruTag exists!
+        const rom = kanaToRomaji(item.tag).toLowerCase();
+        if (rom && rom.includes(keyword)) return true;
+        if (normKw.length >= 2) {
+          if (rom && normRomajiKey(rom).includes(normKw)) return true;
+          if (dbLow && normRomajiKey(dbLow).includes(normKw)) return true;
+          if (trLow && /[a-z]/.test(trLow) && normRomajiKey(trLow).includes(normKw)) return true;
+        }
+        return false;
       }
       return true;
     });
@@ -1851,38 +1949,143 @@
     state.pendingPreflight = null;
     $('preflightNoticeBar')?.classList.add('hidden');
     $('preflightConfirmActions')?.classList.add('hidden');
+    $('preflightResumeActions')?.classList.add('hidden');
   }
 
-  function showPreflightBanner(text, needsConfirm = false) {
+  function showPreflightBanner(text, needsConfirm = false, showResume = false) {
     const bar = $('preflightNoticeBar');
     const textEl = $('preflightNoticeText');
     const acts = $('preflightConfirmActions');
+    const resActs = $('preflightResumeActions');
     if (!bar || !textEl) return;
     textEl.textContent = text;
     bar.classList.remove('hidden');
     if (acts) acts.classList.toggle('hidden', !needsConfirm);
+    if (resActs) resActs.classList.toggle('hidden', !showResume);
   }
 
   const _danbooruQueriedTags = new Set();
+  const _pixivTransQueriedTags = new Set();
+  const _pixivFetchedIllustIds = new Set();
   let _visibleEnrichTimer = null;
+
+  function persistPixivTransCache() {
+    try {
+      const entries = Object.entries(state.pixivTransCache || {});
+      const trimmed = entries.length > 4000 ? Object.fromEntries(entries.slice(-4000)) : state.pixivTransCache;
+      localStorage.setItem('pixez_pixiv_trans_cache_v1', JSON.stringify(trimmed));
+    } catch (_) {}
+  }
+
+  // Pixiv Web /ajax/search/artworks only fills body.tagTranslation for ~30 tags/page, whereas
+  // Pixiv's /ajax/illust/<id>?lang=zh returns Pixiv's official ZH/EN translation for 100% of tags on that work.
+  // We use greedy set-cover over sampled artworks (max 4~6 tiny JSON calls) to recover official Pixiv translations!
+  async function enrichPixivOfficialTranslations(targetTags, maxIllusts = 4) {
+    if (!state.bridgeFetchAvailable || typeof window._pixezBridgeFetch !== 'function') return;
+    const ds = state.rawDataset;
+    if (!ds || ds.source !== 'pixiv' || !Array.isArray(ds.artworks) || !ds.artworks.length) return;
+    const transLookup = ds.translations || (ds.translations = {});
+    const needed = new Set();
+    for (const t of targetTags || []) {
+      if (!t || /\d+users入り$/i.test(t) || /^[a-z0-9_\-.\s]+$/i.test(t)) continue;
+      if (transLookup[t] || state.pixivTransCache[t] || _pixivTransQueriedTags.has(t)) continue;
+      needed.add(t);
+    }
+    if (!needed.size) return;
+    for (const t of needed) _pixivTransQueriedTags.add(t);
+
+    // Greedy set-cover: pick up to maxIllusts artworks covering the maximum number of missing tags
+    const pickedIds = [];
+    const remaining = new Set(needed);
+    for (let k = 0; k < maxIllusts && remaining.size > 0; k++) {
+      let bestId = '';
+      let bestCover = 0;
+      for (const w of ds.artworks) {
+        const wid = String(w?.id || '');
+        if (!wid || !/^\d+$/.test(wid) || _pixivFetchedIllustIds.has(wid)) continue;
+        const wTags = w.tags;
+        if (!Array.isArray(wTags) || !wTags.length) continue;
+        let hit = 0;
+        for (let i = 0; i < wTags.length; i++) {
+          if (remaining.has(wTags[i])) hit++;
+        }
+        if (hit > bestCover) {
+          bestCover = hit;
+          bestId = wid;
+          if (hit >= Math.min(remaining.size, 8)) break;
+        }
+      }
+      if (!bestId || bestCover === 0) break;
+      pickedIds.push(bestId);
+      _pixivFetchedIllustIds.add(bestId);
+      const pickedWork = ds.artworks.find((w) => String(w?.id || '') === bestId);
+      if (pickedWork && Array.isArray(pickedWork.tags)) {
+        for (const t of pickedWork.tags) remaining.delete(t);
+      }
+    }
+    if (!pickedIds.length) return;
+
+    let added = 0;
+    await Promise.all(
+      pickedIds.map(async (wid) => {
+        try {
+          const r = await window._pixezBridgeFetch(
+            `https://www.pixiv.net/ajax/illust/${encodeURIComponent(wid)}?lang=zh`,
+            { timeout: 8000 }
+          );
+          const list = r?.json?.body?.tags?.tags;
+          if (!Array.isArray(list)) return;
+          for (const item of list) {
+            const tagName = String(item?.tag || '').trim();
+            if (!tagName) continue;
+            const trObj = item?.translation || {};
+            const tr = String(trObj.zh || trObj.zh_tw || trObj.en || item?.romaji || '').trim();
+            if (tr && tr.toLowerCase() !== tagName.toLowerCase()) {
+              if (!transLookup[tagName]) {
+                transLookup[tagName] = tr;
+                added++;
+              }
+              state.pixivTransCache[tagName] = tr;
+            }
+          }
+        } catch (_) {}
+      })
+    );
+    if (added > 0) {
+      persistPixivTransCache();
+      recomputeAndRender();
+    }
+  }
 
   function scheduleVisibleDanbooruEnrich(visibleItems) {
     if (!Array.isArray(visibleItems) || !visibleItems.length) return;
     const src = state.rawDataset?.source || state.source || 'pixiv';
     if (!['pixiv', 'safebooru', 'zerochan', 'rule34'].includes(src)) return;
-    const missing = [];
+    const missingDb = [];
+    const missingPixiv = [];
+    const transLookup = state.rawDataset?.translations || {};
     for (const item of visibleItems) {
       const t = item?.tag;
       if (!t || /\d+users入り$/i.test(t) || /\s/.test(t)) continue;
-      if (state.danbooruCache[t] || _danbooruQueriedTags.has(t)) continue;
-      missing.push(t);
-      if (missing.length >= 75) break;
+      if (!state.danbooruCache[t] && !_danbooruQueriedTags.has(t) && missingDb.length < 75) {
+        missingDb.push(t);
+      }
+      if (
+        src === 'pixiv' &&
+        !transLookup[t] &&
+        !state.pixivTransCache[t] &&
+        !_pixivTransQueriedTags.has(t) &&
+        missingPixiv.length < 40
+      ) {
+        missingPixiv.push(t);
+      }
     }
-    if (!missing.length) return;
+    if (!missingDb.length && !missingPixiv.length) return;
     if (_visibleEnrichTimer) clearTimeout(_visibleEnrichTimer);
     _visibleEnrichTimer = setTimeout(() => {
       _visibleEnrichTimer = null;
-      enrichTagListViaDanbooru(missing);
+      if (missingDb.length) enrichTagListViaDanbooru(missingDb);
+      if (missingPixiv.length) enrichPixivOfficialTranslations(missingPixiv, 4);
     }, 220);
   }
 
@@ -2002,8 +2205,16 @@
       .sort((a, b) => b[1] - a[1])
       .slice(0, 300)
       .map(([t]) => t);
-    if (!topUncached.length) return;
-    await enrichTagListViaDanbooru(topUncached);
+    if (topUncached.length) {
+      await enrichTagListViaDanbooru(topUncached);
+    }
+    if (state.rawDataset?.source === 'pixiv' && state.bridgeFetchAvailable) {
+      const topUntranslated = Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 80)
+        .map(([t]) => t);
+      await enrichPixivOfficialTranslations(topUntranslated, 6);
+    }
   }
 
   // =========================================================================
@@ -2531,6 +2742,29 @@
     const type = $('typeSelect').value;
     const includePopular = $('includePopularCheck').checked;
 
+    // If the user previously stopped / got interrupted on THIS exact tag, ask whether to resume or clear & restart!
+    if (!opts.resumeFromCache && !opts.freshRestart) {
+      const ic = state.interruptedCrawl;
+      if (
+        ic &&
+        ic.count > 0 &&
+        ic.source === source &&
+        ic.mode === mode &&
+        ic.tag.toLowerCase() === parsed.tag.toLowerCase()
+      ) {
+        const btn = $('preflightResumeBtn');
+        if (btn) btn.textContent = `接着采集 (从 ${ic.count.toLocaleString()} 作继续)`;
+        const totPart = ic.total > 0 ? ` / 全站 ${ic.total.toLocaleString()}` : '';
+        showPreflightBanner(
+          `检测到 [${ic.tag}] 已有上次中断保留的 ${ic.count.toLocaleString()}${totPart} 件样本（最旧至 ${ic.oldestDate || '—'}），请选择「接着采集」断点续采，或「清空重采」从零开始：`,
+          false,
+          true
+        );
+        return;
+      }
+    }
+    if (opts.freshRestart) state.interruptedCrawl = null;
+
     const progressWrap = $('progressBarWrap');
     const progressText = $('progressText');
     const progressPct = $('progressPercent');
@@ -2554,38 +2788,79 @@
       showPreflightBanner(`正在探测 [${srcMeta.label}] 标签 [${parsed.tag}] 的全站作品总数...`, false);
       try {
         // Logged-in Chrome Userscript direct preflight: gives EXACT 4-way breakdown (全量含R-18/AI vs 全年龄 vs R-18 vs 纯手绘)!
+        // Plus automatic Pixiv official CPS translation resolution when user searches English/Romaji directly (e.g. `cure sky` -> `キュアスカイ`)
+        let effectivePixivQuery = parsed.tag;
+        let autoMappedFrom = '';
         if (source === 'pixiv' && state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function' && hasVerifiedChromePixivSession) {
-          const encP = encodeURIComponent(parsed.tag).replace(/%2F/gi, '%252F');
-          const encW = encodeURIComponent(parsed.tag);
-          const preDateQs = `${userStartDate ? `&scd=${encodeURIComponent(userStartDate)}` : ''}${userEndDate ? `&ecd=${encodeURIComponent(userEndDate)}` : ''}`;
-          const mkU = (m, aiT) => `https://www.pixiv.net/ajax/search/artworks/${encP}?word=${encW}&order=date_d&mode=${encodeURIComponent(m)}&p=1&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(type)}&ai_type=${aiT}&lang=zh${preDateQs}`;
-          const probes = [
-            window._pixezBridgeFetch(mkU(mode, 0), { timeout: 9000 }),
-            window._pixezBridgeFetch(mkU(mode, 1), { timeout: 9000 })
-          ];
-          if (mode === 'all') probes.push(window._pixezBridgeFetch(mkU('safe', 0), { timeout: 9000 }));
-          const [rAll, rHuman, rSafe] = await Promise.all(probes);
-          const getTot = (r) => {
-            const b = r?.json?.body;
-            const blk = b?.illustManga || b?.illust || b?.manga || {};
-            return Number(blk.total || 0);
+          const probePixivQuery = async (qTag) => {
+            const encP = encodeURIComponent(qTag).replace(/%2F/gi, '%252F');
+            const encW = encodeURIComponent(qTag);
+            const preDateQs = `${userStartDate ? `&scd=${encodeURIComponent(userStartDate)}` : ''}${userEndDate ? `&ecd=${encodeURIComponent(userEndDate)}` : ''}`;
+            const mkU = (m, aiT) => `https://www.pixiv.net/ajax/search/artworks/${encP}?word=${encW}&order=date_d&mode=${encodeURIComponent(m)}&p=1&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(type)}&ai_type=${aiT}&lang=zh${preDateQs}`;
+            const probes = [
+              window._pixezBridgeFetch(mkU(mode, 0), { timeout: 9000 }),
+              window._pixezBridgeFetch(mkU(mode, 1), { timeout: 9000 })
+            ];
+            if (mode === 'all') probes.push(window._pixezBridgeFetch(mkU('safe', 0), { timeout: 9000 }));
+            const [rAll, rHuman, rSafe] = await Promise.all(probes);
+            const getTot = (r) => {
+              const b = r?.json?.body;
+              const blk = b?.illustManga || b?.illust || b?.manga || {};
+              return Number(blk.total || 0);
+            };
+            return {
+              totalAllAi: getTot(rAll),
+              totalHuman: getTot(rHuman),
+              totalSafe: mode === 'all' ? getTot(rSafe) : (mode === 'safe' ? getTot(rAll) : 0)
+            };
           };
-          const totalAllAi = getTot(rAll);
-          const totalHuman = getTot(rHuman);
-          const totalSafe = mode === 'all' ? getTot(rSafe) : (mode === 'safe' ? totalAllAi : 0);
+          let counts = await probePixivQuery(effectivePixivQuery);
+          // If pure ASCII English/Romaji returned few literal hits (<250), resolve via Pixiv official /rpc/cps.php!
+          if (counts.totalAllAi < 250 && /^[A-Za-z0-9\s\-_'.:!?/]+$/.test(effectivePixivQuery) && /[A-Za-z]{2,}/.test(effectivePixivQuery)) {
+            try {
+              const cpsRes = await window._pixezBridgeFetch(
+                `https://www.pixiv.net/rpc/cps.php?keyword=${encodeURIComponent(effectivePixivQuery)}&lang=zh`,
+                { timeout: 6000 }
+              );
+              const cands = Array.isArray(cpsRes?.json?.candidates) ? cpsRes.json.candidates : [];
+              const qLow = effectivePixivQuery.trim().toLowerCase();
+              const qNorm = normRomajiKey(qLow);
+              const exactHit =
+                cands.find(
+                  (c) =>
+                    c?.tag_name &&
+                    (c.type === 'tag_translation' || c.type === 'romaji') &&
+                    (String(c.tag_translation || '').trim().toLowerCase() === qLow ||
+                      (qNorm.length >= 3 && normRomajiKey(c.tag_translation) === qNorm))
+                ) ||
+                (counts.totalAllAi < 30
+                  ? cands.find((c) => c?.tag_name && c.type === 'romaji' && Number(c.access_count || 0) >= 50000)
+                  : null);
+              if (exactHit && exactHit.tag_name !== effectivePixivQuery) {
+                const mappedCounts = await probePixivQuery(exactHit.tag_name);
+                if (mappedCounts.totalAllAi > counts.totalAllAi * 2) {
+                  autoMappedFrom = effectivePixivQuery;
+                  effectivePixivQuery = exactHit.tag_name;
+                  counts = mappedCounts;
+                }
+              }
+            } catch (_) {}
+          }
+          const { totalAllAi, totalHuman, totalSafe } = counts;
           if (totalAllAi > 0) {
             const totalR18 = mode === 'all' && totalSafe > 0 && totalAllAi >= totalSafe ? totalAllAi - totalSafe : (mode === 'r18' ? totalAllAi : 0);
             const totalAi = totalHuman > 0 && totalAllAi >= totalHuman ? totalAllAi - totalHuman : 0;
             const r18RateStr = mode === 'all' && totalAllAi > 0 && totalSafe > 0 ? ` (${((totalR18 / totalAllAi) * 100).toFixed(1)}%)` : '';
             const modeDesc = mode === 'safe' ? '全年龄含AI' : mode === 'r18' ? '仅R-18含AI' : '全量含R-18与AI';
             const rangeBadge = isDateRangeDepth ? ` [${userStartDate || '最早'}~${userEndDate || '至今'}]` : '';
+            const mappedBadge = autoMappedFrom ? ` [Pixiv官方译名映射: ${autoMappedFrom} → ${effectivePixivQuery}]` : '';
             const detailParts = [];
             if (mode === 'all' && totalSafe > 0) detailParts.push(`全年龄 ${totalSafe.toLocaleString()} + R-18 ${totalR18.toLocaleString()}${r18RateStr}`);
             if (totalHuman > 0) detailParts.push(`纯手绘 ${totalHuman.toLocaleString()} / AI ${totalAi.toLocaleString()}`);
             preflightInfo = {
               error: false,
               source: 'pixiv',
-              resolvedTag: parsed.tag,
+              resolvedTag: effectivePixivQuery,
               totalPosts: totalAllAi,
               pageSize: 60,
               estimatedPages: Math.ceil(totalAllAi / 60),
@@ -2598,7 +2873,7 @@
                 includesR18: mode !== 'safe',
                 isSafeBaselineOnly: false
               },
-              note: `Pixiv [${parsed.tag}]${rangeBadge} ${modeDesc}共 ${totalAllAi.toLocaleString()} 件${detailParts.length ? `（${detailParts.join(' · ')}）` : ''} · 油猴已登录直连 (60作/页·支持日期分段)`
+              note: `Pixiv [${effectivePixivQuery}]${mappedBadge}${rangeBadge} ${modeDesc}共 ${totalAllAi.toLocaleString()} 件${detailParts.length ? `（${detailParts.join(' · ')}）` : ''} · 油猴已登录直连 (60作/页·支持日期分段)`
             };
           }
         }
@@ -2705,7 +2980,7 @@
     let startPage = 1;
     let cursor = resumeRec?.nextCursor || '';
     let activeEndDate = userEndDate || (order === 'date' ? '' : (resumeRec?.oldestDate || ''));
-    let activeStartDate = userStartDate || '';
+    let activeStartDate = userStartDate || (order === 'date' ? (resumeRec?.newestDate || '') : '');
     const isWorkInDateRange = (w) => {
       if (!isDateRangeDepth) return true;
       const ymd = String(w?.createDate || '').slice(0, 10);
@@ -2732,6 +3007,29 @@
     let lastSnapshotRenderAt = 0;
     let lastCheckpointSize = accumWorks.size;
 
+    // Background-tab-proof sleep: uses an inline Web Worker timer (exempt from Chrome's 1s/60s background tab throttling!)
+    let bgTimerWorker = null;
+    const bgPending = new Map();
+    let bgSeq = 1;
+    try {
+      const wBlob = new Blob(
+        ['self.onmessage=function(e){var d=e.data;setTimeout(function(){self.postMessage(d.id);},d.ms);};'],
+        { type: 'application/javascript' }
+      );
+      const wUrl = URL.createObjectURL(wBlob);
+      bgTimerWorker = new Worker(wUrl);
+      URL.revokeObjectURL(wUrl);
+      bgTimerWorker.onmessage = (e) => {
+        const fn = bgPending.get(e.data);
+        if (fn) {
+          bgPending.delete(e.data);
+          fn();
+        }
+      };
+    } catch (_) {
+      bgTimerWorker = null;
+    }
+
     const abortableSleep = (ms) =>
       new Promise((resolve, reject) => {
         if (abortCtrl.signal.aborted) {
@@ -2739,17 +3037,31 @@
           e.name = 'AbortError';
           return reject(e);
         }
-        const t = setTimeout(() => {
+        let fallbackTimer = null;
+        let wid = 0;
+        const cleanup = () => {
+          if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
+          if (wid) { bgPending.delete(wid); wid = 0; }
           abortCtrl.signal.removeEventListener('abort', onAbort);
+        };
+        const onDone = () => {
+          cleanup();
           resolve();
-        }, ms);
+        };
         const onAbort = () => {
-          clearTimeout(t);
+          cleanup();
           const e = new Error('Aborted');
           e.name = 'AbortError';
           reject(e);
         };
         abortCtrl.signal.addEventListener('abort', onAbort, { once: true });
+        if (bgTimerWorker) {
+          wid = bgSeq++;
+          bgPending.set(wid, onDone);
+          bgTimerWorker.postMessage({ id: wid, ms });
+        } else {
+          fallbackTimer = setTimeout(onDone, ms);
+        }
       });
 
     const buildHibiPartitionQueue = (baseTag, initialOrder, ageMode, safeBaseTotal) => {
@@ -2820,6 +3132,7 @@
         engine: lastEngine,
         hasMore: stillHasMore,
         oldestDate: computeOldestDate(),
+        newestDate: computeNewestDate(),
         nextCursor: cursor,
         artworks: worksArr,
         translations: accumTrans,
@@ -2828,6 +3141,7 @@
       };
       await PulseCacheDB.putWithEviction(cacheRecord, state.cacheLimitMb * 1024 * 1024);
       refreshCacheBadge();
+      return cacheRecord;
     };
 
     const flushDataset = (forceRender = false, stillHasMore = false) => {
@@ -2880,14 +3194,17 @@
           let segOldest = '';
           let segNewest = '';
           let segAdded = 0;
+          let segPagesFetched = 0;
+          let segExpectedTotal = 0;
           let segHitCeiling = false;
           let segNaturalEnd = false;
+          let consecutiveBatchFails = 0;
           const segPageLimit = isAllMode || targetWorksLimit > 0 ? 1000 : Math.max(1, requestedMaxPages - totalPagesScanned);
 
           for (let p = 1; p <= segPageLimit && !abortCtrl.signal.aborted && !reachedDepthCap(); p += 2) {
             const pBatch = [p];
             if (p + 1 <= segPageLimit && (targetWorksLimit <= 0 || targetWorksLimit - accumWorks.size > 60)) pBatch.push(p + 1);
-            const segHint = bEndDate ? ` [截止 ${bEndDate}]` : bStartDate ? ` [起始 ${bStartDate}]` : '';
+            const segHint = bEndDate ? ` [分段#${seg} 截止 ${bEndDate}]` : bStartDate ? ` [分段#${seg} 起始 ${bStartDate}]` : '';
             const curTotal = accumWorks.size;
             const targetW = targetWorksLimit > 0
               ? targetWorksLimit
@@ -2904,13 +3221,17 @@
               pBatch.map(async (pageNum) => {
                 const dateQs = `${bStartDate ? `&scd=${encodeURIComponent(bStartDate)}` : ''}${bEndDate ? `&ecd=${encodeURIComponent(bEndDate)}` : ''}`;
                 const targetUrl = `https://www.pixiv.net/ajax/search/artworks/${encodePixivPath(primaryResolvedTag)}?word=${encodeURIComponent(primaryResolvedTag)}&order=${webOrd}&mode=${encodeURIComponent(mode)}&p=${pageNum}&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateQs}`;
-                for (let attempt = 0; attempt < 4; attempt++) {
+                const backoffSec = [2, 4, 7, 11, 16, 22];
+                for (let attempt = 0; attempt < backoffSec.length; attempt++) {
                   if (abortCtrl.signal.aborted) return null;
-                  const r = await window._pixezBridgeFetch(targetUrl);
+                  // 35s timeout so switching browser to background tab NEVER triggers premature bridge timeout!
+                  const r = await window._pixezBridgeFetch(targetUrl, { timeout: 35000 });
                   if (r && r.ok && r.json && !r.json.error && r.json.body) return r.json;
                   if (r && (r.status === 429 || r.status === 403 || r.status >= 500 || r.status === 0)) {
-                    progressText.textContent = `[油猴直连 Pixiv] 限流冷却 ${3 + attempt * 3}s 后继续第 ${pageNum} 页 (已采 ${accumWorks.size.toLocaleString()} 作)...`;
-                    await abortableSleep((3 + attempt * 3) * 1000);
+                    const waitS = backoffSec[attempt];
+                    const bgTag = document.hidden ? ' [后台保活]' : '';
+                    progressText.textContent = `[油猴直连 Pixiv]${bgTag} 限流/超时冷却 ${waitS}s 后继续第 ${pageNum} 页 (已采 ${accumWorks.size.toLocaleString()} 作)...`;
+                    await abortableSleep(waitS * 1000);
                     continue;
                   }
                   break;
@@ -2921,16 +3242,21 @@
 
             let batchNew = 0;
             let batchRaw = 0;
+            let batchOkResponses = 0;
             for (const json of responses) {
               if (!json || !json.body) continue;
+              batchOkResponses++;
               bridgeWorked = true;
               totalPagesScanned++;
+              segPagesFetched++;
               const b = json.body;
               const blk = b.illustManga || b.illust || b.manga || {};
-              if (seg === 1 && Number(blk.total || 0) > knownTotalPosts) knownTotalPosts = Number(blk.total);
+              const blkTotal = Number(blk.total || 0);
+              if (blkTotal > segExpectedTotal) segExpectedTotal = blkTotal;
+              if (seg === 1 && blkTotal > knownTotalPosts) knownTotalPosts = blkTotal;
               if (b.tagTranslation) {
                 for (const [k, v] of Object.entries(b.tagTranslation)) {
-                  const tr = v.zh || v.zh_tw || v.en || '';
+                  const tr = v.zh || v.zh_tw || v.en || v.romaji || '';
                   if (tr) accumTrans[k] = tr;
                 }
               }
@@ -2980,9 +3306,38 @@
             }
             flushDataset(false, true);
             if (!bridgeWorked || reachedDepthCap()) break;
-            if (batchRaw === 0) { segNaturalEnd = true; break; }
+            // Pixiv Web caps single-window pagination around p=83~100 (~5,000 works) and returns `data: []`!
+            // Detect ceiling / rate-limit cutoffs accurately so we slide `ecd`/`scd` to Segment #2 instead of stopping at 5,100!
+            const nearPixivWebCeiling =
+              segPagesFetched >= 70 ||
+              segAdded >= 4000 ||
+              (segExpectedTotal > 0 && segAdded < segExpectedTotal - 120) ||
+              (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts - 200);
+            if (batchOkResponses === 0) {
+              // Transient network/rate-limit/background-tab timeout: retry SAME page up to 4 times before sliding window!
+              consecutiveBatchFails++;
+              await checkpointToIndexedDb(true);
+              if (consecutiveBatchFails <= 4) {
+                progressText.textContent = `[油猴直连 Pixiv]${document.hidden ? ' [后台保活]' : ''} 网络/后台暂停恢复中 (重试 ${consecutiveBatchFails}/4，已保留 ${accumWorks.size.toLocaleString()} 作)...`;
+                await abortableSleep((document.hidden ? 10 : 5) * 1000);
+                p -= 2;
+                continue;
+              }
+              segHitCeiling = true;
+              await abortableSleep(4000);
+              break;
+            }
+            consecutiveBatchFails = 0;
+            if (batchRaw === 0) {
+              if (nearPixivWebCeiling) segHitCeiling = true;
+              else segNaturalEnd = true;
+              break;
+            }
             if (batchNew === 0) { segHitCeiling = true; break; }
-            if (segNaturalEnd) break;
+            if (segNaturalEnd) {
+              if (nearPixivWebCeiling) segHitCeiling = true;
+              break;
+            }
             if (p + 2 > 1000) { segHitCeiling = true; break; }
             await abortableSleep(180);
           }
@@ -2992,7 +3347,12 @@
           if (reachedDepthCap()) break;
           if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 10) break;
           if (segAdded === 0 && seg > 1) break;
-          if (segNaturalEnd && !segHitCeiling) break;
+          const trulyExhausted =
+            segNaturalEnd &&
+            !segHitCeiling &&
+            (segExpectedTotal === 0 || segAdded >= segExpectedTotal - 120) &&
+            (knownTotalPosts === 0 || accumWorks.size >= knownTotalPosts - 200 || segPagesFetched < 65);
+          if (trulyExhausted) break;
 
           if (webOrd === 'date_d') {
             const cand = segOldest || computeOldestDate();
@@ -3352,28 +3712,79 @@
       }
 
       flushDataset(true, false);
-      await checkpointToIndexedDb(false);
+      const savedRec = await checkpointToIndexedDb(false);
       progressFill.style.width = '100%';
       progressPct.textContent = '100%';
       const finalCount = accumWorks.size;
+      const incompleteCrawl = Boolean(
+        finalCount > 0 &&
+        knownTotalPosts > 0 &&
+        finalCount < knownTotalPosts - 50 &&
+        !reachedDepthCap()
+      );
+      if (incompleteCrawl) {
+        state.interruptedCrawl = {
+          source,
+          tag: primaryResolvedTag,
+          mode,
+          cacheKey: makeCacheKey(source, primaryResolvedTag, mode),
+          count: finalCount,
+          total: knownTotalPosts,
+          oldestDate: computeOldestDate(),
+          newestDate: computeNewestDate(),
+          record: savedRec || state.rawDataset
+        };
+        const btn = $('preflightResumeBtn');
+        if (btn) btn.textContent = `接着采集 (从 ${finalCount.toLocaleString()} 作继续)`;
+        showPreflightBanner(
+          `当前已保留 [${primaryResolvedTag}] ${finalCount.toLocaleString()} / ${knownTotalPosts.toLocaleString()} 件作品（已存缓存，最旧至 ${computeOldestDate() || '—'}），可点击右侧「接着采集」继续增量续采，或「清空重采」从零开始：`,
+          false,
+          true
+        );
+      } else {
+        state.interruptedCrawl = null;
+      }
       progressText.textContent =
         knownTotalPosts > 0
           ? `完成 [${srcMeta.label}] [${primaryResolvedTag}] 采样：已采集 ${finalCount.toLocaleString()} 件 (全站共 ${knownTotalPosts.toLocaleString()} 件 / ${totalPagesScanned} 页，已存入本地缓存)`
           : `完成 [${srcMeta.label}] [${primaryResolvedTag}] 采样：共 ${finalCount.toLocaleString()} 件作品 (${totalPagesScanned} 页，已存入本地缓存)`;
 
-      // Auto-enrich top 180 co-tags via Danbooru Wiki ontology (with persistent local cache!)
+      // Auto-enrich top co-tags via Danbooru Wiki ontology & Pixiv official illust translations!
       if (['pixiv', 'safebooru', 'zerochan', 'rule34'].includes(source) && finalCount > 0) {
         enrichTopTagsViaDanbooru(Array.from(accumWorks.values()), primaryResolvedTag);
       }
     } catch (err) {
+      const savedOnInterrupt = accumWorks.size > 0 ? await checkpointToIndexedDb(true) : null;
+      if (accumWorks.size > 0) {
+        flushDataset(true, true);
+        state.interruptedCrawl = {
+          source,
+          tag: primaryResolvedTag,
+          mode,
+          cacheKey: makeCacheKey(source, primaryResolvedTag, mode),
+          count: accumWorks.size,
+          total: knownTotalPosts,
+          oldestDate: computeOldestDate(),
+          newestDate: computeNewestDate(),
+          record: savedOnInterrupt || state.rawDataset
+        };
+        const btn = $('preflightResumeBtn');
+        if (btn) btn.textContent = `接着采集 (从 ${accumWorks.size.toLocaleString()} 作继续)`;
+        const reason = err.name === 'AbortError' ? '已手动暂停' : `采样中断 (${err.message})`;
+        const totPart = knownTotalPosts > 0 ? ` / 全站 ${knownTotalPosts.toLocaleString()}` : '';
+        showPreflightBanner(
+          `${reason}：已保留 [${primaryResolvedTag}] ${accumWorks.size.toLocaleString()}${totPart} 件样本（最旧至 ${computeOldestDate() || '—'}），可直接「接着采集」断点续采，或「清空重采」：`,
+          false,
+          true
+        );
+      }
       if (err.name === 'AbortError') {
-        flushDataset(true, false);
-        await checkpointToIndexedDb(true);
-        showToast(`已停止翻页并保存当前 ${accumWorks.size.toLocaleString()} 件样本至本地缓存（可在「缓存」中随时续采）`);
+        showToast(`已停止翻页并保留 ${accumWorks.size.toLocaleString()} 件样本（可点「接着采集」续采或「清空重采」）`);
       } else {
-        showToast(`采样中断: ${err.message}`);
+        showToast(`采样中断: ${err.message}（已保留 ${accumWorks.size.toLocaleString()} 件样本）`);
       }
     } finally {
+      if (bgTimerWorker) { try { bgTimerWorker.terminate(); } catch (_) {} }
       state.activeStreamAbort = null;
       analyzeBtn.disabled = false;
       stopBtn.classList.add('hidden');
@@ -4730,7 +5141,24 @@
         const headers = state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {};
         const src = state.source || 'pixiv';
         let list = [];
-        if (API_BASE && (src === 'danbooru' || src === 'sankaku')) {
+        // Prefer direct Chrome Userscript Pixiv official /rpc/cps.php (100% identical to original Pixiv Romaji/Kanji/ZH/EN autocomplete!)
+        if (src === 'pixiv' && state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function') {
+          try {
+            const cps = await window._pixezBridgeFetch(
+              `https://www.pixiv.net/rpc/cps.php?keyword=${encodeURIComponent(q)}&lang=zh`,
+              { timeout: 5000 }
+            );
+            if (Array.isArray(cps?.json?.candidates) && cps.json.candidates.length > 0) {
+              list = cps.json.candidates.map((c) => ({
+                tag_name: c.tag_name || '',
+                tag_translation: c.tag_translation || '',
+                access_count: c.access_count || '',
+                type: c.type || ''
+              }));
+            }
+          } catch (_) {}
+        }
+        if (!list.length && API_BASE && (src === 'danbooru' || src === 'sankaku')) {
           list = await directBrowserAutocomplete(src, q).catch(() => []);
         }
         if (!list.length) {
@@ -4956,6 +5384,44 @@
     $('preflightCap50Btn')?.addEventListener('click', () => runPendingPreflight('50'));
     $('preflightCap100Btn')?.addEventListener('click', () => runPendingPreflight('100'));
     $('preflightCancelBtn')?.addEventListener('click', hidePreflightBanner);
+    $('preflightResumeBtn')?.addEventListener('click', async () => {
+      const ic = state.interruptedCrawl;
+      if (!ic) return;
+      let rec = ic.record;
+      try {
+        const dbRec = await PulseCacheDB.get(ic.cacheKey);
+        if (dbRec && Array.isArray(dbRec.artworks) && dbRec.artworks.length >= (rec?.artworks?.length || 0)) {
+          rec = dbRec;
+        }
+      } catch (_) {}
+      hidePreflightBanner();
+      const curDepth = $('pagesSelect')?.value || 'ALL';
+      const resumeDepth = (curDepth === 'ALL' || curDepth === 'CUSTOM' || curDepth === 'DATE_RANGE') ? curDepth : 'ALL';
+      if (resumeDepth === 'ALL' && $('pagesSelect')) {
+        $('pagesSelect').value = 'ALL';
+        syncCustomSelects();
+      }
+      executeAnalysis(ic.tag, {
+        source: ic.source,
+        resumeFromCache: rec,
+        overridePages: resumeDepth,
+        skipConfirm: true
+      });
+    });
+    $('preflightClearRestartBtn')?.addEventListener('click', async () => {
+      const ic = state.interruptedCrawl;
+      if (!ic) return;
+      state.interruptedCrawl = null;
+      state.rawDataset = null;
+      try { await PulseCacheDB.del(ic.cacheKey); refreshCacheBadge(); } catch (_) {}
+      hidePreflightBanner();
+      showToast(`已清空 [${ic.tag}] 中断样本，开始重新采集...`);
+      executeAnalysis(ic.tag, {
+        source: ic.source,
+        freshRestart: true,
+        skipConfirm: true
+      });
+    });
 
     // Tag Inspector Sort, Type Filter & Load More
     $('modalArtworksSortSelect')?.addEventListener('change', () => {

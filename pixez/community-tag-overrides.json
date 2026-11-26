@@ -1,5 +1,11 @@
 {
   "schema": "madeinmagius-tag-overrides/v1",
-  "updatedAt": "2026-11-26T04:30:00Z",
-  "overrides": {}
+  "updatedAt": "2026-11-26T07:55:25.593Z",
+  "overrides": {
+    "皮伸ばし": {
+      "from": "character",
+      "to": "attribute_xp",
+      "updatedAt": "2026-11-26T07:55:25.593Z"
+    }
+  }
 }

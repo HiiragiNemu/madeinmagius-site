@@ -410,12 +410,21 @@
     <!-- =================================================================== -->
     <div id="networkView" class="view-container hidden">
       <section class="panel network-panel">
-        <div class="canvas-stage" id="networkCanvasFrame">
-          <canvas id="networkCanvas" width="980" height="480"></canvas>
-          <div class="network-node-hud hidden" id="nodeDetailContent"></div>
-        </div>
-        <!-- Exact Bottom Control Bar from magireco-call-search-cn Screenshot 7 -->
+        <!-- Top Control Bar: Node Count Slider (5~40), Display Toggles & Canvas Controls immediately visible -->
         <div class="network-bottom-controls">
+          <div class="network-ctrl-row">
+            <label class="threshold-node" title="拓扑图显示节点数量（5 ~ 40，拖动拨杆实时增减）">
+              <span>节点数</span>
+              <input type="range" id="graphNodeLimitRange" min="5" max="40" value="20" step="1" />
+              <strong id="graphNodeLimitVal">20</strong>
+            </label>
+            <label class="check-node"><input type="checkbox" id="graphShowAvatarCheck" checked /><span>角色头像气泡</span></label>
+            <label class="check-node"><input type="checkbox" id="graphShowJpCheck" checked /><span>日文</span></label>
+            <label class="check-node"><input type="checkbox" id="graphShowBooruCheck" checked /><span>罗马音/Booru</span></label>
+            <label class="check-node"><input type="checkbox" id="graphShowZhCheck" checked /><span>中文</span></label>
+            <button class="t-btn t-btn--sm t-btn--primary" id="saveGraphImageBtn" type="button">保存为图片</button>
+            <button class="t-btn t-btn--sm" id="resetGraphZoomBtn" type="button">重置视图</button>
+          </div>
           <div class="network-ctrl-row">
             <span>画布尺寸: 宽</span>
             <input type="number" id="canvasWidthInput" class="net-num-input" value="100" min="30" max="2400" />
@@ -424,24 +433,14 @@
               <option value="px">px</option>
             </select>
             <span>× 高</span>
-            <input type="number" id="canvasHeightInput" class="net-num-input" value="480" min="240" max="1600" />
+            <input type="number" id="canvasHeightInput" class="net-num-input" value="520" min="240" max="1600" />
             <span>px</span>
             <button class="t-btn t-btn--sm" id="applyCanvasSizeBtn" type="button">设置</button>
-            <button class="t-btn t-btn--sm t-btn--primary" id="saveGraphImageBtn" type="button">保存为图片</button>
-            <button class="t-btn t-btn--sm" id="resetGraphZoomBtn" type="button">重置视图</button>
           </div>
-          <div class="network-ctrl-row">
-            <span>显示:</span>
-            <label class="check-node"><input type="checkbox" id="graphShowAvatarCheck" checked /><span>角色头像气泡</span></label>
-            <label class="check-node"><input type="checkbox" id="graphShowJpCheck" checked /><span>日文</span></label>
-            <label class="check-node"><input type="checkbox" id="graphShowBooruCheck" checked /><span>罗马音/Booru</span></label>
-            <label class="check-node"><input type="checkbox" id="graphShowZhCheck" checked /><span>中文</span></label>
-            <label class="threshold-node">
-              <span>节点数</span>
-              <input type="range" id="graphNodeLimitRange" min="10" max="60" value="28" />
-              <strong id="graphNodeLimitVal">28</strong>
-            </label>
-          </div>
+        </div>
+        <div class="canvas-stage" id="networkCanvasFrame">
+          <canvas id="networkCanvas" width="980" height="520"></canvas>
+          <div class="network-node-hud hidden" id="nodeDetailContent"></div>
         </div>
       </section>
     </div>
@@ -1094,6 +1093,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.15"></script>
+  <script src="./app.js?v=4.16"></script>
 </body>
 </html>

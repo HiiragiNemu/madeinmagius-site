@@ -2694,7 +2694,7 @@
           } else {
             hasMore = false;
           }
-        } else if (isAllMode && source === 'pixiv' && lastEngine === 'HIBI-APP-API' && !didHibiReverseSegment && accumWorks.size >= 4200 && activeOrder === 'date_d') {
+        } else if (isAllMode && source === 'pixiv' && lastEngine === 'HIBI-APP-API' && !didHibiReverseSegment && (chunkNextPage > 160 || accumWorks.size >= 4200) && activeOrder === 'date_d') {
           // Guest HibiAPI dual-segment: save newest ~5,000 to local cache and also merge oldest ~5,000 (up to 10,000 works!)
           await checkpointToIndexedDb(true);
           didHibiReverseSegment = true;

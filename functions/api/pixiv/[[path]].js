@@ -181,6 +181,24 @@ function pixivPathTag(tag) {
 }
 
 async function fetchAppApiFallbackSearch({ word, mode = 'partial_match_for_tags', order = 'date_desc', page = 1 }) {
+  // Prefer HibiAPI (its account returns R-18 + AI with search_ai_type=0); Pixiviz relay has neither, so it is only a last resort.
+  const pixivizPromise = fetchJsonSafe(
+    `${PIXIVIZ_APP_API}/illust/search?word=${encodeURIComponent(word)}&page=${page}`,
+    { 'User-Agent': DEFAULT_UA, Accept: 'application/json', Referer: 'https://pixiviz.pwp.app/' },
+    4500
+  );
+  const hibi = await fetchJsonSafe(
+    `${HIBI_BASE}/search?word=${encodeURIComponent(word)}&mode=${encodeURIComponent(mode)}&order=${encodeURIComponent(order)}&search_ai_type=0&page=${page}&size=30&include_translated_tag_results=true`,
+    hibiHeaders(),
+    8000
+  );
+  if (hibi && Array.isArray(hibi.illusts) && hibi.illusts.length > 0) return { engine: 'HIBI-APP-API', data: hibi };
+  const pv = await pixivizPromise;
+  if (pv && Array.isArray(pv.illusts) && pv.illusts.length > 0) return { engine: 'PIXIVIZ-RELAY', data: pv };
+  return null;
+}
+
+async function fetchAppApiFallbackSearchLegacyRace({ word, mode = 'partial_match_for_tags', order = 'date_desc', page = 1 }) {
   // Race fast Pixiviz relay + HibiAPI (both with tight 4.5s timeout so Workers never stall!)
   const racers = [
     fetchJsonSafe(
@@ -1052,7 +1070,7 @@ export async function onRequest(context) {
     return jsonResponse({ oauth, appApi, mirror }, 200, request);
   }
   if (subPath === 'status' || subPath === '') {
-    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.7' }, 200, request);
+    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.8' }, 200, request);
   }
 
   // 0B. Danbooru semantic taxonomy batch enrichment (/api/pixiv/danbooru/enrich)
@@ -1081,14 +1099,26 @@ export async function onRequest(context) {
     }
 
     const hasOAuthToken = Boolean((request.headers.get('x-pixiv-token') || '').trim());
-    if (mode === 'r18' && !hasOAuthToken) {
+    // Probe HibiAPI (R-18 capable relay) in parallel with the exact-total Web AJAX lookup
+    const hibiProbePromise = mode === 'safe'
+      ? Promise.resolve(null)
+      : fetchJsonSafe(
+          `${HIBI_BASE}/search?word=${encodeURIComponent(tag)}&mode=${encodeURIComponent(mapHibiSearchMode(s_mode))}&order=date_desc&search_ai_type=0&page=1&size=30&include_translated_tag_results=true`,
+          hibiHeaders(),
+          8000
+        );
+
+    // Pixiv Strategy 1: Race Direct Pixiv Web AJAX & live PixivNow mirror (pixiv.js.org) for exact total count!
+    const ajaxPath = `/ajax/search/artworks/${pixivPathTag(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
+    const [webRace, hibiProbe] = await Promise.all([fetchPixivWebAjaxRace(ajaxPath, cookie, '', 9500), hibiProbePromise]);
+    const hibiUp = Boolean(hibiProbe && Array.isArray(hibiProbe.illusts) && hibiProbe.illusts.length > 0);
+    if (mode === 'r18' && !hibiUp && !hasOAuthToken) {
       return jsonResponse(
         {
           error: true,
-          needsAuth: true,
           source: 'pixiv',
           resolvedTag: tag,
-          message: '游客模式下 Pixiv 不返回任何 R-18 作品（上游会静默忽略 R-18 筛选）。Pixiv 同时拒绝云端节点登录，网页云端版无法统计 R-18；请使用 APK 版（直连 Pixiv 官方 App API）或电脑本地版 (localhost:3456) 登录后采集 R-18。',
+          message: 'HibiAPI（提供 R-18 数据的上游）暂时无响应，且 Pixiv 不向游客返回 R-18 作品。请稍后重试，或使用 APK 版 / 电脑本地版 (localhost:3456) 登录采集 R-18。',
         },
         200,
         request
@@ -1096,11 +1126,11 @@ export async function onRequest(context) {
     }
     const guestR18Note = hasOAuthToken
       ? '已登录：通过官方 App API 采集，包含 R-18 与 AI 作品'
-      : '游客模式：Pixiv 不向未登录访问返回 R-18 作品，R-18 占比将显示为 0；需要 R-18 统计请使用 APK 版或本地版登录（Pixiv 拒绝云端节点登录）';
-
-    // Pixiv Strategy 1: Race Direct Pixiv Web AJAX & live PixivNow mirror (pixiv.js.org) for exact total count!
-    const ajaxPath = `/ajax/search/artworks/${pixivPathTag(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
-    const webRace = await fetchPixivWebAjaxRace(ajaxPath, cookie, '', 9500);
+      : mode === 'safe'
+      ? '仅全年龄模式'
+      : hibiUp
+      ? '经 HibiAPI 采集，包含 R-18 与 AI 作品（单方向深度 5,000 件，超过时自动最新段 + 最早段合并，最多 10,000 件）'
+      : 'HibiAPI 暂时无响应，本次只能采集全年龄作品（R-18 占比将为 0）';
     if (webRace && webRace.data && !webRace.data.error && webRace.data.body) {
       const block = webRace.data.body.illustManga || webRace.data.body.illust || webRace.data.body.manga || {};
       const totalPosts = Number(block.total || 0);
@@ -1118,16 +1148,19 @@ export async function onRequest(context) {
           apiCeilingWorks: 60000,
           apiCeilingPages: 1000,
           note: `Pixiv 全站共 ${totalPosts.toLocaleString()} 件作品（约 ${estimatedPages.toLocaleString()} 页，每页 60 件，支持日期分段突破上限）。${guestR18Note}`,
-          guestNoR18: !hasOAuthToken,
+          guestNoR18: !hasOAuthToken && !hibiUp,
+          includesR18: hasOAuthToken || hibiUp,
         },
         200,
         request
       );
     }
 
-    // Pixiv Strategy 2: Fast Pixiviz/Hibi App-API relays (never use rpc/cps.php access_count, which is pageviews, not works!)
+    // Pixiv Strategy 2: HibiAPI (R-18 capable) first, then Pixiviz relay (never use rpc/cps.php access_count, which is pageviews, not works!)
     const hibiMode = mapHibiSearchMode(s_mode);
-    const appFallback = await fetchAppApiFallbackSearch({ word: tag, mode: hibiMode, order: 'date_desc', page: 1 });
+    const appFallback = hibiUp
+      ? { engine: 'HIBI-APP-API', data: hibiProbe }
+      : await fetchAppApiFallbackSearch({ word: tag, mode: hibiMode, order: 'date_desc', page: 1 });
     if (!appFallback) {
       return jsonResponse(
         {
@@ -1732,10 +1765,106 @@ export async function onRequest(context) {
           }
 
           const dateSuffix = `${startDate ? `&scd=${encodeURIComponent(startDate)}` : ''}${endDate ? `&ecd=${encodeURIComponent(endDate)}` : ''}`;
+
+          // Strategy 0B (restores pre-v4.5 behaviour): HibiAPI App API relay — its server account has R-18 enabled,
+          // so R-18 + AI (search_ai_type=0) works are included. Used for every age mode except all-ages-only.
+          // HibiAPI ignores end_date/start_date, so depth is 5,000 newest + 5,000 oldest (client dual segment).
+          if (mode !== 'safe' && !endDate && !startDate) {
+            const hibiTarget = mapHibiSearchMode(s_mode);
+            const hibiSort = order === 'date' ? 'date_asc' : 'date_desc';
+            const hibiWord = isPopOrder ? `${tag} (10000users入り OR 5000users入り OR 1000users入り OR 500users入り)` : tag;
+            const hibiUrl = (word, page) =>
+              `${HIBI_BASE}/search?word=${encodeURIComponent(word)}&mode=${encodeURIComponent(hibiTarget)}&order=${hibiSort}&search_ai_type=0&page=${page}&size=30&include_translated_tag_results=true`;
+            const hibiFetch = async (word, page) => {
+              let d = await fetchJsonSafe(hibiUrl(word, page), hibiHeaders(), 9000);
+              if (!d || !Array.isArray(d.illusts)) d = await fetchJsonSafe(hibiUrl(word, page), hibiHeaders(), 9000);
+              return d && Array.isArray(d.illusts) ? d : null;
+            };
+            let effHibiWord = hibiWord;
+            let firstHibi = await hibiFetch(effHibiWord, startPage);
+            if (isPopOrder && (!firstHibi || firstHibi.illusts.length < 10)) {
+              effHibiWord = tag;
+              firstHibi = await hibiFetch(effHibiWord, startPage);
+            }
+            if (firstHibi) {
+              engine = 'HIBI-APP-API';
+              const maxSteps = chunkPagesParam > 0 ? Math.min(20, chunkPagesParam) : 20;
+              const totalWantedSteps = isAll ? 167 : Math.min(167, (parseInt(pagesParam, 10) || 3) * 2);
+              const endStep = Math.min(totalWantedSteps, startPage + maxSteps - 1);
+              const ingestHibi = (json) => {
+                let raw = 0;
+                for (const item of json.illusts) {
+                  const w = normalizeHibiIllust(item, translations);
+                  if (!w || seenIds.has(w.id)) continue;
+                  seenIds.add(w.id);
+                  raw++;
+                  if (matchesFilters(w, mode, type)) artworks.push(w);
+                }
+                return raw;
+              };
+              ingestHibi(firstHibi);
+              pagesScanned = 1;
+              nextPage = startPage + 1;
+              let reachedEnd = !firstHibi.next_url || firstHibi.illusts.length === 0;
+              let failedAt = 0;
+              sendEvent('snapshot', { source: 'pixiv', primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
+              const batch = 3;
+              for (let pStart = startPage + 1; pStart <= endStep && !reachedEnd && !failedAt; pStart += batch) {
+                const pEnd = Math.min(endStep, pStart + batch - 1);
+                sendEvent('progress', {
+                  currentPage: pStart,
+                  totalPages: totalWantedSteps,
+                  message: `HibiAPI 采样 [${tag}] (含 R-18 / AI) 第 ${pStart}~${pEnd} 批 (本段 ${artworks.length} 作)...`,
+                });
+                const ps = [];
+                for (let p = pStart; p <= pEnd; p++) ps.push(hibiFetch(effHibiWord, p));
+                const results = await Promise.all(ps);
+                let rawInBatch = 0;
+                for (let idx = 0; idx < results.length; idx++) {
+                  const json = results[idx];
+                  if (!json) {
+                    if (!failedAt) failedAt = pStart + idx;
+                    continue;
+                  }
+                  if (failedAt) continue;
+                  pagesScanned++;
+                  nextPage = Math.max(nextPage, pStart + idx + 1);
+                  rawInBatch += ingestHibi(json);
+                  if (!json.next_url || json.illusts.length === 0) reachedEnd = true;
+                }
+                sendEvent('snapshot', { source: 'pixiv', primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
+                if (failedAt) {
+                  nextPage = failedAt;
+                  break;
+                }
+                if (rawInBatch === 0) reachedEnd = true;
+              }
+              let oldestDate = '';
+              for (const w of artworks) {
+                if (w.createDate && (!oldestDate || w.createDate < oldestDate)) oldestDate = w.createDate;
+              }
+              hasMore = Boolean(failedAt) || (!reachedEnd && nextPage <= totalWantedSteps);
+              sendEvent('complete', {
+                source: 'pixiv',
+                primaryTag: tag,
+                pixivTotal,
+                pagesScanned,
+                engine,
+                hasMore,
+                hitOffsetCeiling: false,
+                includesR18: true,
+                oldestDate: oldestDate ? oldestDate.slice(0, 10) : '',
+                nextPage,
+                artworks,
+                translations,
+              });
+              return;
+            }
+          }
+
           if (mode === 'r18') {
             sendEvent('error', {
-              needsAuth: true,
-              message: '游客模式下 Pixiv 不返回任何 R-18 作品（上游会静默忽略 R-18 筛选）。Pixiv 同时拒绝云端节点登录，网页云端版无法统计 R-18；请使用 APK 版（直连 Pixiv 官方 App API）或电脑本地版 (localhost:3456) 登录后采集 R-18。',
+              message: 'HibiAPI（提供 R-18 数据的上游）暂时无响应，且 Pixiv 不向游客返回 R-18 作品。请稍后重试，或使用 APK 版 / 电脑本地版 (localhost:3456) 登录采集 R-18。',
             });
             return;
           }

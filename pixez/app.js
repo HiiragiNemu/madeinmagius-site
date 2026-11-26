@@ -2429,6 +2429,7 @@
     let currentHibiPhase = null;
     const exhaustedHibiPairs = new Set();
     let consecutiveRateLimits = 0;
+    let consecutiveSkippedPages = 0;
     let hasMore = true;
     let chunkIndex = 0;
     let lastSnapshotRenderAt = 0;
@@ -2865,25 +2866,43 @@
         }
 
         const newlyAddedInChunk = accumWorks.size - beforeChunkSize;
-        if (newlyAddedInChunk > 0) consecutiveRateLimits = 0;
+        if (newlyAddedInChunk > 0) {
+          consecutiveRateLimits = 0;
+          consecutiveSkippedPages = 0;
+        }
+        // Keep knownTotalPosts >= accumWorks.size (guest Web AJAX total can undercount R-18 works!)
+        if (accumWorks.size > knownTotalPosts) knownTotalPosts = accumWorks.size;
 
-        // 1) Upstream rate-limit cooldown & seamless retry (NEVER abandon crawl on Rate Limit!)
-        if (chunkHasMore && chunkRateLimited && consecutiveRateLimits < 8 && (isAllMode || totalPagesScanned < requestedMaxPages)) {
+        // 1) Upstream rate-limit cooldown & cached-error page skip (HibiAPI caches 429 JSON per page!)
+        if (chunkHasMore && chunkRateLimited && (isAllMode || totalPagesScanned < requestedMaxPages)) {
           consecutiveRateLimits++;
-          const waitMs = Math.min(20000, chunkRetryAfterMs * Math.min(3, consecutiveRateLimits));
-          const waitSec = Math.round(waitMs / 1000);
-          progressText.textContent = `[${srcMeta.label}]${activePhaseLabel ? ` [${activePhaseLabel}]` : ''} 上游限流，冷却 ${waitSec}s 后自动续采第 ${chunkNextPage} 页 (已采 ${accumWorks.size.toLocaleString()}${knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : ''} 作)...`;
-          await abortableSleep(waitMs);
-          startPage = chunkNextPage;
-          cursor = chunkNextCursor;
-        } else if (chunkHasMore && (newlyAddedInChunk > 0 || activePhaseLabel) && (isAllMode || totalPagesScanned < requestedMaxPages)) {
-          // Continue next pages of the current segment (even if a partition chunk overlapped existing works, keep going up to its end!)
-          if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 10) {
-            hasMore = false;
-          } else {
+          if (consecutiveRateLimits <= 2) {
+            const waitMs = Math.min(8000, chunkRetryAfterMs * consecutiveRateLimits);
+            const waitSec = Math.round(waitMs / 1000);
+            progressText.textContent = `[${srcMeta.label}]${activePhaseLabel ? ` [${activePhaseLabel}]` : ''} 上游限流，冷却 ${waitSec}s 后自动续采第 ${chunkNextPage} 页 (已采 ${accumWorks.size.toLocaleString()} 作)...`;
+            await abortableSleep(waitMs);
             startPage = chunkNextPage;
             cursor = chunkNextCursor;
+          } else if (lastEngine === 'HIBI-APP-API' && chunkNextPage < 167 && consecutiveSkippedPages < 3) {
+            // HibiAPI often caches a single page's Rate Limit error in Redis — skip that 1 page and continue!
+            consecutiveSkippedPages++;
+            consecutiveRateLimits = 0;
+            startPage = chunkNextPage + 1;
+            cursor = chunkNextCursor;
+            progressText.textContent = `[${srcMeta.label}]${activePhaseLabel ? ` [${activePhaseLabel}]` : ''} 跳过上游异常缓存页 ${chunkNextPage}，继续采集第 ${startPage} 页...`;
+            await abortableSleep(1500);
+          } else {
+            // Fall through to next partition cleanly if upstream is genuinely rate-limiting this whole query
+            chunkHasMore = false;
+            consecutiveRateLimits = 0;
+            consecutiveSkippedPages = 0;
           }
+        }
+        if (chunkHasMore && chunkRateLimited) {
+          // Already handled above (retrying or skipping)
+        } else if (chunkHasMore && (newlyAddedInChunk > 0 || activePhaseLabel) && (isAllMode || totalPagesScanned < requestedMaxPages)) {
+          startPage = chunkNextPage;
+          cursor = chunkNextCursor;
         } else if (
           (isAllMode || totalPagesScanned < requestedMaxPages) &&
           source === 'pixiv' &&
@@ -2919,38 +2938,35 @@
             // This date_d partition finished under 4,800 works -> 100% captured, skip its paired date_asc pass!
             exhaustedHibiPairs.add(currentHibiPhase.pairKey);
           }
-          if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 10) {
-            hasMore = false;
+          if (!hibiQueue) {
+            // Start extra partitions whenever tag could exceed single-direction 5,000 cap
+            const needMore =
+              chunkNextPage > 155 ||
+              accumWorks.size >= 3800 ||
+              (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts - 30);
+            hibiQueue = needMore ? buildHibiPartitionQueue(primaryResolvedTag, order, mode) : [];
+          }
+          let nextPhase = null;
+          while (hibiQueue.length > 0) {
+            const cand = hibiQueue.shift();
+            if (cand.pairOf && exhaustedHibiPairs.has(cand.pairOf)) continue;
+            nextPhase = cand;
+            break;
+          }
+          if (nextPhase) {
+            await checkpointToIndexedDb(true);
+            currentHibiPhase = nextPhase;
+            activeQueryTag = nextPhase.tag;
+            activeOrder = nextPhase.order;
+            activeAiFilter = nextPhase.aiFilter;
+            activePhaseLabel = nextPhase.label;
+            startPage = 1;
+            consecutiveRateLimits = 0;
+            consecutiveSkippedPages = 0;
+            showToast(`已缓存 ${accumWorks.size.toLocaleString()} 作，自动切换分段 [${nextPhase.label}] 继续全量合并...`, 3000);
+            await abortableSleep(1200);
           } else {
-            if (!hibiQueue) {
-              // Only start extra partitions if we haven't already fetched the entire tag
-              const needMore =
-                (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts - 30) ||
-                chunkNextPage > 160 ||
-                accumWorks.size >= 4500;
-              hibiQueue = needMore ? buildHibiPartitionQueue(primaryResolvedTag, order, mode) : [];
-            }
-            let nextPhase = null;
-            while (hibiQueue.length > 0) {
-              const cand = hibiQueue.shift();
-              if (cand.pairOf && exhaustedHibiPairs.has(cand.pairOf)) continue;
-              nextPhase = cand;
-              break;
-            }
-            if (nextPhase) {
-              await checkpointToIndexedDb(true);
-              currentHibiPhase = nextPhase;
-              activeQueryTag = nextPhase.tag;
-              activeOrder = nextPhase.order;
-              activeAiFilter = nextPhase.aiFilter;
-              activePhaseLabel = nextPhase.label;
-              startPage = 1;
-              consecutiveRateLimits = 0;
-              showToast(`已缓存 ${accumWorks.size.toLocaleString()} 作，自动切换分段 [${nextPhase.label}] 继续全量合并...`, 3000);
-              await abortableSleep(1200);
-            } else {
-              hasMore = false;
-            }
+            hasMore = false;
           }
         } else {
           hasMore = false;

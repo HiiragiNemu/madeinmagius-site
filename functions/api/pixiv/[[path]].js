@@ -1129,7 +1129,7 @@ export async function onRequest(context) {
       : mode === 'safe'
       ? '仅全年龄模式（支持日期分段突破上限）'
       : hibiUp
-      ? '经 HibiAPI 采集，完整包含 R-18 与 AI 作品（支持最新+最早+R-18/全年龄分片合并，最高 20,000 作 + 本地 1GB 缓存）'
+      ? '经 HibiAPI 采集，完整包含 R-18 与 AI 作品（支持最新+最早+四象限全量分片合并，最高 40,000+ 作 + 本地 1GB 缓存）'
       : 'HibiAPI 暂时无响应，本次只能采集全年龄作品（R-18 占比将为 0）';
     if (webRace && webRace.data && !webRace.data.error && webRace.data.body) {
       const block = webRace.data.body.illustManga || webRace.data.body.illust || webRace.data.body.manga || {};

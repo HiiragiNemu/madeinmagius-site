@@ -585,7 +585,7 @@ export function renderContent(programId, subId, data) {
         '<p>内置全量历史页面流式采样、角色/属性/作品独立分类统计、Danbooru 英文词条映射、角色头像气泡共现拓扑图（支持一键保存 PNG 图片）以及纸张/明亮/护眼/夜间/冷辉 5 套可固定/悬浮切换主题。</p>' +
         '<div class="download-stack">' +
         '<article class="download-card"><h3>PIXEZ PULSE WEB TERMINAL v4.1</h3>' +
-        '<p>支持纯标签、<code>/search?q=</code> 与 <code>/tags/</code> 全格式链接，内置 Pixiv 联想补全，作品图片与光学扫描线/网格严格隔离。</p>' +
+        '<p>支持纯标签、<code>/search?q=</code> 与 <code>/tags/</code> 全格式链接，内置 Pixiv 联想补全。</p>' +
         '<p class="meta-line">./pixez/</p>' +
         '<a class="download-button" href="./pixez/" target="_blank" rel="noopener noreferrer">打开网页版入口 ↗</a>' +
         '</article></div>';

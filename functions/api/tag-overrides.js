@@ -25,15 +25,8 @@ const CATEGORY_LABELS = {
 
 const SEED_FALLBACK = {
   schema: 'madeinmagius-tag-overrides/v1',
-  updatedAt: '2026-11-26T03:42:00Z',
-  overrides: {
-    '臭がる': {
-      from: 'character',
-      to: 'attribute_xp',
-      note: '日语送假名动词/形容词非角色名',
-      updatedAt: '2026-11-26T03:42:00Z',
-    },
-  },
+  updatedAt: '2026-11-26T04:30:00Z',
+  overrides: {},
 };
 
 function corsHeaders(extra = {}) {

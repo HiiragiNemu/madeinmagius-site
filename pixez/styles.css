@@ -3647,3 +3647,18 @@ a, a:hover, a:focus-visible {
   color: var(--t-accent);
   text-decoration: underline;
 }
+.gallery-pagination-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 10px 6px;
+  border-top: 1px solid var(--t-border);
+  margin-top: 10px;
+}
+.gallery-pager-info {
+  font-size: 12px;
+  color: var(--t-text-muted);
+  padding: 0 6px;
+}

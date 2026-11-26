@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.1.4',
-  versionCode: 10010240,
+  version: '2.1.5',
+  versionCode: 10010250,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
   size: 55331920,
   sha256: '5afcaa3ca4b37ee01db448e5b06c28fab3ba18896c65777ca5197c1f36dd3f7b',
   releaseNotes:
-    'PixEz Pulse v2.1.4：修复「臭がる」等日语送假名动词/形容词误判为角色；词表页新增「我的分类纠错记录（原分类→修正为/还原/JSON导入导出）」与 Plan A 全站公共纠错词表自动同步、免口令提交待审建议与管理员口令直推全站；并完整包含 v2.1.3 采前总数基准探测与全量确认弹窗、中断后「接着采集/清空重采」、登录态 R-18 双开关、按时间范围深度、拓扑 5~40 拨杆与 Pixiv 官方 CPS 罗马音。',
+    'PixEz Pulse v2.1.5：修复画廊万图级严重卡顿并新增真分页（36/60/120作每页 + 首页/上页/跳页/下页/末页）与采集中画廊防抖锁定；修复切换至原版搜索/首页等标签页返回后共现采样被中断丢失问题（后台持久会话保活）；修复进度条分母低于当前页码与全年龄基准数值误覆盖问题；并包含日语送假名谓词批量防误判、本地分类纠错记录及 Plan A 全站公共词表同步/待审建议/口令直推。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

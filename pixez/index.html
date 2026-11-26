@@ -403,9 +403,15 @@
               <option value="bmk_asc">人气/收藏: 由低到高</option>
               <option value="page_desc">多P页数: 由多到少</option>
             </select>
+            <select id="galleryPageSizeSelect" class="t-select-sm js-custom-select" title="每页显示作品数">
+              <option value="36">36作/页</option>
+              <option value="60" selected>60作/页</option>
+              <option value="120">120作/页</option>
+            </select>
           </div>
         </div>
         <div class="artwork-grid" id="artworkGalleryGrid"></div>
+        <div class="gallery-pagination-bar hidden" id="galleryPaginationBar"></div>
       </section>
     </div>
 
@@ -510,7 +516,7 @@
       </header>
       <div class="call-fx-body-v7">
         <p class="call-fx-intro-v7">
-          当前主题：<strong id="fxCurrentThemeLabel">纸张</strong>。采用 MagiReader / Call v14 真实静态光学与玻璃质感；设置按主题保存。（所有作品图片均已光学隔离）
+          当前主题：<strong id="fxCurrentThemeLabel">纸张</strong>。样式设置按主题独立保存。
         </p>
 
         <fieldset id="fxPhosphorFieldset" hidden>
@@ -713,7 +719,7 @@
         </div>
         <div class="inspector-section">
           <div class="inspector-section__head inspector-section__head--toolbar">
-            <span>同时包含这两个标签的采样作品 (<span id="modalArtworkCount">0</span> 件 // 纯净原图无网格遮挡):</span>
+            <span>同时包含这两个标签的采样作品 (<span id="modalArtworkCount">0</span> 件):</span>
             <div class="inspector-sort-controls">
               <select id="modalArtworksSortSelect" class="t-select-sm">
                 <option value="date_desc">时间: 由近到远 (最新)</option>
@@ -866,7 +872,7 @@
             </div>
           </div>
           <div class="correction-log-list" id="correctionLogList">
-            <div class="empty-placeholder">暂无本地分类纠错记录。点击共现排行中任意标签的分类徽标（如把「臭がる」从 角色 改为 属性），系统会自动记录「原分类 → 现分类」并永久保存在本地。</div>
+            <div class="empty-placeholder">暂无本地分类纠错记录。点击共现排行中任意标签的分类徽标进行改类后，系统会自动记录「原分类 → 现分类」并永久保存在本地。</div>
           </div>
           <div class="curation-actions-bar">
             <div class="curation-action-group">
@@ -1128,6 +1134,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.19"></script>
+  <script src="./app.js?v=4.20"></script>
 </body>
 </html>

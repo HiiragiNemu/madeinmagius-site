@@ -1883,9 +1883,8 @@ export async function onRequest(context) {
               let failedAt = 0;
               let hitRateLimit = false;
               sendEvent('snapshot', { source: 'pixiv', primaryTag: tag, pixivTotal, pagesScanned, engine, artworks, translations });
-              const batch = 2;
+              const batch = 3;
               for (let pStart = startPage + 1; pStart <= endStep && !reachedEnd && !failedAt; pStart += batch) {
-                await sleepMs(260);
                 const pEnd = Math.min(endStep, pStart + batch - 1);
                 sendEvent('progress', {
                   currentPage: pStart,

@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.1.6',
-  versionCode: 10010260,
+  version: '2.1.7',
+  versionCode: 10010270,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55361712,
-  sha256: 'e01a88b3f3c62af556a9882ae0465851fd96b33b2c4659767bc05acaf4e15d11',
+  size: 55361384,
+  sha256: '906e945117347e88966adaf00c205f3641de0f1ecdcb13917eb8d94bcf1c7a62',
   releaseNotes:
-    'PixEz Pulse v2.1.6：点击联想候选词、历史记录、看图器标签或键盘回车仅填入标签，仅点击「开始采样」后才开始探测与抓取，并新增联想内存缓存与 320ms 防抖；完整包含万图画廊真分页（36/60/120作每页+跳页）与采集中防抖锁定、切页后台持续采集不中断、进度条与全年龄基准计数修复及 Plan A 全站公共词表。',
+    'PixEz Pulse v2.1.7：修复从本地缓存载入不同标签时残留前标签基准与必含筛选状态的问题并同步后台会话；修复更新器取消下载生命周期保护；完整包含点击防误触、万图画廊真分页（36/60/120作每页+跳页）与采集中锁定、切页后台持续采集不中断、精准进度显示与 Plan A 全站公共纠错词表。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

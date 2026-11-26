@@ -1137,17 +1137,82 @@
     });
   }
 
+  // Compact Hepburn Kana -> Romaji converter for Japanese tags missing Pixiv/Danbooru translations
+  const KANA_DIGRAPHS = {
+    きゃ:'kya',きゅ:'kyu',きょ:'kyo',しゃ:'sha',しゅ:'shu',しょ:'sho',ちゃ:'cha',ちゅ:'chu',ちょ:'cho',
+    にゃ:'nya',にゅ:'nyu',にょ:'nyo',ひゃ:'hya',ひゅ:'hyu',ひょ:'hyo',みゃ:'mya',みゅ:'myu',みょ:'myo',
+    りゃ:'rya',りゅ:'ryu',りょ:'ryo',ぎゃ:'gya',ぎゅ:'gyu',ぎょ:'gyo',じゃ:'ja',じゅ:'ju',じょ:'jo',
+    びゃ:'bya',びゅ:'byu',びょ:'byo',ぴゃ:'pya',ぴゅ:'pyu',ぴょ:'pyo',
+    ふぁ:'fa',ふぃ:'fi',ふぇ:'fe',ふぉ:'fo',てぃ:'ti',でぃ:'di',うぃ:'wi',うぇ:'we',うぉ:'wo',
+    ゔぁ:'va',ゔぃ:'vi',ゔぇ:'ve',ゔぉ:'vo',しぇ:'she',ちぇ:'che',じぇ:'je',つぁ:'tsa',つぇ:'tse',つぉ:'tso'
+  };
+  const KANA_SINGLE = {
+    あ:'a',い:'i',う:'u',え:'e',お:'o',か:'ka',き:'ki',く:'ku',け:'ke',こ:'ko',
+    さ:'sa',し:'shi',す:'su',せ:'se',そ:'so',た:'ta',ち:'chi',つ:'tsu',て:'te',と:'to',
+    な:'na',に:'ni',ぬ:'nu',ね:'ne',の:'no',は:'ha',ひ:'hi',ふ:'fu',へ:'he',ほ:'ho',
+    ま:'ma',み:'mi',む:'mu',め:'me',も:'mo',や:'ya',ゆ:'yu',よ:'yo',
+    ら:'ra',り:'ri',る:'ru',れ:'re',ろ:'ro',わ:'wa',ゐ:'wi',ゑ:'we',を:'wo',ん:'n',
+    が:'ga',ぎ:'gi',ぐ:'gu',げ:'ge',ご:'go',ざ:'za',じ:'ji',ず:'zu',ぜ:'ze',ぞ:'zo',
+    だ:'da',ぢ:'ji',づ:'zu',で:'de',ど:'do',ば:'ba',び:'bi',ぶ:'bu',べ:'be',ぼ:'bo',
+    ぱ:'pa',ぴ:'pi',ぷ:'pu',ぺ:'pe',ぽ:'po',ゔ:'vu',
+    ぁ:'a',ぃ:'i',ぅ:'u',ぇ:'e',ぉ:'o',ゃ:'ya',ゅ:'yu',ょ:'yo',ゎ:'wa'
+  };
+  function kanaToRomaji(raw) {
+    const s = String(raw || '').trim();
+    // Only transliterate pure Kana (+ punctuation/middle-dot/ASCII) so Kanji compounds aren't mangled
+    if (!s || /[\u4E00-\u9FFF]/.test(s) || !/[\u3040-\u30FF]/.test(s)) return '';
+    // Normalize Katakana -> Hiragana
+    const hira = s.replace(/[\u30A1-\u30F6]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+    let out = '';
+    for (let i = 0; i < hira.length; i++) {
+      const c = hira[i];
+      if (c === 'っ') {
+        const next2 = KANA_DIGRAPHS[hira.slice(i + 1, i + 3)] || KANA_SINGLE[hira[i + 1]] || '';
+        if (next2) out += next2[0] === 'c' ? 't' : next2[0];
+        continue;
+      }
+      if (c === 'ー') {
+        const last = out[out.length - 1];
+        if (last && 'aeiou'.includes(last)) out += last;
+        continue;
+      }
+      if (c === '・' || c === '·' || c === '　') {
+        out += ' ';
+        continue;
+      }
+      const pair = hira.slice(i, i + 2);
+      if (KANA_DIGRAPHS[pair]) {
+        out += KANA_DIGRAPHS[pair];
+        i++;
+      } else if (KANA_SINGLE[c]) {
+        out += KANA_SINGLE[c];
+      } else {
+        out += c;
+      }
+    }
+    return out.replace(/\s+/g, ' ').trim();
+  }
+
   function renderTable(scopedList) {
     const tbody = $('coTagTableBody');
     const keyword = $('tableFilterInput').value.trim().toLowerCase();
 
-    const filtered = scopedList.filter((item) => {
+    // Stamp TRUE original rank BEFORE applying search filter so searched tags keep their real rank!
+    let origRankSeq = 0;
+    const rankedAll = scopedList.map((item) => ({
+      item,
+      origRank: item.isPinnedLocked ? 0 : ++origRankSeq
+    }));
+
+    const filtered = rankedAll.filter(({ item }) => {
       if (item.isPinnedLocked) return true;
       if (keyword) {
         const matchTag = item.tag.toLowerCase().includes(keyword);
         const matchTr = (item.translation || '').toLowerCase().includes(keyword);
         const matchDb = (item.danbooruTag || '').toLowerCase().includes(keyword);
-        if (!matchTag && !matchTr && !matchDb) return false;
+        const rom = !item.translation && !item.danbooruTag ? kanaToRomaji(item.tag).toLowerCase() : '';
+        const matchRom = rom && rom.includes(keyword);
+        if (!matchTag && !matchTr && !matchDb && !matchRom) return false;
       }
       return true;
     });
@@ -1157,17 +1222,19 @@
       return;
     }
 
-    const maxCount = filtered[0].count || 1;
-    let unlockedRank = 0;
+    const firstUnlocked = scopedList.find((x) => !x.isPinnedLocked) || scopedList[0];
+    const maxCount = (firstUnlocked && firstUnlocked.count) || filtered[0].item.count || 1;
 
     const visibleRows = filtered.slice(0, state.tableDisplayLimit);
     const hasMore = filtered.length > visibleRows.length;
 
+    // On-demand Danbooru Wiki enrichment for ALL currently visible / searched rows (even rank #300 ~ #5000!)
+    scheduleVisibleDanbooruEnrich(visibleRows.map((e) => e.item));
+
     tbody.innerHTML = visibleRows
-      .map((item) => {
-        if (!item.isPinnedLocked) unlockedRank++;
-        const rankBadgeClass = !item.isPinnedLocked && unlockedRank <= 3 ? `top-${unlockedRank}` : '';
-        const rankLabel = item.isPinnedLocked ? '锁' : String(unlockedRank).padStart(2, '0');
+      .map(({ item, origRank }) => {
+        const rankBadgeClass = !item.isPinnedLocked && origRank <= 3 ? `top-${origRank}` : '';
+        const rankLabel = item.isPinnedLocked ? '锁' : String(origRank).padStart(2, '0');
 
         const catInfo = CATEGORY_META[item.category] || CATEGORY_META.meta_general;
         const barW = Math.max(3, Math.round((item.count / maxCount) * 100));
@@ -1189,6 +1256,13 @@
           )
           .join('');
 
+        const dbCacheEntry = state.danbooruCache[item.tag];
+        const fallbackRomaji = !item.translation && !item.danbooruTag ? kanaToRomaji(item.tag) : '';
+        const displayTrans =
+          item.translation ||
+          dbCacheEntry?.zhAlias ||
+          (item.danbooruTag ? item.danbooruTag.replace(/_/g, ' ') : '') ||
+          fallbackRomaji;
         const dbBadgeHtml = item.danbooruTag
           ? `<a class="danbooru-badge" href="https://danbooru.donmai.us/posts?tags=${encodeURIComponent(item.danbooruTag)}" target="_blank" rel="noopener" title="Danbooru / NovelAI 英文词条">${escapeHtml(item.danbooruTag)}</a>`
           : '';
@@ -1199,7 +1273,7 @@
             <td class="col-tag">
               <div class="tag-cell-main">
                 <span class="tag-name-link" data-inspect="${escapeHtml(item.tag)}">${escapeHtml(item.tag)}</span>
-                ${item.translation ? `<span class="tag-trans-badge">${escapeHtml(item.translation)}</span>` : ''}
+                ${displayTrans && displayTrans.toLowerCase() !== item.tag.toLowerCase() ? `<span class="tag-trans-badge">${escapeHtml(displayTrans)}</span>` : ''}
                 ${dbBadgeHtml}
                 ${thirdMobileHtml ? `<div class="inline-third-mobile">${thirdMobileHtml}</div>` : ''}
               </div>
@@ -1789,6 +1863,131 @@
     if (acts) acts.classList.toggle('hidden', !needsConfirm);
   }
 
+  const _danbooruQueriedTags = new Set();
+  let _visibleEnrichTimer = null;
+
+  function scheduleVisibleDanbooruEnrich(visibleItems) {
+    if (!Array.isArray(visibleItems) || !visibleItems.length) return;
+    const src = state.rawDataset?.source || state.source || 'pixiv';
+    if (!['pixiv', 'safebooru', 'zerochan', 'rule34'].includes(src)) return;
+    const missing = [];
+    for (const item of visibleItems) {
+      const t = item?.tag;
+      if (!t || /\d+users入り$/i.test(t) || /\s/.test(t)) continue;
+      if (state.danbooruCache[t] || _danbooruQueriedTags.has(t)) continue;
+      missing.push(t);
+      if (missing.length >= 75) break;
+    }
+    if (!missing.length) return;
+    if (_visibleEnrichTimer) clearTimeout(_visibleEnrichTimer);
+    _visibleEnrichTimer = setTimeout(() => {
+      _visibleEnrichTimer = null;
+      enrichTagListViaDanbooru(missing);
+    }, 220);
+  }
+
+  async function enrichTagListViaDanbooru(tagList) {
+    const todo = [];
+    for (const t of tagList || []) {
+      if (!t || /\d+users入り$/i.test(t) || /\s/.test(t)) continue;
+      if (state.danbooruCache[t] || _danbooruQueriedTags.has(t)) continue;
+      _danbooruQueriedTags.add(t);
+      todo.push(t);
+    }
+    if (!todo.length) return;
+    let map = {};
+    try {
+      const r = await apiFetch('/api/danbooru/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: todo.slice(0, 100) })
+      });
+      if (r.ok) {
+        const d = await r.json();
+        if (d && d.danbooruMap) map = d.danbooruMap;
+      }
+    } catch (_) {}
+
+    // Direct-browser CORS enrichment (danbooru.donmai.us returns Access-Control-Allow-Origin: *)
+    const stillMissing = todo.filter((t) => !map[t]);
+    if (stillMissing.length > 0) {
+      try {
+        const chunks = [];
+        for (let i = 0; i < stillMissing.length; i += 25) chunks.push(stillMissing.slice(i, i + 25));
+        await Promise.all(
+          chunks.map(async (chunk) => {
+            // Also include stripped parenthetical stems like `エクアル(プリキュア)` -> `エクアル`
+            const expandedTerms = new Set(chunk);
+            for (const t of chunk) {
+              const stem = t.replace(/[（(][^）)]+[）)]$/, '').trim();
+              if (stem && stem !== t && stem.length >= 2) expandedTerms.add(stem);
+            }
+            const qs = new URLSearchParams({
+              'search[other_names_include_any]': Array.from(expandedTerms).join(' '),
+              limit: '100',
+              only: 'title,other_names,tag[name,category,post_count]'
+            });
+            const r = await fetch(`https://danbooru.donmai.us/wiki_pages.json?${qs.toString()}`);
+            if (!r.ok) return;
+            const items = await r.json();
+            if (!Array.isArray(items)) return;
+            for (const pixTag of chunk) {
+              const lp = pixTag.toLowerCase();
+              const stemLow = pixTag.replace(/[（(][^）)]+[）)]$/, '').trim().toLowerCase();
+              let best = null;
+              for (const item of items) {
+                const others = Array.isArray(item.other_names) ? item.other_names : [];
+                const exactHit = others.some((n) => String(n).toLowerCase() === lp) || String(item.title || '').toLowerCase() === lp;
+                const stemHit = !exactHit && stemLow && stemLow !== lp && others.some((n) => String(n).toLowerCase() === stemLow);
+                if (exactHit || stemHit) {
+                  const pc = Number(item.tag?.post_count || 0) + (exactHit ? 100000000 : 0);
+                  if (!best || pc > best.sortScore) {
+                    const code = Number(item.tag?.category ?? 0);
+                    // Extract a Chinese alias from other_names if available (Hanzi without Kana)
+                    const zhAlias = others.find((n) => {
+                      const ns = String(n || '').trim();
+                      return ns && ns !== pixTag && /[\u4E00-\u9FFF]/.test(ns) && !/[\u3040-\u30FF]/.test(ns);
+                    }) || '';
+                    best = {
+                      danbooruTag: item.title || item.tag?.name || '',
+                      category: code === 4 ? 'character' : code === 3 ? 'series_ip' : (code === 1 || code === 5 ? 'meta_general' : 'attribute_xp'),
+                      postCount: Number(item.tag?.post_count || 0),
+                      zhAlias,
+                      sortScore: pc
+                    };
+                  }
+                }
+              }
+              if (best && best.danbooruTag) {
+                map[pixTag] = {
+                  danbooruTag: best.danbooruTag,
+                  category: best.category,
+                  postCount: best.postCount,
+                  ...(best.zhAlias ? { zhAlias: best.zhAlias } : {})
+                };
+              }
+            }
+          })
+        );
+      } catch (_) {}
+    }
+
+    if (Object.keys(map).length > 0) {
+      Object.assign(state.danbooruCache, map);
+      persistDanbooruCache();
+      if (state.rawDataset) {
+        state.rawDataset.danbooruMap = { ...(state.rawDataset.danbooruMap || {}), ...map };
+        state.rawDataset.translations = state.rawDataset.translations || {};
+        for (const [k, v] of Object.entries(map)) {
+          if (v.zhAlias && !state.rawDataset.translations[k]) {
+            state.rawDataset.translations[k] = v.zhAlias;
+          }
+        }
+      }
+      recomputeAndRender();
+    }
+  }
+
   async function enrichTopTagsViaDanbooru(works, primaryTag) {
     const counts = new Map();
     const normPrimary = String(primaryTag || '').toLowerCase();
@@ -1801,71 +2000,10 @@
     }
     const topUncached = Array.from(counts.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 180)
+      .slice(0, 300)
       .map(([t]) => t);
     if (!topUncached.length) return;
-    let map = {};
-    try {
-      const r = await apiFetch('/api/danbooru/enrich', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tags: topUncached.slice(0, 100) })
-      });
-      if (r.ok) {
-        const d = await r.json();
-        if (d && d.danbooruMap) map = d.danbooruMap;
-      }
-    } catch (_) {}
-
-    // Direct-browser CORS enrichment (danbooru.donmai.us returns Access-Control-Allow-Origin: *)
-    const stillMissing = topUncached.filter((t) => !map[t]);
-    if (stillMissing.length > 0) {
-      try {
-        const chunks = [];
-        for (let i = 0; i < stillMissing.length; i += 25) chunks.push(stillMissing.slice(i, i + 25));
-        await Promise.all(
-          chunks.map(async (chunk) => {
-            const qs = new URLSearchParams({
-              'search[other_names_include_any]': chunk.join(' '),
-              limit: '100',
-              only: 'title,other_names,tag[name,category,post_count]'
-            });
-            const r = await fetch(`https://danbooru.donmai.us/wiki_pages.json?${qs.toString()}`);
-            if (!r.ok) return;
-            const items = await r.json();
-            if (!Array.isArray(items)) return;
-            for (const pixTag of chunk) {
-              const lp = pixTag.toLowerCase();
-              let best = null;
-              for (const item of items) {
-                const others = Array.isArray(item.other_names) ? item.other_names : [];
-                if (others.some((n) => String(n).toLowerCase() === lp) || String(item.title || '').toLowerCase() === lp) {
-                  const pc = Number(item.tag?.post_count || 0);
-                  if (!best || pc > best.postCount) {
-                    const code = Number(item.tag?.category ?? 0);
-                    best = {
-                      danbooruTag: item.title || item.tag?.name || '',
-                      category: code === 4 ? 'character' : code === 3 ? 'series_ip' : (code === 1 || code === 5 ? 'meta_general' : 'attribute_xp'),
-                      postCount: pc
-                    };
-                  }
-                }
-              }
-              if (best && best.danbooruTag) map[pixTag] = best;
-            }
-          })
-        );
-      } catch (_) {}
-    }
-
-    if (Object.keys(map).length > 0) {
-      Object.assign(state.danbooruCache, map);
-      persistDanbooruCache();
-      if (state.rawDataset) {
-        state.rawDataset.danbooruMap = { ...(state.rawDataset.danbooruMap || {}), ...map };
-      }
-      recomputeAndRender();
-    }
+    await enrichTagListViaDanbooru(topUncached);
   }
 
   // =========================================================================

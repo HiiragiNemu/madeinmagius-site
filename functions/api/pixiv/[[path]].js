@@ -1088,7 +1088,7 @@ export async function onRequest(context) {
           needsAuth: true,
           source: 'pixiv',
           resolvedTag: tag,
-          message: '游客模式下 Pixiv 不返回任何 R-18 作品（上游会静默忽略 R-18 筛选）。请点击「账号」使用 PixEz OAuth 登录后再采集 R-18。',
+          message: '游客模式下 Pixiv 不返回任何 R-18 作品（上游会静默忽略 R-18 筛选）。Pixiv 同时拒绝云端节点登录，网页云端版无法统计 R-18；请使用 APK 版（直连 Pixiv 官方 App API）或电脑本地版 (localhost:3456) 登录后采集 R-18。',
         },
         200,
         request
@@ -1096,7 +1096,7 @@ export async function onRequest(context) {
     }
     const guestR18Note = hasOAuthToken
       ? '已登录：通过官方 App API 采集，包含 R-18 与 AI 作品'
-      : '游客模式：Pixiv 不向未登录访问返回 R-18 作品，R-18 占比将显示为 0；登录后完整计入';
+      : '游客模式：Pixiv 不向未登录访问返回 R-18 作品，R-18 占比将显示为 0；需要 R-18 统计请使用 APK 版或本地版登录（Pixiv 拒绝云端节点登录）';
 
     // Pixiv Strategy 1: Race Direct Pixiv Web AJAX & live PixivNow mirror (pixiv.js.org) for exact total count!
     const ajaxPath = `/ajax/search/artworks/${pixivPathTag(tag)}?word=${encodeURIComponent(tag)}&order=date_d&mode=${encodeURIComponent(mode)}&p=1&s_mode=${encodeURIComponent(s_mode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh`;
@@ -1735,7 +1735,7 @@ export async function onRequest(context) {
           if (mode === 'r18') {
             sendEvent('error', {
               needsAuth: true,
-              message: '游客模式下 Pixiv 不返回任何 R-18 作品（上游会静默忽略 R-18 筛选）。请点击「账号」使用 PixEz OAuth 登录后再采集 R-18。',
+              message: '游客模式下 Pixiv 不返回任何 R-18 作品（上游会静默忽略 R-18 筛选）。Pixiv 同时拒绝云端节点登录，网页云端版无法统计 R-18；请使用 APK 版（直连 Pixiv 官方 App API）或电脑本地版 (localhost:3456) 登录后采集 R-18。',
             });
             return;
           }

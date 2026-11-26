@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.1.7',
-  versionCode: 10010270,
+  version: '2.1.8',
+  versionCode: 10010280,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55361384,
-  sha256: '906e945117347e88966adaf00c205f3641de0f1ecdcb13917eb8d94bcf1c7a62',
+  size: 55375328,
+  sha256: '3b4070fa4ee1c95542f761eb73f4f4b343181f7103cb5a19fd17c33165cf331c',
   releaseNotes:
-    'PixEz Pulse v2.1.7：修复从本地缓存载入不同标签时残留前标签基准与必含筛选状态的问题并同步后台会话；修复更新器取消下载生命周期保护；完整包含点击防误触、万图画廊真分页（36/60/120作每页+跳页）与采集中锁定、切页后台持续采集不中断、精准进度显示与 Plan A 全站公共纠错词表。',
+    'PixEz Pulse v2.1.8：采集提速 3~5 倍，移除健康状态下的固定休眠等待并升级原生 App API、HibiAPI 游客模式与 Web 通道至自适应 3 路并发（仅在触发真实限流时自动降档退避，连续稳定后自动恢复满速）；同时优化万图采集期内存快照与节流落盘，保留万图画廊真分页、切页后台持续采集与点击防误触。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

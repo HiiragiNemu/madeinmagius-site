@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.1.5',
-  versionCode: 10010250,
+  version: '2.1.6',
+  versionCode: 10010260,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55359392,
-  sha256: '4a4906f80daf054bc84ae2ffd4eb36938a019b51b224eeb01c9787b3a56d40f9',
+  size: 55361712,
+  sha256: 'e01a88b3f3c62af556a9882ae0465851fd96b33b2c4659767bc05acaf4e15d11',
   releaseNotes:
-    'PixEz Pulse v2.1.5：修复画廊万图级严重卡顿并新增真分页（36/60/120作每页 + 首页/上页/跳页/下页/末页）与采集中画廊防抖锁定；修复切换至原版搜索/首页等标签页返回后共现采样被中断丢失问题（后台持久会话保活）；修复进度条分母低于当前页码与全年龄基准数值误覆盖问题；并包含日语送假名谓词批量防误判、本地分类纠错记录及 Plan A 全站公共词表同步/待审建议/口令直推。',
+    'PixEz Pulse v2.1.6：点击联想候选词、历史记录、看图器标签或键盘回车仅填入标签，仅点击「开始采样」后才开始探测与抓取，并新增联想内存缓存与 320ms 防抖；完整包含万图画廊真分页（36/60/120作每页+跳页）与采集中防抖锁定、切页后台持续采集不中断、进度条与全年龄基准计数修复及 Plan A 全站公共词表。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

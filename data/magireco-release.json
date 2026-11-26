@@ -1,20 +1,20 @@
 {
   "schema": "madeinmagius-magireco-snapshot/v1",
-  "version": "1.6.6",
-  "version_code": 1713001045,
-  "size": 196237056,
-  "sha256": "012ca8516d4c2f8713e61d7df41583c469927e92a2454f9c5f54d3fdaa67ac24",
+  "version": "1.6.7",
+  "version_code": 1713001047,
+  "size": 205260125,
+  "sha256": "022ca0eda5382cc4b26d7ff05bdacac81665cafc2ab00a87094c3ea20c481ac1",
   "source": "published-snapshot",
-  "updated": "2026-11-24T16:28:20Z",
-  "download": "https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/v1.6.6/magireco-legacy-client-1.6.6-b1713001045.apk",
+  "updated": "2026-11-25T20:52:16Z",
+  "download": "https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/v1.6.7/magireco-legacy-client-1.6.7-b1713001047.apk",
   "corresponding_source": {
-    "source_commit": "09a89693615a7604c53b1a40b7ec837b2f7d0d5c",
-    "size": 427148998,
-    "sha256": "6b986824c15e57e682fdaa4ff01eda89f05413300668229e5b92a49ad2ee7072",
+    "source_commit": "76f6d5d82c078c47a4e41b021042a24eddf8c833",
+    "size": 436214042,
+    "sha256": "342fd755820dbae3ae3859261aec1cf56684187d4741a663df373354a20f2b6d",
     "versions": [
-      "1.6.6"
+      "1.6.7"
     ],
     "format": "zip",
-    "url": "https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/v1.6.6/MAGIA-1.6.6-b1713001045-current-source-09a89693.zip"
+    "url": "https://github.com/HiiragiNemu/ProgettoMagius-1/releases/download/v1.6.7/MAGIA-1.6.7-b1713001047-current-source-76f6d5d8.zip"
   }
 }

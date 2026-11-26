@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.1.8',
-  versionCode: 10010280,
+  version: '2.1.9',
+  versionCode: 10010290,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55375328,
-  sha256: '3b4070fa4ee1c95542f761eb73f4f4b343181f7103cb5a19fd17c33165cf331c',
+  size: 55428228,
+  sha256: '866dfbe03befe62bff5c9255b6110749d8fa3b0c66d5e369f71d2c04b0a5a183',
   releaseNotes:
-    'PixEz Pulse v2.1.8：采集提速 3~5 倍，移除健康状态下的固定休眠等待并升级原生 App API、HibiAPI 游客模式与 Web 通道至自适应 3 路并发（仅在触发真实限流时自动降档退避，连续稳定后自动恢复满速）；同时优化万图采集期内存快照与节流落盘，保留万图画廊真分页、切页后台持续采集与点击防误触。',
+    'PixEz Pulse v2.1.9：竖屏手机 UI 全面紧凑自适应（主模块栏与分类栏单行零横滑完整显示、6项采样参数改用紧凑菜单整齐排布2行无空白与白色箭头问题、顶部「我的其他工具和动态」与5套主题/功能改为双行自然展示）；5套主题实时联动覆盖整个 PixEz 所有页面与顶栏/导航栏；修复搜索结果顶栏「插画/画师/共现分析」截断；本地缓存弹窗紧缩排版并支持手动自定义上限（至 64GB 或不限）。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

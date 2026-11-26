@@ -2074,6 +2074,337 @@
       clearTimeout(state.viewer.ugoiraTimer);
       state.viewer.ugoiraTimer = null;
     }
+    if (Array.isArray(state.viewer.ugoiraObjectUrls)) {
+      for (const u of state.viewer.ugoiraObjectUrls) {
+        try { URL.revokeObjectURL(u); } catch (_) {}
+      }
+      state.viewer.ugoiraObjectUrls = [];
+    }
+    state.viewer.ugoiraFrames = null;
+    state.viewer.ugoiraIllustId = null;
+  }
+
+  // Pure-browser PKZIP unpacker (reads Central Directory; supports STORE=0 & DEFLATE=8 via DecompressionStream)
+  async function unpackZipEntriesInBrowser(arrayBuffer) {
+    const bytes = new Uint8Array(arrayBuffer);
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    // Locate End of Central Directory (0x06054b50)
+    let eocdOffset = -1;
+    const minSearch = Math.max(0, bytes.length - 65557);
+    for (let i = bytes.length - 22; i >= minSearch; i--) {
+      if (dv.getUint32(i, true) === 0x06054b50) {
+        eocdOffset = i;
+        break;
+      }
+    }
+    const entries = new Map();
+    const dec = new TextDecoder('utf-8');
+    const inflateRaw = async (chunk) => {
+      if (typeof DecompressionStream !== 'function') {
+        throw new Error('当前浏览器不支持内置 deflate-raw 解压');
+      }
+      const ds = new DecompressionStream('deflate-raw');
+      const writer = ds.writable.getWriter();
+      writer.write(chunk);
+      writer.close();
+      const out = await new Response(ds.readable).arrayBuffer();
+      return new Uint8Array(out);
+    };
+
+    if (eocdOffset >= 0) {
+      const cdOffset = dv.getUint32(eocdOffset + 16, true);
+      const totalEntries = dv.getUint16(eocdOffset + 10, true);
+      let ptr = cdOffset;
+      for (let idx = 0; idx < totalEntries && ptr + 46 <= bytes.length; idx++) {
+        if (dv.getUint32(ptr, true) !== 0x02014b50) break;
+        const method = dv.getUint16(ptr + 10, true);
+        const compSize = dv.getUint32(ptr + 20, true);
+        const nameLen = dv.getUint16(ptr + 28, true);
+        const extraLen = dv.getUint16(ptr + 30, true);
+        const commentLen = dv.getUint16(ptr + 32, true);
+        const localHeaderOffset = dv.getUint32(ptr + 42, true);
+        const name = dec.decode(bytes.subarray(ptr + 46, ptr + 46 + nameLen));
+        ptr += 46 + nameLen + extraLen + commentLen;
+
+        if (localHeaderOffset + 30 > bytes.length) continue;
+        if (dv.getUint32(localHeaderOffset, true) !== 0x04034b50) continue;
+        const lhNameLen = dv.getUint16(localHeaderOffset + 26, true);
+        const lhExtraLen = dv.getUint16(localHeaderOffset + 28, true);
+        const dataStart = localHeaderOffset + 30 + lhNameLen + lhExtraLen;
+        const dataEnd = dataStart + compSize;
+        if (dataEnd > bytes.length) continue;
+        const rawSlice = bytes.subarray(dataStart, dataEnd);
+        if (method === 0) {
+          entries.set(name, rawSlice);
+        } else if (method === 8) {
+          entries.set(name, await inflateRaw(rawSlice));
+        }
+      }
+    }
+    return entries;
+  }
+
+  // Self-contained pure-JS GIF89a Encoder (Median-Cut 256-color palette + variable-bit LZW + NETSCAPE2.0 loop)
+  async function synthesizeUgoiraGifBlob(frames, onProgress) {
+    if (!Array.isArray(frames) || !frames.length) {
+      throw new Error('无可用动图帧');
+    }
+    const srcW = frames[0].img.naturalWidth || frames[0].img.width || 480;
+    const srcH = frames[0].img.naturalHeight || frames[0].img.height || 480;
+    const maxEdge = 600;
+    const scale = Math.min(1, maxEdge / Math.max(srcW, srcH));
+    const width = Math.max(1, Math.round(srcW * scale));
+    const height = Math.max(1, Math.round(srcH * scale));
+
+    const off = document.createElement('canvas');
+    off.width = width;
+    off.height = height;
+    const ctx = off.getContext('2d', { willReadFrequently: true });
+
+    // 1. Sample colors across up to 16 evenly spaced frames into a 5-5-5 RGB histogram (32,768 bins)
+    const hist = new Uint32Array(32768);
+    const sampleStep = Math.max(1, Math.floor(frames.length / 16));
+    const pixelStep = Math.max(1, Math.floor((width * height) / 14000));
+    for (let f = 0; f < frames.length; f += sampleStep) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(frames[f].img, 0, 0, width, height);
+      const data = ctx.getImageData(0, 0, width, height).data;
+      for (let i = 0; i < data.length; i += 4 * pixelStep) {
+        const key = ((data[i] >> 3) << 10) | ((data[i + 1] >> 3) << 5) | (data[i + 2] >> 3);
+        hist[key]++;
+      }
+    }
+
+    // 2. Median-cut quantization into 256 palette entries
+    const activeBins = [];
+    for (let k = 0; k < 32768; k++) {
+      if (hist[k] > 0) {
+        activeBins.push({
+          r: ((k >> 10) & 31) * 8 + 4,
+          g: ((k >> 5) & 31) * 8 + 4,
+          b: (k & 31) * 8 + 4,
+          count: hist[k]
+        });
+      }
+    }
+    const boxes = [activeBins.length ? activeBins : [{ r: 0, g: 0, b: 0, count: 1 }]];
+    while (boxes.length < 256) {
+      let bestIdx = -1;
+      let bestScore = -1;
+      let bestChan = 'r';
+      for (let i = 0; i < boxes.length; i++) {
+        const box = boxes[i];
+        if (box.length <= 1) continue;
+        let rMin = 255, rMax = 0, gMin = 255, gMax = 0, bMin = 255, bMax = 0, total = 0;
+        for (let j = 0; j < box.length; j++) {
+          const c = box[j];
+          if (c.r < rMin) rMin = c.r;
+          if (c.r > rMax) rMax = c.r;
+          if (c.g < gMin) gMin = c.g;
+          if (c.g > gMax) gMax = c.g;
+          if (c.b < bMin) bMin = c.b;
+          if (c.b > bMax) bMax = c.b;
+          total += c.count;
+        }
+        const rr = rMax - rMin;
+        const gr = gMax - gMin;
+        const br = bMax - bMin;
+        const maxRange = Math.max(rr, gr, br);
+        const score = maxRange * Math.log2(total + 2);
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
+          bestChan = rr >= gr && rr >= br ? 'r' : (gr >= br ? 'g' : 'b');
+        }
+      }
+      if (bestIdx < 0) break;
+      const box = boxes[bestIdx];
+      box.sort((a, b) => a[bestChan] - b[bestChan]);
+      let total = 0;
+      for (let j = 0; j < box.length; j++) total += box[j].count;
+      let acc = 0;
+      let mid = 1;
+      for (let j = 0; j < box.length - 1; j++) {
+        acc += box[j].count;
+        if (acc >= total / 2) {
+          mid = j + 1;
+          break;
+        }
+      }
+      boxes.splice(bestIdx, 1, box.slice(0, mid), box.slice(mid));
+    }
+
+    const palette = new Uint8Array(256 * 3);
+    const palLen = boxes.length;
+    for (let i = 0; i < palLen; i++) {
+      const box = boxes[i];
+      let rs = 0, gs = 0, bs = 0, cnt = 0;
+      for (let j = 0; j < box.length; j++) {
+        rs += box[j].r * box[j].count;
+        gs += box[j].g * box[j].count;
+        bs += box[j].b * box[j].count;
+        cnt += box[j].count;
+      }
+      palette[i * 3] = cnt ? Math.round(rs / cnt) : 0;
+      palette[i * 3 + 1] = cnt ? Math.round(gs / cnt) : 0;
+      palette[i * 3 + 2] = cnt ? Math.round(bs / cnt) : 0;
+    }
+
+    // Fast 5-5-5 RGB -> nearest palette index lookup cache
+    const lut = new Int16Array(32768).fill(-1);
+    const mapRgb555 = (r5, g5, b5) => {
+      const key = (r5 << 10) | (g5 << 5) | b5;
+      const cached = lut[key];
+      if (cached >= 0) return cached;
+      const r = r5 * 8 + 4;
+      const g = g5 * 8 + 4;
+      const b = b5 * 8 + 4;
+      let best = 0;
+      let bestD = 0x7fffffff;
+      for (let i = 0; i < palLen; i++) {
+        const dr = r - palette[i * 3];
+        const dg = g - palette[i * 3 + 1];
+        const db = b - palette[i * 3 + 2];
+        const d = dr * dr * 2 + dg * dg * 4 + db * db;
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+          if (d === 0) break;
+        }
+      }
+      lut[key] = best;
+      return best;
+    };
+
+    const chunks = [];
+    const pushBytes = (arr) => chunks.push(arr instanceof Uint8Array ? arr : new Uint8Array(arr));
+    const u16 = (v) => [v & 0xff, (v >> 8) & 0xff];
+
+    // GIF89a Header + Logical Screen Descriptor (256-color Global Color Table)
+    pushBytes([
+      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, // GIF89a
+      ...u16(width),
+      ...u16(height),
+      0xf7, // GCT flag=1, color res=7, sort=0, size=7 (256 entries)
+      0x00,
+      0x00
+    ]);
+    pushBytes(palette);
+    // NETSCAPE2.0 Application Extension (loop infinitely)
+    pushBytes([
+      0x21, 0xff, 0x0b,
+      0x4e, 0x45, 0x54, 0x53, 0x43, 0x41, 0x50, 0x45, 0x32, 0x2e, 0x30,
+      0x03, 0x01, 0x00, 0x00, 0x00
+    ]);
+
+    // Standard variable-bit-width GIF LZW encoder (minCodeSize = 8)
+    const lzwEncodeFrame = (indexed) => {
+      const minCodeSize = 8;
+      const clearCode = 256;
+      const eoiCode = 257;
+      const out = [minCodeSize];
+      const subBlock = new Uint8Array(255);
+      let subLen = 0;
+      let bitBuf = 0;
+      let bitCnt = 0;
+
+      const emitCode = (code, bits) => {
+        bitBuf |= code << bitCnt;
+        bitCnt += bits;
+        while (bitCnt >= 8) {
+          subBlock[subLen++] = bitBuf & 0xff;
+          bitBuf >>= 8;
+          bitCnt -= 8;
+          if (subLen === 255) {
+            out.push(255);
+            for (let k = 0; k < 255; k++) out.push(subBlock[k]);
+            subLen = 0;
+          }
+        }
+      };
+
+      // Open-addressing hash table for fast prefix+suffix lookup (power-of-2 size 8192)
+      const TABLE_SIZE = 8192;
+      const MASK = TABLE_SIZE - 1;
+      const keys = new Int32Array(TABLE_SIZE).fill(-1);
+      const vals = new Int16Array(TABLE_SIZE);
+
+      let nextCode = 258;
+      let codeBits = 9;
+      emitCode(clearCode, codeBits);
+
+      let prefix = indexed[0];
+      for (let i = 1; i < indexed.length; i++) {
+        const k = indexed[i];
+        const combined = (prefix << 8) | k;
+        let slot = ((combined * 2654435761) >>> 19) & MASK;
+        let found = -1;
+        while (true) {
+          const cur = keys[slot];
+          if (cur === -1) break;
+          if (cur === combined) {
+            found = vals[slot];
+            break;
+          }
+          slot = (slot + 1) & MASK;
+        }
+        if (found >= 0) {
+          prefix = found;
+        } else {
+          emitCode(prefix, codeBits);
+          if (nextCode < 4096) {
+            keys[slot] = combined;
+            vals[slot] = nextCode++;
+            if (nextCode > (1 << codeBits) && codeBits < 12) {
+              codeBits++;
+            }
+          } else {
+            emitCode(clearCode, codeBits);
+            keys.fill(-1);
+            nextCode = 258;
+            codeBits = 9;
+          }
+          prefix = k;
+        }
+      }
+      emitCode(prefix, codeBits);
+      emitCode(eoiCode, codeBits);
+      if (bitCnt > 0) {
+        subBlock[subLen++] = bitBuf & 0xff;
+      }
+      if (subLen > 0) {
+        out.push(subLen);
+        for (let k = 0; k < subLen; k++) out.push(subBlock[k]);
+      }
+      out.push(0x00); // Block terminator
+      return new Uint8Array(out);
+    };
+
+    const indexedBuf = new Uint8Array(width * height);
+    for (let f = 0; f < frames.length; f++) {
+      const frame = frames[f];
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(frame.img, 0, 0, width, height);
+      const rgba = ctx.getImageData(0, 0, width, height).data;
+      for (let p = 0, q = 0; p < rgba.length; p += 4, q++) {
+        indexedBuf[q] = mapRgb555(rgba[p] >> 3, rgba[p + 1] >> 3, rgba[p + 2] >> 3);
+      }
+      const delayCs = Math.max(2, Math.round((frame.delay || 50) / 10));
+      // Graphic Control Extension
+      pushBytes([0x21, 0xf9, 0x04, 0x04, ...u16(delayCs), 0x00, 0x00]);
+      // Image Descriptor
+      pushBytes([0x2c, 0x00, 0x00, 0x00, 0x00, ...u16(width), ...u16(height), 0x00]);
+      pushBytes(lzwEncodeFrame(indexedBuf));
+
+      if (typeof onProgress === 'function') {
+        onProgress(f + 1, frames.length);
+      }
+      if (f % 3 === 2) {
+        await new Promise((r) => setTimeout(r, 0));
+      }
+    }
+    pushBytes([0x3b]); // GIF Trailer
+    return new Blob(chunks, { type: 'image/gif' });
   }
 
   async function openIllustViewer(illustId) {
@@ -2092,6 +2423,7 @@
     clearViewerDownloadButton($('viewerDownloadCurrentBtn'), '正在解析原图...');
     clearViewerDownloadButton($('viewerDownloadUgoiraZipBtn'), '下载 Ugoira 动图帧 ZIP');
     $('viewerDownloadUgoiraZipBtn')?.classList.add('hidden');
+    $('viewerDownloadUgoiraGifBtn')?.classList.add('hidden');
 
     try {
       const localWork = (state.rawDataset?.artworks || []).find((w) => String(w.id) === String(illustId));
@@ -2307,6 +2639,7 @@
     const loading = $('viewerLoadingOverlay');
     const mainImg = $('viewerMainImg');
     const canvas = $('viewerUgoiraCanvas');
+    const gifBtn = $('viewerDownloadUgoiraGifBtn');
 
     try {
       const resp = await apiFetch(`/api/illust/ugoira?id=${encodeURIComponent(illustId)}`, {
@@ -2314,32 +2647,83 @@
       });
       const rawData = await resp.json();
       const data = rawData.data || rawData;
-      if (resp.ok && !rawData.error && data.zipUrl) {
+      const playZipUrl = data.zipUrl || data.originalZipUrl || '';
+      const dlZipUrl = data.originalZipUrl || data.zipUrl || '';
+      if (resp.ok && !rawData.error && dlZipUrl) {
         const zipBtn = $('viewerDownloadUgoiraZipBtn');
         zipBtn.classList.remove('hidden');
-        setViewerDownloadButton(zipBtn, data.zipUrl, `pixiv_ugoira_${illustId}.zip`, '下载 Ugoira 动图帧 ZIP');
+        setViewerDownloadButton(zipBtn, dlZipUrl, `pixiv_ugoira_${illustId}.zip`, '下载 Ugoira 动图帧 ZIP');
       }
-      if (!resp.ok || rawData.error || !data.frames || !data.frames.length) {
+
+      let frameSources = [];
+      const createdObjUrls = [];
+      if (resp.ok && !rawData.error && Array.isArray(data.frames) && data.frames.length > 0) {
+        frameSources = data.frames.map((f) => ({ src: f.dataUrl, delay: f.delay || 50 }));
+      } else if (resp.ok && !rawData.error && playZipUrl && Array.isArray(data.framesMeta) && data.framesMeta.length > 0) {
+        // Cloud / Cloudflare Pages mode: fetch Ugoira ZIP via CORS proxy and unpack frames directly in browser!
+        const proxyZipHref = downloadImgUrl(playZipUrl, `pixiv_ugoira_${illustId}.zip`);
+        let zipBuf = null;
+        for (const candidateUrl of [proxyZipHref, directFallbackImg(playZipUrl)]) {
+          if (!candidateUrl) continue;
+          try {
+            const zRes = await fetch(candidateUrl, {
+              headers: { Accept: 'application/zip,application/octet-stream,*/*' }
+            });
+            const ct = (zRes.headers.get('content-type') || '').toLowerCase();
+            if (zRes.ok && !ct.includes('text/html') && !ct.includes('application/json')) {
+              const ab = await zRes.arrayBuffer();
+              if (ab.byteLength > 100 && new DataView(ab).getUint32(0, true) === 0x04034b50) {
+                zipBuf = ab;
+                break;
+              }
+            }
+          } catch (_) {}
+        }
+        if (zipBuf) {
+          const fileMap = await unpackZipEntriesInBrowser(zipBuf);
+          for (const fm of data.framesMeta) {
+            const bytes = fileMap.get(fm.file);
+            if (!bytes) continue;
+            const mime = /\.png$/i.test(fm.file) ? 'image/png' : 'image/jpeg';
+            const objUrl = URL.createObjectURL(new Blob([bytes], { type: mime }));
+            createdObjUrls.push(objUrl);
+            frameSources.push({ src: objUrl, delay: Number(fm.delay) || 50 });
+          }
+        }
+      }
+
+      if (!frameSources.length) {
+        for (const u of createdObjUrls) { try { URL.revokeObjectURL(u); } catch (_) {} }
         updateViewerPage();
         return;
       }
 
       const images = await Promise.all(
-        data.frames.map(
+        frameSources.map(
           (f) =>
             new Promise((resolve) => {
               const img = new Image();
               img.onload = () => resolve({ img, delay: f.delay || 50 });
               img.onerror = () => resolve(null);
-              img.src = f.dataUrl;
+              img.src = f.src;
             })
         )
       );
 
       const validFrames = images.filter(Boolean);
-      if (validFrames.length === 0) {
-        updateViewerPage();
+      if (validFrames.length === 0 || String(state.viewer.illust?.id || '') !== String(illustId)) {
+        for (const u of createdObjUrls) { try { URL.revokeObjectURL(u); } catch (_) {} }
+        if (String(state.viewer.illust?.id || '') === String(illustId)) updateViewerPage();
         return;
+      }
+
+      state.viewer.ugoiraObjectUrls = createdObjUrls;
+      state.viewer.ugoiraFrames = validFrames;
+      state.viewer.ugoiraIllustId = String(illustId);
+      if (gifBtn) {
+        gifBtn.classList.remove('hidden');
+        gifBtn.disabled = false;
+        gifBtn.textContent = `合成并下载动图 GIF (${validFrames.length}帧)`;
       }
 
       canvas.width = validFrames[0].img.naturalWidth || 800;
@@ -6173,6 +6557,40 @@
     });
     $('viewerDownloadUgoiraZipBtn')?.addEventListener('click', (e) => {
       triggerSafeMediaDownload($('viewerDownloadUgoiraZipBtn'), e);
+    });
+    $('viewerDownloadUgoiraGifBtn')?.addEventListener('click', async () => {
+      const btn = $('viewerDownloadUgoiraGifBtn');
+      const frames = state.viewer.ugoiraFrames;
+      const illId = state.viewer.ugoiraIllustId || state.viewer.illust?.id || 'ugoira';
+      if (!Array.isArray(frames) || !frames.length) {
+        showToast('动图帧尚未解压完成，请稍候重试');
+        return;
+      }
+      if (btn.disabled) return;
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = `正在合成 GIF (0/${frames.length})...`;
+      try {
+        const gifBlob = await synthesizeUgoiraGifBlob(frames, (done, total) => {
+          btn.textContent = `正在合成 GIF (${done}/${total})...`;
+        });
+        const filename = `pixiv_ugoira_${illId}.gif`;
+        const objUrl = URL.createObjectURL(gifBlob);
+        const a = document.createElement('a');
+        a.href = objUrl;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(objUrl), 25000);
+        showToast(`动图 GIF 合成完毕 (${(gifBlob.size / 1024 / 1024).toFixed(2)} MB): ${filename}`);
+      } catch (err) {
+        showToast(`GIF 合成失败: ${err.message || '未知错误'}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+      }
     });
     $('viewerSauceNaoBtn').addEventListener('click', () => {
       const ill = state.viewer.illust;

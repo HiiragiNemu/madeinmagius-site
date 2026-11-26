@@ -1648,14 +1648,38 @@ export async function onRequest(context) {
   if (subPath === 'illust/ugoira') {
     const id = (url.searchParams.get('id') || '').trim();
     if (!id) return jsonResponse({ error: true, message: '缺少作品 ID' }, 400, request);
-    const hibiMeta = await fetchJsonSafe(`${HIBI_BASE}/ugoira_metadata?id=${encodeURIComponent(id)}`, hibiHeaders());
-    if (hibiMeta?.ugoira_metadata) {
+    // Prefer Web AJAX ugoira_meta for full-resolution originalSrc ZIP when available, then HibiAPI (works for R-18 guests!)
+    const webMetaRace = await fetchPixivWebAjaxRace(
+      `/ajax/illust/${encodeURIComponent(id)}/ugoira_meta?lang=zh`,
+      cookie,
+      '',
+      5500
+    );
+    const wb = webMetaRace?.data?.body;
+    if (wb && (wb.originalSrc || wb.src) && Array.isArray(wb.frames) && wb.frames.length > 0) {
       return jsonResponse(
         {
           illustId: id,
-          zipUrl: hibiMeta.ugoira_metadata.zip_urls?.medium || '',
+          zipUrl: wb.src || wb.originalSrc || '',
+          originalZipUrl: wb.originalSrc || wb.src || '',
           frames: [],
-          framesMeta: hibiMeta.ugoira_metadata.frames || [],
+          framesMeta: wb.frames,
+        },
+        200,
+        request
+      );
+    }
+    const hibiMeta = await fetchJsonSafe(`${HIBI_BASE}/ugoira_metadata?id=${encodeURIComponent(id)}`, hibiHeaders(), 7500);
+    if (hibiMeta?.ugoira_metadata) {
+      const m = hibiMeta.ugoira_metadata;
+      const zUrl = m.zip_urls?.medium || m.zip_urls?.original || '';
+      return jsonResponse(
+        {
+          illustId: id,
+          zipUrl: zUrl,
+          originalZipUrl: m.zip_urls?.original || zUrl,
+          frames: [],
+          framesMeta: m.frames || [],
         },
         200,
         request

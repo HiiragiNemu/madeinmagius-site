@@ -12,8 +12,8 @@ const FALLBACK = Object.freeze({
   versionCode: 10010250,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55331920,
-  sha256: '5afcaa3ca4b37ee01db448e5b06c28fab3ba18896c65777ca5197c1f36dd3f7b',
+  size: 55359392,
+  sha256: '4a4906f80daf054bc84ae2ffd4eb36938a019b51b224eeb01c9787b3a56d40f9',
   releaseNotes:
     'PixEz Pulse v2.1.5：修复画廊万图级严重卡顿并新增真分页（36/60/120作每页 + 首页/上页/跳页/下页/末页）与采集中画廊防抖锁定；修复切换至原版搜索/首页等标签页返回后共现采样被中断丢失问题（后台持久会话保活）；修复进度条分母低于当前页码与全年龄基准数值误覆盖问题；并包含日语送假名谓词批量防误判、本地分类纠错记录及 Plan A 全站公共词表同步/待审建议/口令直推。',
 });

@@ -185,6 +185,27 @@
     lockedSubTags: new Set(),
     basket: new Set(JSON.parse(localStorage.getItem('pixez_basket') || '[]')),
     userCategoryOverrides: JSON.parse(localStorage.getItem('pixez_cat_overrides') || '{}'),
+    categoryCorrectionLog: (() => {
+      try {
+        const raw = JSON.parse(localStorage.getItem('pixez_cat_correction_log_v1') || '{}') || {};
+        // Backfill legacy userCategoryOverrides entries that existed before v4.19
+        const legacy = JSON.parse(localStorage.getItem('pixez_cat_overrides') || '{}') || {};
+        for (const [k, toCat] of Object.entries(legacy)) {
+          if (!raw[k] && toCat) raw[k] = { tag: k, from: '', to: toCat, updatedAt: '' };
+        }
+        return raw;
+      } catch (_) {
+        return {};
+      }
+    })(),
+    communityTagOverrides: (() => {
+      try {
+        return JSON.parse(localStorage.getItem('pixez_community_tag_overrides_v1') || '{}') || {};
+      } catch (_) {
+        return {};
+      }
+    })(),
+    communityOverridesMeta: { count: 0, updatedAt: '', source: 'cache', canPublish: false },
     userCategoryLists: JSON.parse(localStorage.getItem('pixez_cat_lists') || '{"character":[],"attribute_xp":[],"series_ip":[],"meta_general":[]}'),
     danbooruCache: (() => {
       try {
@@ -701,16 +722,30 @@
     } catch (_) {}
   }
 
-  function classifyTagClient(tag, translation = '', serverCategory = null) {
+  // Japanese verb / adjective / auxiliary okurigana endings that are NEVER character given names
+  // Prevents false-positive `character` hits on `[Kanji]+[Hiragana]` words like 臭がる / 嫌がる / 恥ずかしい / 照れる / 泣いてる!
+  const JP_PREDICATE_SUFFIX_RE =
+    /(がる|がって|がった|しい|しく|わいい|めたい|たかい|らかい|やすい|にくい|づらい|ない|なく|たい|たく|れる|せる|てる|でる|ける|げる|べる|める|ねる|いる|ある|する|くる|すぎる|すぎ|っぽい|ぽい|そう|った|んだ|って|んで|ながら|ばかり|られる|させる|ている|ていく|てくる|てみる|ちゃう|じゃう|もの|こと|ため|よう|みたい|らしい|です|ます|ません|でした|あげ|さげ|だし|ぬき|こみ|つけ|かけ|ずらし|めくり|まくり|みせ|かくし|しばり|つり|ぜめ|おち|ぬれ|みだれ|あふれ)$/;
+
+  function classifyTagClient(tag, translation = '', serverCategory = null, ignorePersonalOverrides = false) {
     const clean = String(tag || '').trim();
     if (!clean) return 'meta_general';
     const lower = clean.toLowerCase();
 
-    if (state.userCategoryOverrides[clean]) return state.userCategoryOverrides[clean];
-    for (const cat of CATEGORY_CYCLE) {
-      if (Array.isArray(state.userCategoryLists[cat]) && state.userCategoryLists[cat].includes(clean)) {
-        return cat;
+    if (!ignorePersonalOverrides) {
+      if (state.userCategoryOverrides[clean]) return state.userCategoryOverrides[clean];
+      for (const cat of CATEGORY_CYCLE) {
+        if (Array.isArray(state.userCategoryLists[cat]) && state.userCategoryLists[cat].includes(clean)) {
+          return cat;
+        }
       }
+    }
+
+    // Community curated overrides (Plan A: synced from /api/tag-overrides, sits below personal local overrides!)
+    const commEntry = state.communityTagOverrides?.[clean];
+    const commCat = typeof commEntry === 'string' ? commEntry : commEntry?.to;
+    if (commCat && ['character', 'attribute_xp', 'series_ip', 'meta_general', 'bookmark_milestone', 'ai_meta'].includes(commCat)) {
+      return commCat;
     }
 
     if (/^\d+users入り$/i.test(clean) || /users入り$/i.test(clean)) return 'bookmark_milestone';
@@ -783,20 +818,162 @@
       }
     }
 
-    if (!NON_CHAR_WORDS.has(lower) && !NON_CHAR_ROOT_RE.test(clean) && /^[一-龥々ヶノ]{1,3}[ぁ-んー]{2,5}$/.test(clean)) {
+    if (
+      !NON_CHAR_WORDS.has(lower) &&
+      !NON_CHAR_ROOT_RE.test(clean) &&
+      !JP_PREDICATE_SUFFIX_RE.test(clean) &&
+      /^[一-龥々ヶノ]{1,3}[ぁ-んー]{2,5}$/.test(clean)
+    ) {
       return 'character';
     }
 
     return 'attribute_xp';
   }
 
+  function persistCategoryCorrections() {
+    try {
+      localStorage.setItem('pixez_cat_overrides', JSON.stringify(state.userCategoryOverrides));
+      localStorage.setItem('pixez_cat_correction_log_v1', JSON.stringify(state.categoryCorrectionLog));
+    } catch (_) {}
+    refreshCorrectionBadge();
+  }
+
+  function refreshCorrectionBadge() {
+    const cnt = Object.keys(state.categoryCorrectionLog || {}).length;
+    const badge = $('rulesCorrectionBadge');
+    if (badge) {
+      badge.textContent = String(cnt);
+      badge.classList.toggle('hidden', cnt === 0);
+    }
+    const cntEl = $('correctionLogCount');
+    if (cntEl) cntEl.textContent = String(cnt);
+  }
+
+  function formatShortTime(iso) {
+    if (!iso) return '本地记录';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '本地记录';
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${mm}-${dd} ${hh}:${mi}`;
+  }
+
+  function revertSingleTagCorrection(tag) {
+    if (!tag) return;
+    delete state.userCategoryOverrides[tag];
+    delete state.categoryCorrectionLog[tag];
+    for (const cat of CATEGORY_CYCLE) {
+      if (Array.isArray(state.userCategoryLists[cat])) {
+        state.userCategoryLists[cat] = state.userCategoryLists[cat].filter((x) => x !== tag);
+      }
+    }
+    localStorage.setItem('pixez_cat_lists', JSON.stringify(state.userCategoryLists));
+    persistCategoryCorrections();
+    renderCorrectionLogList();
+    showToast(`已还原 [${tag}] 为系统自动分类`);
+    recomputeAndRender();
+  }
+
+  function renderCorrectionLogList() {
+    refreshCorrectionBadge();
+    const badge = $('communityOverridesBadge');
+    if (badge) {
+      const m = state.communityOverridesMeta || {};
+      const cnt = Object.keys(state.communityTagOverrides || {}).length;
+      badge.textContent = `全站公共词表: ${cnt} 条${m.source === 'github-live' ? ' (在线同步)' : ''}`;
+    }
+    const box = $('correctionLogList');
+    if (!box) return;
+    const entries = Object.values(state.categoryCorrectionLog || {})
+      .filter((e) => e && e.tag && e.to)
+      .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+    if (!entries.length) {
+      box.innerHTML = `<div class="empty-placeholder">暂无本地分类纠错记录。点击共现排行中任意标签的分类徽标（如把「臭がる」从 角色 改为 属性），系统会自动记录「原分类 → 现分类」并永久保存在本地。</div>`;
+      return;
+    }
+    box.innerHTML = entries
+      .map((e) => {
+        const fromCat = e.from || classifyTagClient(e.tag, '', null, true);
+        const fromMeta = CATEGORY_META[fromCat] || { short: fromCat || '默认', badgeClass: 'badge-meta' };
+        const toMeta = CATEGORY_META[e.to] || { short: e.to, badgeClass: 'badge-meta' };
+        return `
+          <div class="correction-log-row">
+            <div class="correction-log-row__main">
+              <span class="correction-log-row__tag">${escapeHtml(e.tag)}</span>
+              <span class="cat-badge ${fromMeta.badgeClass}">${escapeHtml(fromMeta.short)}</span>
+              <span class="correction-log-row__arrow">→</span>
+              <span class="cat-badge ${toMeta.badgeClass}">${escapeHtml(toMeta.short)}</span>
+              <span class="correction-log-row__time">${escapeHtml(formatShortTime(e.updatedAt))}</span>
+            </div>
+            <button class="t-btn t-btn--sm" type="button" data-revert-tag="${escapeHtml(e.tag)}" title="还原为默认自动分类">还原</button>
+          </div>
+        `;
+      })
+      .join('');
+    box.querySelectorAll('[data-revert-tag]').forEach((btn) => {
+      btn.addEventListener('click', () => revertSingleTagCorrection(btn.dataset.revertTag));
+    });
+  }
+
+  function getTagOverridesEndpoint() {
+    // Prefer same-origin /api/tag-overrides (works on Cloudflare Pages AND localhost:3456 proxy),
+    // and fall back to madeinmagius-site.pages.dev when hosted on GitHub Pages!
+    if (API_BASE) return `${API_BASE}/api/tag-overrides`;
+    return '/api/tag-overrides';
+  }
+
+  async function syncCommunityTagOverrides(showFeedback = false) {
+    try {
+      const r = await fetch(getTagOverridesEndpoint(), { headers: { Accept: 'application/json' } });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      if (d && d.overrides && typeof d.overrides === 'object') {
+        state.communityTagOverrides = d.overrides;
+        state.communityOverridesMeta = {
+          count: Number(d.count || Object.keys(d.overrides).length),
+          updatedAt: d.updatedAt || '',
+          source: d.source || 'remote',
+          canPublish: Boolean(d.canPublish)
+        };
+        try {
+          localStorage.setItem('pixez_community_tag_overrides_v1', JSON.stringify(d.overrides));
+        } catch (_) {}
+        renderCorrectionLogList();
+        if (state.rawDataset) recomputeAndRender();
+        if (showFeedback) {
+          showToast(`已同步全站公共纠错词表 (${Object.keys(d.overrides).length} 条)`);
+        }
+      }
+    } catch (e) {
+      if (showFeedback) showToast(`同步全站公共词表失败: ${e.message}`);
+    }
+  }
+
   function cycleTagCategory(tag) {
+    const autoCat = classifyTagClient(tag, '', null, true);
     const current = classifyTagClient(tag);
     const idx = CATEGORY_CYCLE.indexOf(current);
     const nextCat = CATEGORY_CYCLE[(idx + 1) % CATEGORY_CYCLE.length];
-    state.userCategoryOverrides[tag] = nextCat;
-    localStorage.setItem('pixez_cat_overrides', JSON.stringify(state.userCategoryOverrides));
-    showToast(`已将 [${tag}] 归类切换为: ${CATEGORY_META[nextCat].label}`);
+    const prevLog = state.categoryCorrectionLog[tag];
+    const origFrom = prevLog?.from || autoCat;
+    if (nextCat === origFrom) {
+      delete state.userCategoryOverrides[tag];
+      delete state.categoryCorrectionLog[tag];
+      persistCategoryCorrections();
+      showToast(`已将 [${tag}] 还原为默认分类: ${CATEGORY_META[nextCat].label}`);
+    } else {
+      state.userCategoryOverrides[tag] = nextCat;
+      state.categoryCorrectionLog[tag] = {
+        tag,
+        from: origFrom,
+        to: nextCat,
+        updatedAt: new Date().toISOString()
+      };
+      persistCategoryCorrections();
+      showToast(`已纠错 [${tag}]: ${CATEGORY_META[origFrom].short} → ${CATEGORY_META[nextCat].short} (已本地永久记录)`);
+    }
     recomputeAndRender();
   }
 
@@ -5713,13 +5890,211 @@
       }
     }
 
-    // Custom Category Rules Save/Reset
+    // Custom Category Rules Save/Reset + Local Correction History + Plan A Community Suggest / Publish
+    function setCurationStatus(htmlText, isError = false) {
+      const el = $('curationStatusLine');
+      if (!el) return;
+      el.innerHTML = htmlText;
+      el.style.borderColor = isError ? 'var(--t-danger, #c43e3e)' : 'var(--t-accent)';
+      el.classList.remove('hidden');
+    }
+
+    function collectLocalCorrectionItems() {
+      const note = ($('curationNoteInput')?.value || '').trim();
+      const map = new Map();
+      for (const e of Object.values(state.categoryCorrectionLog || {})) {
+        if (e && e.tag && e.to) {
+          map.set(e.tag, {
+            tag: e.tag,
+            from: e.from || classifyTagClient(e.tag, '', null, true),
+            to: e.to,
+            note: note || e.note || ''
+          });
+        }
+      }
+      for (const cat of CATEGORY_CYCLE) {
+        for (const t of state.userCategoryLists[cat] || []) {
+          if (t && !map.has(t)) {
+            map.set(t, {
+              tag: t,
+              from: classifyTagClient(t, '', null, true),
+              to: cat,
+              note
+            });
+          }
+        }
+      }
+      return Array.from(map.values());
+    }
+
     function populateRulesModal() {
       $('ruleCharTextarea').value = (state.userCategoryLists.character || []).join(', ');
       $('ruleAttrTextarea').value = (state.userCategoryLists.attribute_xp || []).join(', ');
       $('ruleIpTextarea').value = (state.userCategoryLists.series_ip || []).join(', ');
       $('ruleMetaTextarea').value = (state.userCategoryLists.meta_general || []).join(', ');
+      renderCorrectionLogList();
+      $('curationStatusLine')?.classList.add('hidden');
     }
+
+    $('syncCommunityOverridesBtn')?.addEventListener('click', () => syncCommunityTagOverrides(true));
+
+    $('exportCorrectionsBtn')?.addEventListener('click', () => {
+      const items = collectLocalCorrectionItems();
+      if (!items.length) {
+        showToast('暂无可导出的本地纠错记录');
+        return;
+      }
+      const doc = {
+        schema: 'madeinmagius-tag-overrides/v1',
+        exportedAt: new Date().toISOString(),
+        items
+      };
+      const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pixez-tag-corrections-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast(`已导出 ${items.length} 条本地纠错记录 JSON`);
+    });
+
+    $('importCorrectionsBtn')?.addEventListener('click', () => $('importCorrectionsFile')?.click());
+    $('importCorrectionsFile')?.addEventListener('change', async (ev) => {
+      const file = ev.target?.files?.[0];
+      ev.target.value = '';
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const list = Array.isArray(parsed?.items)
+          ? parsed.items
+          : (parsed?.overrides && typeof parsed.overrides === 'object'
+              ? Object.entries(parsed.overrides).map(([tag, v]) => ({
+                  tag,
+                  from: typeof v === 'object' ? (v.from || '') : '',
+                  to: typeof v === 'string' ? v : v?.to
+                }))
+              : []);
+        let imported = 0;
+        const now = new Date().toISOString();
+        for (const it of list) {
+          const tag = String(it?.tag || '').trim();
+          const to = String(it?.to || '').trim();
+          if (!tag || !CATEGORY_META[to]) continue;
+          const from = String(it?.from || '').trim() || classifyTagClient(tag, '', null, true);
+          state.userCategoryOverrides[tag] = to;
+          state.categoryCorrectionLog[tag] = { tag, from, to, updatedAt: now };
+          imported++;
+        }
+        if (imported > 0) {
+          persistCategoryCorrections();
+          renderCorrectionLogList();
+          recomputeAndRender();
+          showToast(`已导入并合并 ${imported} 条分类纠错记录`);
+        } else {
+          showToast('未在 JSON 文件中找到有效的纠错条目');
+        }
+      } catch (err) {
+        showToast(`导入失败: ${err.message}`);
+      }
+    });
+
+    $('submitCommunitySuggestBtn')?.addEventListener('click', async () => {
+      const items = collectLocalCorrectionItems();
+      if (!items.length) {
+        showToast('请先在排行表中点击分类徽标纠错至少 1 个标签');
+        return;
+      }
+      const btn = $('submitCommunitySuggestBtn');
+      if (btn) btn.disabled = true;
+      setCurationStatus(`正在提交 ${items.length} 条待审纠错建议...`);
+      try {
+        const r = await fetch(getTagOverridesEndpoint(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'suggest',
+            items,
+            comment: ($('curationNoteInput')?.value || '').trim()
+          })
+        });
+        const d = await r.json().catch(() => ({ error: true, message: `HTTP ${r.status}` }));
+        if (!r.ok || d.error) {
+          setCurationStatus(escapeHtml(d.message || '提交失败'), true);
+        } else if (d.mode === 'issue_created' && d.issueUrl) {
+          setCurationStatus(
+            `${escapeHtml(d.message)} <a href="${escapeHtml(d.issueUrl)}" target="_blank" rel="noopener">查看待审单 #${escapeHtml(String(d.issueNumber || ''))} ↗</a>`
+          );
+          showToast(`已提交 ${items.length} 条待审纠错建议！`);
+        } else if (d.fallbackUrl) {
+          setCurationStatus(
+            `${escapeHtml(d.message)} <a href="${escapeHtml(d.fallbackUrl)}" target="_blank" rel="noopener">点此打开预填提交页 ↗</a>`
+          );
+          window.open(d.fallbackUrl, '_blank', 'noopener');
+        } else {
+          setCurationStatus(escapeHtml(d.message || '已提交待审建议'));
+        }
+      } catch (err) {
+        setCurationStatus(`提交失败: ${escapeHtml(err.message)}`, true);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    $('publishCommunityOverridesBtn')?.addEventListener('click', async () => {
+      const items = collectLocalCorrectionItems();
+      if (!items.length) {
+        showToast('请先纠错至少 1 个标签再发布');
+        return;
+      }
+      const passcode = ($('curationPasscodeInput')?.value || '').trim();
+      if (!passcode) {
+        showToast('请输入管理员口令（普通用户可点击左侧「提交待审建议 (免口令)」）', 3600);
+        $('curationPasscodeInput')?.focus();
+        return;
+      }
+      const btn = $('publishCommunityOverridesBtn');
+      if (btn) btn.disabled = true;
+      setCurationStatus(`正在校验口令并合并发布 ${items.length} 条纠错至全站公共词表...`);
+      try {
+        const r = await fetch(getTagOverridesEndpoint(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Curation-Passcode': passcode
+          },
+          body: JSON.stringify({ action: 'publish', passcode, items })
+        });
+        const d = await r.json().catch(() => ({ error: true, message: `HTTP ${r.status}` }));
+        if (!r.ok || d.error) {
+          setCurationStatus(escapeHtml(d.message || `发布失败 (HTTP ${r.status})`), true);
+        } else {
+          if (d.overrides && typeof d.overrides === 'object') {
+            state.communityTagOverrides = d.overrides;
+            state.communityOverridesMeta = {
+              count: Number(d.totalCount || Object.keys(d.overrides).length),
+              updatedAt: d.updatedAt || new Date().toISOString(),
+              source: 'github-live',
+              canPublish: true
+            };
+            try {
+              localStorage.setItem('pixez_community_tag_overrides_v1', JSON.stringify(d.overrides));
+            } catch (_) {}
+          }
+          renderCorrectionLogList();
+          const linkHtml = d.commitUrl
+            ? ` <a href="${escapeHtml(d.commitUrl)}" target="_blank" rel="noopener">查看提交记录 ↗</a>`
+            : '';
+          setCurationStatus(`${escapeHtml(d.message || '发布成功')}${linkHtml}`);
+          showToast(`已发布 ${d.applied || items.length} 条至全站公共词表！`);
+        }
+      } catch (err) {
+        setCurationStatus(`发布失败: ${escapeHtml(err.message)}`, true);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
 
     $('saveUserRulesBtn').addEventListener('click', () => {
       const splitTags = (str) =>
@@ -5727,25 +6102,38 @@
           .split(/[,，\n\r]+/)
           .map((s) => s.trim())
           .filter(Boolean);
-      state.userCategoryLists = {
+      const nextLists = {
         character: splitTags($('ruleCharTextarea').value),
         attribute_xp: splitTags($('ruleAttrTextarea').value),
         series_ip: splitTags($('ruleIpTextarea').value),
         meta_general: splitTags($('ruleMetaTextarea').value)
       };
+      const nowIso = new Date().toISOString();
+      for (const cat of CATEGORY_CYCLE) {
+        for (const t of nextLists[cat]) {
+          if (!state.categoryCorrectionLog[t] || state.categoryCorrectionLog[t].to !== cat) {
+            const origFrom = state.categoryCorrectionLog[t]?.from || classifyTagClient(t, '', null, true);
+            state.categoryCorrectionLog[t] = { tag: t, from: origFrom, to: cat, updatedAt: nowIso };
+          }
+        }
+      }
+      state.userCategoryLists = nextLists;
       localStorage.setItem('pixez_cat_lists', JSON.stringify(state.userCategoryLists));
+      persistCategoryCorrections();
       $('rulesModal').classList.add('hidden');
-      showToast('已保存自定义分类词表并重算排行');
+      showToast('已保存自定义分类词表并记录纠错历史');
       recomputeAndRender();
     });
 
     $('resetUserRulesBtn').addEventListener('click', () => {
       state.userCategoryLists = { character: [], attribute_xp: [], series_ip: [], meta_general: [] };
       state.userCategoryOverrides = {};
+      state.categoryCorrectionLog = {};
       localStorage.removeItem('pixez_cat_lists');
       localStorage.removeItem('pixez_cat_overrides');
+      localStorage.removeItem('pixez_cat_correction_log_v1');
       populateRulesModal();
-      showToast('已恢复默认分类规则');
+      showToast('已清空本地自定义词表与纠错记录');
       recomputeAndRender();
     });
 
@@ -5920,6 +6308,8 @@
   initQuickJumpRail();
   initEvents();
   renderRecentSearches();
+  refreshCorrectionBadge();
+  syncCommunityTagOverrides(false);
   checkAuthStatus();
 
   const urlParams = new URLSearchParams(window.location.search);

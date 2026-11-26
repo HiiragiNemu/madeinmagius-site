@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.1.2',
-  versionCode: 10010220,
+  version: '2.1.3',
+  versionCode: 10010230,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55183508,
-  sha256: 'bd836c9c468e56c451943697e07949836c8d322f5a3b20f158681aea919f2b37',
+  size: 55283924,
+  sha256: '06c352c771ed39657c0594b46189e5fcdb2df326521a5a5aacc68ce718f00791',
   releaseNotes:
-    'PixEz Pulse v2.1.2：修复全量采集在约 135 页 / 4,050 作因 Pixiv 限流误判停止（180ms 节奏控制 + 6 级限流冷却自动续采）、升级 360 天滑动日期窗口分段、修复斜杠标签编码、升级 Pixiv/PixEz 蓝白配色翼枪脉冲图标与访客 R-18 采样一致性。',
+    'PixEz Pulse v2.1.3：全面对齐网页端——采前全站总数与纯手绘基准探测 + 大标签全量分段确认弹窗、中断后「接着采集/清空重采」、登录态 R-18 双开关、按时间范围(起止日期)与自定义(页/作)深度、常驻主过滤条、拓扑图 5~40 节点拨杆、Pixiv 官方 CPS 罗马音与按需译名补全。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

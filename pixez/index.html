@@ -102,7 +102,7 @@
         <button class="sub-tab" data-view-target="networkView" type="button">拓扑图</button>
       </div>
       <div class="masthead__tools">
-        <button class="t-btn" id="openRulesModalBtn" type="button">词表</button>
+        <button class="t-btn" id="openRulesModalBtn" type="button" title="自定义分类词表与我的分类纠错记录">词表 <span class="t-count hidden" id="rulesCorrectionBadge">0</span></button>
         <button class="t-btn" id="openReverseModalBtn" type="button">搜源</button>
         <button class="t-btn" id="openBasketBtn" type="button">收集篮 <span class="t-count" id="basketBadge">0</span></button>
         <button class="t-btn" id="openCacheModalBtn" type="button" title="本地 1GB 分段采样缓存与断点续采">缓存 <span class="t-count" id="cacheCountBadge">0</span></button>
@@ -842,14 +842,45 @@
     <div class="modal-window modal-window--lg">
       <div class="modal-titlebar">
         <div>
-          <h3>角色 / 属性 / 作品IP 强制分类词表规则</h3>
+          <h3>标签分类词表 · 我的纠错记录与全站共享 (Plan A)</h3>
         </div>
         <button class="btn-modal-close" id="closeRulesModalBtn" type="button">[X] 关闭</button>
       </div>
       <div class="modal-content">
         <p class="modal-note">
-          除了在排行榜表格中直接点击任意标签的「分类」列一键切换归类外，您也可以在下方批量填入自定义标签（用逗号或换行分隔），保存后立即对当前结果生效：
+          分类优先级：<strong>个人本地纠错（刷新永久保留）</strong> &gt; <strong>全站公共纠错词表（自动同步）</strong> &gt; 图站原生 / Danbooru 本体论 &gt; 内置静态与启发式规则。在排行表中点击任意标签的「分类」徽标即可快速纠错，所有改动均会在下方留痕。
         </p>
+
+        <!-- Local Correction History + Plan A Community Sync / Suggest / Passcode Publish -->
+        <div class="curation-panel" id="correctionLogPanel">
+          <div class="curation-panel__head">
+            <div class="curation-panel__title">
+              我的分类纠错记录 (<span id="correctionLogCount">0</span> 条)
+              <span class="curation-sync-badge" id="communityOverridesBadge">全站公共词表: 加载中...</span>
+            </div>
+            <div class="curation-panel__btns">
+              <button class="t-btn t-btn--sm" id="syncCommunityOverridesBtn" type="button" title="立即从全站拉取最新公共纠错词表">刷新全站词表</button>
+              <button class="t-btn t-btn--sm" id="exportCorrectionsBtn" type="button" title="导出本地纠错记录为 JSON">导出JSON</button>
+              <button class="t-btn t-btn--sm" id="importCorrectionsBtn" type="button" title="从 JSON 导入纠错记录并合并">导入JSON</button>
+              <input type="file" id="importCorrectionsFile" accept=".json,application/json" class="hidden" />
+            </div>
+          </div>
+          <div class="correction-log-list" id="correctionLogList">
+            <div class="empty-placeholder">暂无本地分类纠错记录。点击共现排行中任意标签的分类徽标（如把「臭がる」从 角色 改为 属性），系统会自动记录「原分类 → 现分类」并永久保存在本地。</div>
+          </div>
+          <div class="curation-actions-bar">
+            <div class="curation-action-group">
+              <input type="text" id="curationNoteInput" class="curation-input" placeholder="可选备注（例如：日语送假名动词非角色）..." maxlength="120" />
+              <button class="t-btn t-btn--sm" id="submitCommunitySuggestBtn" type="button" title="无需口令，将你的纠错记录打包提交至待审队列供站长合并给所有用户">提交待审建议 (免口令)</button>
+            </div>
+            <div class="curation-action-group">
+              <input type="password" id="curationPasscodeInput" class="curation-input curation-input--pass" placeholder="管理员口令 (仅发布全站需填)..." autocomplete="off" />
+              <button class="t-btn t-btn--sm t-btn--primary" id="publishCommunityOverridesBtn" type="button" title="校验口令后直接合入全站公共词表，所有网页端与 APK 用户自动同步生效">发布至全站 (需口令)</button>
+            </div>
+          </div>
+          <div class="curation-status-line hidden" id="curationStatusLine"></div>
+        </div>
+
         <div class="rules-grid">
           <div class="rule-editor-box">
             <label>角色 / 人物类 (CHARACTER) 强制词表:</label>
@@ -1097,6 +1128,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.18"></script>
+  <script src="./app.js?v=4.19"></script>
 </body>
 </html>

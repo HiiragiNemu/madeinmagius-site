@@ -48,7 +48,7 @@
       root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=4.9" />
+  <link rel="stylesheet" href="./styles.css?v=4.12" />
   <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.5" />
 </head>
 <body class="call-screen-host-v7">
@@ -98,11 +98,13 @@
         <button class="t-btn" id="openReverseModalBtn" type="button">搜源</button>
         <button class="t-btn" id="openBasketBtn" type="button">收集篮 <span class="t-count" id="basketBadge">0</span></button>
         <button class="t-btn" id="openCacheModalBtn" type="button" title="本地 1GB 分段采样缓存与断点续采">缓存 <span class="t-count" id="cacheCountBadge">0</span></button>
-        <button class="t-btn t-btn--auth" id="openAuthModalBtn" type="button" title="Pixiv 账号与登录状态">
+        <button class="t-btn t-btn--auth" id="openAuthModalBtn" type="button" title="查看 Pixiv 账号信息、头像与 ID">
           <img class="header-auth-avatar hidden" id="headerAuthAvatar" alt="" decoding="async" />
+          <span class="header-auth-initial hidden" id="headerAuthInitial" aria-hidden="true">P</span>
           <span class="header-auth-dot hidden" id="headerAuthDot" aria-hidden="true"></span>
-          <span id="headerAuthLabel">账号</span>
+          <span id="headerAuthLabel">未登录 · 登录</span>
         </button>
+        <button class="t-btn hidden" id="headerQuickSwitchBtn" type="button" title="更换 / 切换其他 Pixiv 账号">换号</button>
         <button class="t-btn t-btn--danger hidden" id="headerQuickLogoutBtn" type="button" title="退出当前 Pixiv 账号">退出</button>
         <button class="t-btn" id="openClientDownloadBtn" type="button">APK/油猴</button>
       </div>
@@ -264,10 +266,19 @@
           <strong class="telemetry-val" id="statTopCoTag">—</strong>
           <span class="telemetry-sub" id="statTopCoRate">共现率: —</span>
         </div>
+        <div class="telemetry-item telemetry-item--r18">
+          <span class="telemetry-head">R-18占比:</span>
+          <strong class="telemetry-val" id="statR18Rate">—</strong>
+          <span class="telemetry-sub" id="statR18HumanSub">手绘R-18: —</span>
+        </div>
         <div class="telemetry-item">
           <span class="telemetry-head">非AI占比:</span>
           <strong class="telemetry-val" id="statOriginalRate">—</strong>
           <span class="telemetry-sub" id="statAiBreakdown">AI: —</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="telemetry-head">时间跨度:</span>
+          <strong class="telemetry-val" id="statDateSpan">—</strong>
         </div>
       </div>
     </section>
@@ -870,6 +881,7 @@
             <div class="auth-profile-actions">
               <a class="t-btn t-btn--sm" id="authProfileHomeLink" href="https://www.pixiv.net/" target="_blank" rel="noopener noreferrer">Pixiv 主页 ↗</a>
               <button class="t-btn t-btn--sm" id="refreshAuthProfileBtn" type="button">刷新资料</button>
+              <button class="t-btn t-btn--sm t-btn--primary" id="authSwitchAccountBtn" type="button">更换账号</button>
               <button class="t-btn t-btn--sm t-btn--danger" id="oauthLogoutBtn" type="button">退出登录</button>
             </div>
           </div>
@@ -883,11 +895,11 @@
           <div class="subbox-title" id="bridgeStatusTitle">三种使用方式说明</div>
           <ul class="auth-summary-list" id="bridgeStatusDesc">
             <li><strong>免登录直连</strong>：无需登录账号，可直接进行标签补全、共现采样、分类筛选与高清看图。</li>
-            <li><strong>桌面浏览器自动同步登录</strong>：受浏览器同源安全策略限制，纯网页无法直接读取 <code>pixiv.net</code> 的 HttpOnly 会话 Cookie 或拦截 <code>pixiv://</code> 回调；安装 <strong>油猴脚本 v4.0</strong> 后即可自动同步当前浏览器登录态。</li>
+            <li><strong>桌面浏览器自动同步登录</strong>：受浏览器同源安全策略限制，纯网页无法直接读取 <code>pixiv.net</code> 的 HttpOnly 会话 Cookie 或拦截 <code>pixiv://</code> 回调；安装 <strong>油猴脚本 v4.1</strong> 后即可自动同步当前浏览器登录态并直连 Pixiv 全量日期分段接口。</li>
             <li><strong>手机端登录</strong>：请直接使用 <strong>Android APK 客户端</strong>（内置 PixEz 原生登录流程）。</li>
           </ul>
           <div class="modal-footer-btns" style="justify-content:flex-start;">
-            <a class="t-btn t-btn--primary" id="installAuthBridgeLink" href="./downloads/pixtag-companion.user.js" target="_blank" rel="noopener">安装油猴脚本 v4.0</a>
+            <a class="t-btn t-btn--primary" id="installAuthBridgeLink" href="./downloads/pixtag-companion.user.js" target="_blank" rel="noopener">安装/更新油猴脚本 v4.1</a>
             <button class="t-btn" id="syncChromeBridgeNowBtn" type="button">同步浏览器登录态</button>
             <button class="t-btn" id="startPixivOAuthBtn" type="button">一键授权登录 ↗</button>
             <a class="t-btn" href="https://madeinmagius-site.pages.dev/downloads/pixiv/android" target="_blank" rel="noopener">下载 Android APK ↗</a>
@@ -1063,6 +1075,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.11"></script>
+  <script src="./app.js?v=4.12"></script>
 </body>
 </html>

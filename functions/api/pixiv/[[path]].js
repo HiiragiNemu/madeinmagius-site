@@ -1070,7 +1070,7 @@ export async function onRequest(context) {
     return jsonResponse({ oauth, appApi, mirror }, 200, request);
   }
   if (subPath === 'status' || subPath === '') {
-    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.11' }, 200, request);
+    return jsonResponse({ ok: true, runtime: 'cloudflare-pages', version: '4.12' }, 200, request);
   }
 
   // 0B. Danbooru semantic taxonomy batch enrichment (/api/pixiv/danbooru/enrich)
@@ -1826,8 +1826,10 @@ export async function onRequest(context) {
               effHibiWord = baseTagForHibi;
               firstRes = await hibiFetch(effHibiWord, startPage);
             }
-            // CRITICAL: If rate-limited or mid-crawl (startPage > 1), NEVER drop into WEB-AJAX-MIRROR!
-            if (!firstRes.ok && (firstRes.rateLimited || startPage > 1)) {
+            // CRITICAL CONTAMINATION GUARD:
+            // When mode !== 'safe' (all / r18), NEVER silently fall through into WEB-AJAX-MIRROR (0% R-18)!
+            // Mixing 0%-R18 safe-only pages into an all-mode crawl destroys R-18% (e.g. collapsing 40% -> 12.8%).
+            if (!firstRes.ok) {
               sendEvent('complete', {
                 source: 'pixiv',
                 primaryTag: tag,
@@ -1836,7 +1838,7 @@ export async function onRequest(context) {
                 engine: 'HIBI-APP-API',
                 hasMore: true,
                 rateLimited: true,
-                retryAfterMs: firstRes.rateLimited ? 5000 : 2500,
+                retryAfterMs: firstRes.rateLimited ? 5000 : 3000,
                 hitOffsetCeiling: false,
                 includesR18: true,
                 oldestDate: '',

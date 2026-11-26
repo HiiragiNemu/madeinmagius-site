@@ -1040,6 +1040,29 @@
       ? `(已剔除 AI ${poolAiCount}作)`
       : `(AI ${aiWorksCount}作)`;
 
+    const isR18Work = (w) => Number(w.xRestrict || 0) > 0 || (Array.isArray(w.tags) && w.tags.some((t) => /^r-?18g?$/i.test(String(t))));
+    const r18WorksCount = activeWorks.filter(isR18Work).length;
+    const r18Pct = activeWorks.length > 0 ? ((r18WorksCount / activeWorks.length) * 100).toFixed(1) : '0.0';
+    const humanPool = activeWorks.filter((w) => !w.isAi);
+    const humanR18Count = humanPool.filter(isR18Work).length;
+    const humanR18Pct = humanPool.length > 0 ? ((humanR18Count / humanPool.length) * 100).toFixed(1) : '0.0';
+    if ($('statR18Rate')) $('statR18Rate').textContent = `${r18Pct}% (${r18WorksCount}作)`;
+    if ($('statR18HumanSub')) $('statR18HumanSub').textContent = `手绘R-18: ${humanR18Pct}%`;
+
+    let minDateStr = '';
+    let maxDateStr = '';
+    for (const w of activeWorks) {
+      const ymd = String(w.createDate || '').slice(0, 10);
+      if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue;
+      if (!minDateStr || ymd < minDateStr) minDateStr = ymd;
+      if (!maxDateStr || ymd > maxDateStr) maxDateStr = ymd;
+    }
+    if ($('statDateSpan')) {
+      $('statDateSpan').textContent = minDateStr && maxDateStr
+        ? (minDateStr === maxDateStr ? minDateStr : `${minDateStr} ~ ${maxDateStr}`)
+        : '—';
+    }
+
     $('galleryTotalBadge').textContent = activeWorks.length;
   }
 
@@ -2430,6 +2453,7 @@
     const exhaustedHibiPairs = new Set();
     let consecutiveRateLimits = 0;
     let consecutiveSkippedPages = 0;
+    let lockedR18Engine = '';
     let hasMore = true;
     let chunkIndex = 0;
     let lastSnapshotRenderAt = 0;
@@ -2837,12 +2861,21 @@
                 if (ds.nativeTagCategories) Object.assign(accumNativeCats, ds.nativeTagCategories);
                 if (ds.translations || ds.tagTranslations) Object.assign(accumTrans, ds.translations || ds.tagTranslations);
                 if (!activePhaseLabel && (ds.primaryTag || ds.meta?.queryTag)) primaryResolvedTag = ds.primaryTag || ds.meta?.queryTag;
-                if (ds.engine || ds.meta?.engine) lastEngine = ds.engine || ds.meta?.engine;
+                const chunkEngine = ds.engine || ds.meta?.engine || '';
+                if (!lockedR18Engine && mode !== 'safe' && (chunkEngine === 'HIBI-APP-API' || chunkEngine === 'PIXIV-OAUTH-APP-API')) {
+                  lockedR18Engine = chunkEngine;
+                }
+                const isSafeOnlyContaminant =
+                  Boolean(lockedR18Engine) &&
+                  (chunkEngine === 'WEB-AJAX-MIRROR' || chunkEngine === 'PIXIVIZ-RELAY');
+                if (chunkEngine && !isSafeOnlyContaminant) lastEngine = chunkEngine;
                 const dsTotal = Number(ds.pixivTotal ?? ds.meta?.totalMatches ?? 0);
                 if (dsTotal > knownTotalPosts) knownTotalPosts = dsTotal;
 
-                for (const w of ds.artworks || []) {
-                  if (w && w.id) accumWorks.set(String(w.id), w);
+                if (!isSafeOnlyContaminant) {
+                  for (const w of ds.artworks || []) {
+                    if (w && w.id) accumWorks.set(String(w.id), w);
+                  }
                 }
 
                 if (eventType === 'complete') {
@@ -3734,13 +3767,13 @@
       // Persistent Auto-Login: if server restarted or running on serverless Pages, silently restore via saved Refresh Token or Cookie!
       if (!data.loggedIn && state.refreshToken) {
         try {
-          const rr = await apiFetch('/api/oauth/exchange', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken: state.refreshToken })
-          });
-          const rd = await rr.json();
-          if (rr.ok && !rd.error && rd.user) {
+          const ex = await exchangeOAuthWithBridgeFallback({ refreshToken: state.refreshToken });
+          const rd = ex.data || {};
+          if (ex.ok && !rd.error && rd.user) {
+            if (rd.accessToken) {
+              state.accessToken = rd.accessToken;
+              localStorage.setItem('pixez_access_token_v4', rd.accessToken);
+            }
             if (rd.refreshToken) {
               state.refreshToken = rd.refreshToken;
               localStorage.setItem('pixez_refresh_token_v4', rd.refreshToken);
@@ -3786,19 +3819,27 @@
     const authBtn = $('openAuthModalBtn');
     const authDot = $('headerAuthDot');
     const authAvatar = $('headerAuthAvatar');
+    const authInitial = $('headerAuthInitial');
+    const quickSwitch = $('headerQuickSwitchBtn');
     const quickLogout = $('headerQuickLogoutBtn');
     const profileCard = $('authProfileCard');
     const statusBanner = $('authStatusBanner');
 
     if (isLogged) {
-      $('headerAuthLabel').textContent = userName || '已登录';
+      const compactId = uid ? ` · ID:${uid}` : '';
+      $('headerAuthLabel').textContent = `${userName || '已登录'}${compactId}`;
       if (authBtn) {
         authBtn.classList.add('is-logged-in');
-        authBtn.title = `已登录 Pixiv: ${userName}${uid ? ` (UID ${uid})` : ''} · 点击查看资料或退出`;
+        authBtn.title = `已登录 Pixiv: ${userName}${uid ? ` (UID ${uid})` : ''} · 点击查看账号信息`;
       }
       if (authDot) authDot.classList.remove('hidden');
+      if (quickSwitch) quickSwitch.classList.remove('hidden');
       if (quickLogout) quickLogout.classList.remove('hidden');
-      bindAvatarImg(authAvatar, avatarUrl, null);
+      if (authInitial) {
+        authInitial.textContent = (userName || 'P').slice(0, 1).toUpperCase();
+        authInitial.classList.remove('hidden');
+      }
+      bindAvatarImg(authAvatar, avatarUrl, authInitial);
 
       if (profileCard) {
         profileCard.classList.remove('hidden');
@@ -3822,22 +3863,24 @@
         bindAvatarImg($('authProfileAvatar'), avatarUrl, fallback);
       }
       if (statusBanner) statusBanner.classList.add('hidden');
-      $('authCurrentStatusBox').textContent = `当前状态: 已连接 Pixiv 账号 (${userName}) — 后续打开将自动保持登录。`;
+      $('authCurrentStatusBox').textContent = `当前状态: 已登录 Pixiv 账号 ${userName}${uid ? ` (ID: ${uid})` : ''} — 后续打开将自动保持登录。`;
     } else {
-      $('headerAuthLabel').textContent = '账号';
+      $('headerAuthLabel').textContent = '未登录 · 登录';
       if (authBtn) {
         authBtn.classList.remove('is-logged-in');
-        authBtn.title = 'Pixiv 账号与登录说明（当前免登录直连模式）';
+        authBtn.title = '当前未登录 Pixiv · 点击登录或查看账号说明';
       }
       if (authDot) authDot.classList.add('hidden');
+      if (authInitial) authInitial.classList.add('hidden');
       if (authAvatar) {
         authAvatar.classList.add('hidden');
         authAvatar.removeAttribute('src');
       }
+      if (quickSwitch) quickSwitch.classList.add('hidden');
       if (quickLogout) quickLogout.classList.add('hidden');
       if (profileCard) profileCard.classList.add('hidden');
       if (statusBanner) statusBanner.classList.remove('hidden');
-      $('authCurrentStatusBox').textContent = '当前状态: 免登录直连模式 — 可直接使用全部采样与看图功能。';
+      $('authCurrentStatusBox').textContent = '当前状态: 未登录（免登录访客模式）— 可直接使用采样；登录后可解锁账号信息与全量日期分段。';
     }
 
     if ($('bridgeStatusTitle')) {
@@ -4780,8 +4823,16 @@
       }
     });
 
+    const openSwitchAccountFlow = () => {
+      $('authModal')?.classList.remove('hidden');
+      const adv = document.querySelector('#authModal .auth-advanced-details');
+      if (adv) adv.open = true;
+      showToast('请选择「一键授权登录」或在下方填入新账号凭据以更换账号', 3600);
+    };
     $('oauthLogoutBtn')?.addEventListener('click', performAuthLogout);
     $('headerQuickLogoutBtn')?.addEventListener('click', performAuthLogout);
+    $('headerQuickSwitchBtn')?.addEventListener('click', openSwitchAccountFlow);
+    $('authSwitchAccountBtn')?.addEventListener('click', openSwitchAccountFlow);
     $('refreshAuthProfileBtn')?.addEventListener('click', async () => {
       await checkAuthStatus();
       showToast('已刷新账号资料');

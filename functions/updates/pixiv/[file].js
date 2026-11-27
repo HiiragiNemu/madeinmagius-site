@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.2.0',
-  versionCode: 10010300,
+  version: '2.2.1',
+  versionCode: 10010310,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55551052,
-  sha256: '51cdf7bc5ebbc05df90ee129e05a273690d841e5dc1a7492c89c5ebc6491e58d',
+  size: 55558340,
+  sha256: '86e075d61ed0c8a49d31df544514e3453472bb10be80162cefec5ea0a5756a41',
   releaseNotes:
-    'PixEz Pulse v2.2.0：取消搜索顶栏切入自动采样（仅填入标签，待手动确认深度后再采样）；新增网页版同款 60作/页直连引擎与精确含R-18/AI全量总数拆解（支持一键同步内置WebView Cookie，非会员遇日期限制自动无缝接管App API）；App API 与网页直连均接入全局共享限流门 + AIMD 平稳控速消除频繁22s冷却抖动；升级网页版同款整型索引 CSR 后台 Isolate 计算引擎（移除22标签截断与空画师误计）及总数一致自动0流量复用本机缓存。',
+    'PixEz Pulse v2.2.1：同步网页版 v4.30 超大标签防 500 页撞墙控速（120/280 页平滑降速 + 静默冷却 5→15→35→70→120s）、单边 ecd 严格单调步进与 JST 时区容错，以及完整保留 v2.2.0 禁自动采样、网页直连双引擎、AIMD 控速、后台 Isolate 算力与智能缓存复用。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

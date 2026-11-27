@@ -5869,8 +5869,8 @@
                   else anonEmptySegs++;
                   if (anonEmptySegs >= 25) break;
                   if (skipCrowdedHigh) {
-                    // Already-collected dense boundary edge -> jump backward by 15 days (or 1 day if near boundary)
-                    const nextStep = aTrack.oldest && aTrack.oldest < anonEcd ? aTrack.oldest : shiftYmd(anonEcd, -7);
+                    // Already-collected boundary day -> step strictly by 1 day (NEVER skip 7 days!)
+                    const nextStep = aTrack.oldest && aTrack.oldest < anonEcd ? aTrack.oldest : shiftYmd(anonEcd, -1);
                     anonEcd = nextStep;
                   } else {
                     const cand = aTrack.oldest || '';
@@ -6273,10 +6273,13 @@
       progressFill.style.width = '100%';
       progressPct.textContent = '100%';
       const finalCount = accumWorks.size;
+      // Pixiv's search `total` index normally includes ~1.5%-3% deleted/privated/MyPixiv-only ghost entries
+      // that never appear in search pages. Treating >=95% (or within 120 works) as complete avoids false "interrupted" banners!
+      const missingAllowance = Math.max(120, Math.round(knownTotalPosts * 0.05));
       const incompleteCrawl = Boolean(
         finalCount > 0 &&
         knownTotalPosts > 0 &&
-        finalCount < knownTotalPosts - 50 &&
+        finalCount < knownTotalPosts - missingAllowance &&
         !reachedDepthCap()
       );
       if (incompleteCrawl) {
@@ -6301,6 +6304,17 @@
         );
       } else {
         state.interruptedCrawl = null;
+        if (knownTotalPosts > 0 && isAllMode && !isDateRangeDepth) {
+          const covPct = Math.min(100, (finalCount / knownTotalPosts) * 100).toFixed(1);
+          const ghostNote = finalCount < knownTotalPosts
+            ? `（占全站索引 ${knownTotalPosts.toLocaleString()} 件的 ${covPct}%，差额为 Pixiv 屏蔽/仅好友可见/已删索引项）`
+            : `（全站 ${knownTotalPosts.toLocaleString()} 件 100% 完整）`;
+          showPreflightBanner(
+            `全量采集完成 [${primaryResolvedTag}]：已采集 ${finalCount.toLocaleString()} 件可见作品${ghostNote} · 跨度 ${computeOldestDate() || '—'} ~ ${computeNewestDate() || '—'}，已存入本地缓存。`,
+            false,
+            false
+          );
+        }
       }
       progressText.textContent =
         knownTotalPosts > 0

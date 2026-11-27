@@ -4556,7 +4556,8 @@
             const requestedApproxWorks = isAllMode
               ? totalPosts
               : (targetWorksLimit > 0 ? targetWorksLimit : requestedMaxPages * pageSizeEst);
-            const cacheIsComplete = !cachedRec.hasMore || (totalPosts > 0 && cachedWorksCount >= totalPosts);
+            const cacheRatioOk = totalPosts <= 0 || cachedWorksCount >= Math.floor(totalPosts * 0.92);
+            const cacheIsComplete = (!cachedRec.hasMore && cacheRatioOk) || (totalPosts > 0 && cachedWorksCount >= totalPosts);
             const coversRequestedDepth =
               cacheIsComplete ||
               (recOrder === order && cachedWorksCount >= Math.min(totalPosts || Infinity, requestedApproxWorks));
@@ -4705,6 +4706,7 @@
     let hasMore = true;
     let chunkIndex = 0;
     let lastSnapshotRenderAt = 0;
+    let lastRenderedCount = -1;
     let lastCheckpointSize = accumWorks.size;
 
     // Background-tab-proof sleep: uses an inline Web Worker timer (exempt from Chrome's 1s/60s background tab throttling!)
@@ -4853,7 +4855,7 @@
       const now = Date.now();
       const count = accumWorks.size;
       const renderInterval = count < 1500 ? 450 : (count < 6000 ? 1200 : (count < 15000 ? 2400 : 4000));
-      const needRender = forceRender || now - lastSnapshotRenderAt >= renderInterval;
+      const needRender = forceRender || (now - lastSnapshotRenderAt >= renderInterval && count !== lastRenderedCount);
       const needCkpt = count - lastCheckpointSize >= 3000;
       $('engineSourceIndicator').textContent = `${lastEngine} · ${totalPagesScanned}P`;
       if (!needRender && !needCkpt) return;
@@ -4878,6 +4880,7 @@
       }
       if (needRender) {
         lastSnapshotRenderAt = now;
+        lastRenderedCount = count;
         if (forceRender) state.tableDisplayLimit = 160;
         recomputeAndRender();
       }
@@ -4906,13 +4909,12 @@
         let seg1OldestDate = '';
         let dateFilterStrategy = 'bounded_360'; // bounded_360 | ecd_only | bounded_90 | unsupported
 
-        // Proactive mega-crawl anti-WAF pacing + shared quiet cooldown gate:
-        // Small crawls (<120P) run fast 2-way 80ms; mega-crawls (>=120P / >=280P) gently pace down so 800+ pages
-        // finish in one clean run WITHOUT tripping Pixiv's 500-request burst WAF!
-        let concurrency = 2;
-        let maxSafeConcurrency = 2;
-        let pageDelayMs = 80;
-        let learnedSafeDelayMs = 80;
+        // Full v4.26 speed when Pixiv is healthy (3-way concurrency, 0ms artificial delay!);
+        // ONLY engages reactive AIMD backoff if Pixiv actually returns 429/403, then smoothly recovers!
+        let concurrency = 3;
+        let maxSafeConcurrency = 3;
+        let pageDelayMs = 0;
+        let learnedSafeDelayMs = 0;
         let cleanPagesSinceThrottle = 0;
         let throttleUntilTs = 0;
         let throttleCount = 0;
@@ -4921,14 +4923,51 @@
         let sessionPagesFetched = 0;
 
         const getEffectivePacing = () => {
-          if (sessionPagesFetched >= 280) {
-            return { conc: 1, delay: Math.max(learnedSafeDelayMs, 260), segPause: 1500 };
+          if (throttleCount > 0) {
+            return {
+              conc: Math.max(1, Math.min(concurrency, maxSafeConcurrency)),
+              delay: Math.max(pageDelayMs, learnedSafeDelayMs, 120),
+              segPause: 450
+            };
           }
-          if (sessionPagesFetched >= 120) {
-            return { conc: Math.min(maxSafeConcurrency, 2), delay: Math.max(learnedSafeDelayMs, 180), segPause: 900 };
-          }
-          return { conc: Math.min(concurrency, maxSafeConcurrency), delay: Math.max(pageDelayMs, learnedSafeDelayMs), segPause: 350 };
+          return { conc: 3, delay: 0, segPause: 0 };
         };
+
+        // Detect an interior hollow date gap in resumed caches (e.g. 2011~2018 + 2020-12~2026-11 missing 2018~2020-12)
+        const detectHollowDateGap = () => {
+          const dates = [];
+          for (const w of accumWorks.values()) {
+            const y = String(w.createDate || '').slice(0, 10);
+            if (y && /^\d{4}-\d{2}-\d{2}$/.test(y)) dates.push(y);
+          }
+          if (dates.length < 1000) return null;
+          dates.sort();
+          let bestGapDays = 0;
+          let bestLow = '';
+          let bestHigh = '';
+          for (let i = 0; i < dates.length - 1; i++) {
+            const olderCount = i + 1;
+            const newerCount = dates.length - olderCount;
+            if (olderCount < 250 || newerCount < 500) continue;
+            if (dates[i] === dates[i + 1]) continue;
+            const d1 = Date.parse(`${dates[i]}T00:00:00Z`);
+            const d2 = Date.parse(`${dates[i + 1]}T00:00:00Z`);
+            if (!Number.isFinite(d1) || !Number.isFinite(d2)) continue;
+            const gapDays = Math.round((d2 - d1) / 86400000);
+            if (gapDays > bestGapDays) {
+              bestGapDays = gapDays;
+              bestLow = dates[i];
+              bestHigh = dates[i + 1];
+            }
+          }
+          return bestGapDays >= 21 ? { gapLow: bestLow, gapHigh: bestHigh, gapDays: bestGapDays } : null;
+        };
+
+        const initialHollowGap = (!userStartDate && !userEndDate) ? detectHollowDateGap() : null;
+        if (initialHollowGap) {
+          if (webOrd === 'date_d') activeEndDate = initialHollowGap.gapHigh;
+          else activeStartDate = initialHollowGap.gapLow;
+        }
 
         const fetchOneBridgePage = async (pageNum, segHint, ov = null) => {
           const useOrd = ov?.ord || webOrd;
@@ -4968,7 +5007,7 @@
               throttleCount++;
               maxSafeConcurrency = 1;
               concurrency = 1;
-              learnedSafeDelayMs = Math.min(600, Math.max(learnedSafeDelayMs + 100, 260));
+              learnedSafeDelayMs = Math.min(500, Math.max(learnedSafeDelayMs + 90, 220));
               pageDelayMs = learnedSafeDelayMs;
               cleanPagesSinceThrottle = 0;
               throttleUntilTs = Math.max(throttleUntilTs, Date.now() + waitS * 1000);
@@ -5053,25 +5092,30 @@
           let lastYmd = '';
           let raw = 0;
           let fresh = 0;
+          const ymds = [];
           for (const item of list) {
             if (!item || !item.id || item.isAdContainer) continue;
             raw++;
             const ymd = String(item.createDate || '').slice(0, 10);
-            if (ymd) {
+            if (ymd && /^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
               if (!firstYmd) firstYmd = ymd;
               lastYmd = ymd;
+              ymds.push(ymd);
             }
             if (!accumWorks.has(String(item.id))) fresh++;
           }
-          return { raw, fresh, firstYmd, lastYmd, total: Number(blk.total || 0) };
+          ymds.sort();
+          const medianYmd = ymds.length ? ymds[Math.floor(ymds.length / 2)] : firstYmd;
+          return { raw, fresh, firstYmd, lastYmd, medianYmd, total: Number(blk.total || 0) };
         };
 
         // Reusable chronological segmented sweep (works in BOTH date_d backward and date forward directions!)
         const runChronoSweep = async (sweepOrd, boundMin, boundMax, initStart, initEnd, phasePrefix = '') => {
+          // NOTE: On Pixiv Web AJAX, `scd` WITHOUT `ecd` is ignored and defaults to [today-365d, today]!
+          // Therefore `order=date` MUST ALWAYS pass BOTH `scd` and `ecd`, while `ecd_only` applies strictly to `date_d`!
           const makeWindow = (endStr, startStr, strat = dateFilterStrategy) => {
-            if (strat === 'ecd_only') {
-              if (sweepOrd === 'date_d') return { start: '', end: endStr };
-              return { start: startStr, end: '' };
+            if (strat === 'ecd_only' && sweepOrd === 'date_d') {
+              return { start: '', end: endStr };
             }
             const spanDays = strat === 'bounded_90' ? 90 : 360;
             if (sweepOrd === 'date_d' && endStr && !startStr) {
@@ -5093,6 +5137,10 @@
           let consecutiveEmptySegs = 0;
           let crowdedDaySteps = 0;
           let sweepSegsDone = 0;
+          let sweepOldest = '';
+          let sweepNewest = '';
+          let sweepAddedTotal = 0;
+          let emptyProbeBudget = 2;
 
           for (let seg = 1; seg <= maxSegs && !abortCtrl.signal.aborted && !reachedDepthCap(); seg++) {
             sweepSegsDone = seg;
@@ -5159,40 +5207,40 @@
               let batchNew = 0;
               let anyThrottled = false;
 
-              // Self-diagnose date-window response on page 1 of a dated segment (with +2d JST/UTC timezone tolerance!)
+              // Self-diagnose date-window response on page 1 of a dated segment using median date (+3d JST/UTC tolerance)
+              // so a single edited/out-of-order work NEVER falsely triggers date_filter_ignored!
               if (p === 1 && isDatedSeg && results.length === 1 && results[0].json?.body) {
+                bridgeWorked = true;
                 const peek = peekBridgeDateBounds(results[0].json);
-                const endTol = bEndDate ? shiftYmd(bEndDate, 2) : '';
-                const startTol = bStartDate ? shiftYmd(bStartDate, -2) : '';
+                const endTol = bEndDate ? shiftYmd(bEndDate, 3) : '';
+                const startTol = bStartDate ? shiftYmd(bStartDate, -3) : '';
+                const refDate = peek.medianYmd || peek.firstYmd;
                 const violatedBound =
-                  (sweepOrd === 'date_d' && endTol && peek.firstYmd && peek.firstYmd > endTol) ||
-                  (sweepOrd === 'date' && startTol && peek.lastYmd && peek.lastYmd < startTol);
+                  (sweepOrd === 'date_d' && endTol && refDate && refDate > endTol) ||
+                  (sweepOrd === 'date' && (
+                    (startTol && refDate && refDate < startTol) ||
+                    (endTol && refDate && refDate > endTol)
+                  ));
                 const suspiciousEmpty =
-                  peek.raw === 0 && knownTotalPosts > accumWorks.size + 120 && dateFilterStrategy !== 'unsupported';
+                  peek.raw === 0 && knownTotalPosts > accumWorks.size + 120 && dateFilterStrategy !== 'unsupported' && emptyProbeBudget > 0;
 
                 if (violatedBound || suspiciousEmpty) {
+                  if (suspiciousEmpty && !violatedBound) emptyProbeBudget--;
                   const probeDate = sweepOrd === 'date_d'
                     ? (bEndDate || computeOldestDate())
                     : (bStartDate || computeNewestDate());
                   let adaptedJson = null;
 
-                  if (probeDate && dateFilterStrategy !== 'ecd_only') {
-                    const ecdOv = sweepOrd === 'date_d'
-                      ? { ord: sweepOrd, scd: '', ecd: probeDate }
-                      : { ord: sweepOrd, scd: probeDate, ecd: '' };
-                    const pr1 = await fetchOneBridgePage(1, `${segHint} [自动适配单边日期]`, ecdOv);
+                  // Single-sided `ecd` probe ONLY for `date_d` (Pixiv ignores `scd` without `ecd`!)
+                  if (sweepOrd === 'date_d' && probeDate && dateFilterStrategy !== 'ecd_only') {
+                    const pr1 = await fetchOneBridgePage(1, `${segHint} [自动适配单边日期]`, { ord: 'date_d', scd: '', ecd: probeDate });
                     if (pr1.json?.body) {
                       const pk1 = peekBridgeDateBounds(pr1.json);
-                      const ok1 = pk1.raw > 0 && (sweepOrd === 'date_d'
-                        ? pk1.firstYmd <= shiftYmd(probeDate, 2)
-                        : pk1.lastYmd >= shiftYmd(probeDate, -2));
+                      const ok1 = pk1.raw > 0 && (pk1.medianYmd || pk1.firstYmd) <= shiftYmd(probeDate, 3);
                       if (ok1) {
                         dateFilterStrategy = 'ecd_only';
-                        ({ start: bStartDate, end: bEndDate } = makeWindow(
-                          sweepOrd === 'date_d' ? probeDate : '',
-                          sweepOrd === 'date' ? probeDate : '',
-                          'ecd_only'
-                        ));
+                        bStartDate = '';
+                        bEndDate = probeDate;
                         adaptedJson = pr1.json;
                       }
                     }
@@ -5206,9 +5254,10 @@
                     const pr2 = await fetchOneBridgePage(1, `${segHint} [自动适配90天窗口]`, { ord: sweepOrd, scd: w90.start, ecd: w90.end });
                     if (pr2.json?.body) {
                       const pk2 = peekBridgeDateBounds(pr2.json);
+                      const ref2 = pk2.medianYmd || pk2.firstYmd;
                       const ok2 = pk2.raw > 0 && (sweepOrd === 'date_d'
-                        ? pk2.firstYmd <= shiftYmd(w90.end, 2)
-                        : pk2.lastYmd >= shiftYmd(w90.start, -2));
+                        ? ref2 <= shiftYmd(w90.end, 3)
+                        : (ref2 >= shiftYmd(w90.start, -3) && ref2 <= shiftYmd(w90.end, 3)));
                       if (ok2) {
                         dateFilterStrategy = 'bounded_90';
                         bStartDate = w90.start;
@@ -5254,7 +5303,7 @@
                 consecutiveBatchFails++;
                 maxSafeConcurrency = 1;
                 concurrency = 1;
-                learnedSafeDelayMs = Math.min(600, Math.max(learnedSafeDelayMs + 100, 300));
+                learnedSafeDelayMs = Math.min(500, Math.max(learnedSafeDelayMs + 90, 260));
                 pageDelayMs = learnedSafeDelayMs;
                 cleanPagesSinceThrottle = 0;
                 await checkpointToIndexedDb(true);
@@ -5276,8 +5325,10 @@
 
               if (!anyThrottled && batchOk === pBatch.length) {
                 cleanPagesSinceThrottle += batchOk;
-                if (cleanPagesSinceThrottle >= 35) {
-                  if (pageDelayMs > learnedSafeDelayMs) pageDelayMs = learnedSafeDelayMs;
+                if (throttleCount > 0 && cleanPagesSinceThrottle >= 50) {
+                  if (learnedSafeDelayMs > 90) learnedSafeDelayMs = Math.max(90, learnedSafeDelayMs - 60);
+                  pageDelayMs = learnedSafeDelayMs;
+                  if (maxSafeConcurrency < 2) maxSafeConcurrency = 2;
                   if (concurrency < maxSafeConcurrency) concurrency++;
                   cleanPagesSinceThrottle = 0;
                 }
@@ -5304,6 +5355,10 @@
               if (p > 1000) { segHitCeiling = true; break; }
               if (pacing.delay > 0) await abortableSleep(pacing.delay);
             }
+
+            if (segTrack.oldest && (!sweepOldest || segTrack.oldest < sweepOldest)) sweepOldest = segTrack.oldest;
+            if (segTrack.newest && (!sweepNewest || segTrack.newest > sweepNewest)) sweepNewest = segTrack.newest;
+            sweepAddedTotal += segAdded;
 
             if (dateFilterIgnoredOnSeg || segFailedOut) {
               await checkpointToIndexedDb(true);
@@ -5348,7 +5403,13 @@
               (segTrack.expectedTotal === 0 || segRawTotal >= segTrack.expectedTotal - 60) &&
               (knownTotalPosts === 0 || accumWorks.size >= knownTotalPosts - 50);
             if (trulyExhausted) { lastExitReason = 'truly_exhausted'; break; }
-            if (consecutiveEmptySegs >= 40) { lastExitReason = 'empty_segs_40'; break; }
+            // Fast-break if 4 consecutive yearly windows (~4 years) return 0 works while site still has large missing count
+            // (e.g. logged-in Web search date cutoff around 6 years ago -> hand straight off to Pass 2 + Pass 3 gap filler!)
+            const emptyLimit = (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts - 300) ? 4 : 25;
+            if (consecutiveEmptySegs >= emptyLimit) {
+              lastExitReason = emptyLimit === 4 ? 'logged_in_date_cutoff' : 'empty_segs';
+              break;
+            }
 
             // Strictly monotonic date-window advancement (NEVER gets stuck repeating computeOldestDate()-1 in ecd_only mode!)
             if (sweepOrd === 'date_d') {
@@ -5391,16 +5452,30 @@
             const segPause = getEffectivePacing().segPause;
             if (segPause > 0) await abortableSleep(segPause);
           }
-          return { segsDone: sweepSegsDone, exitReason: lastExitReason };
+          return {
+            segsDone: sweepSegsDone,
+            exitReason: lastExitReason,
+            oldest: sweepOldest,
+            newest: sweepNewest,
+            added: sweepAddedTotal
+          };
         };
 
         // PASS 1: Primary chronological segmented crawl (e.g. date_d: newest -> oldest)
-        await runChronoSweep(webOrd, minStopBound, maxStopBound, activeStartDate, activeEndDate, '');
+        const pass1Res = await runChronoSweep(webOrd, minStopBound, maxStopBound, activeStartDate, activeEndDate, '');
+        const pass1OldestDate = webOrd === 'date_d'
+          ? (pass1Res.oldest || initialHollowGap?.gapHigh || computeOldestDate() || seg1OldestDate)
+          : (pass1Res.oldest || computeOldestDate());
+        const pass1NewestDate = webOrd === 'date'
+          ? (pass1Res.newest || initialHollowGap?.gapLow || computeNewestDate())
+          : (pass1Res.newest || computeNewestDate());
 
         // PASS 2 (BI-DIRECTIONAL GAP-FILL GUARANTEE):
         // If Pass 1 ended short of knownTotalPosts for ANY reason (date cutoff, sparse gap, etc.),
-        // automatically sweep from the OPPOSITE chronological end across the uncovered date span!
+        // automatically sweep from the OPPOSITE chronological end across ONLY the uncovered date span!
         let pass2Ran = false;
+        let pass2NewestDate = initialHollowGap?.gapLow || '';
+        let pass2OldestDate = initialHollowGap?.gapHigh || '';
         if (
           bridgeWorked &&
           dateFilterStrategy !== 'unsupported' &&
@@ -5410,20 +5485,23 @@
           knownTotalPosts > 0 &&
           accumWorks.size < knownTotalPosts - 120
         ) {
-          const curOldest = computeOldestDate();
-          const curNewest = computeNewestDate();
-          if (webOrd === 'date_d' && curOldest && curOldest > minStopBound) {
+          if (webOrd === 'date_d' && pass1OldestDate && pass1OldestDate > minStopBound) {
             pass2Ran = true;
-            await runChronoSweep('date', minStopBound, curOldest, '', '', '正序补全');
-          } else if (webOrd === 'date' && curNewest && curNewest < maxStopBound) {
+            // If resuming from a cache that ALREADY filled [2011..gapLow], start Pass 2 directly at gapLow (don't re-crawl 85 duplicate pages!)
+            const p2Start = initialHollowGap?.gapLow || '';
+            const p2Res = await runChronoSweep('date', minStopBound, pass1OldestDate, p2Start, '', '正序补全');
+            if (p2Res.newest && (!pass2NewestDate || p2Res.newest > pass2NewestDate)) pass2NewestDate = p2Res.newest;
+          } else if (webOrd === 'date' && pass1NewestDate && pass1NewestDate < maxStopBound) {
             pass2Ran = true;
-            await runChronoSweep('date_d', curNewest, maxStopBound, '', '', '倒序补全');
+            const p2End = initialHollowGap?.gapHigh || '';
+            const p2Res = await runChronoSweep('date_d', pass1NewestDate, maxStopBound, '', p2End, '倒序补全');
+            if (p2Res.oldest && (!pass2OldestDate || p2Res.oldest < pass2OldestDate)) pass2OldestDate = p2Res.oldest;
           }
         }
 
-        // PASS 3 (UNATTENDED FULL-RECOVERY FALLBACK):
-        // If Pass 1 + Pass 2 STILL left a large gap (e.g. non-premium Web restricted date filters),
-        // seamlessly hand off to OAuth App API OR run Authenticated Disjoint Slices + Anonymous ecd Historical Sweep!
+        // PASS 3 (SURGICAL GAP-TARGETED FULL-RECOVERY — ZERO WASTED DUPLICATE PAGES!):
+        // Targets STRICTLY the uncovered interior gap [gapLow, gapHigh], skipping any slice whose 85-page window is
+        // already inside the collected zones and anchoring Phase B anonymous `ecd` directly at `gapHigh -> gapLow`!
         let pass3Ran = false;
         if (
           bridgeWorked &&
@@ -5431,59 +5509,77 @@
           !reachedDepthCap() &&
           (isAllMode || targetWorksLimit > 0) &&
           (knownTotalPosts === 0 || accumWorks.size < knownTotalPosts - 150) &&
-          (dateFilterStrategy === 'unsupported' || (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts - 300))
+          (dateFilterStrategy === 'unsupported' || (knownTotalPosts > 0 && accumWorks.size < knownTotalPosts - 250))
         ) {
           pass3Ran = true;
           const canHandoffOAuth = Boolean(state.authStatus?.loggedIn && state.authStatus?.mode === 'oauth');
           if (canHandoffOAuth) {
             handoffToOAuthAppApi = true;
-            activeEndDate = webOrd === 'date_d' ? (computeOldestDate() || activeEndDate) : activeEndDate;
-            activeStartDate = webOrd === 'date' ? (computeNewestDate() || activeStartDate) : activeStartDate;
+            activeEndDate = webOrd === 'date_d' ? (pass1OldestDate || activeEndDate) : activeEndDate;
+            activeStartDate = webOrd === 'date' ? (pass1NewestDate || activeStartDate) : activeStartDate;
             startPage = 1;
             showToast(`已自动无缝接管 OAuth App API 补全余下作品（已保留 ${accumWorks.size.toLocaleString()} 作）`, 4500);
           } else {
-            // Phase A: Authenticated disjoint slices (FULL R-18 + AI, 60 works/page, zero date params needed!)
-            const oppOrd = webOrd === 'date_d' ? 'date' : 'date_d';
-            const slicePlan = [
-              { label: oppOrd === 'date' ? '最早回溯段' : '最新补充段', ord: oppOrd, sliceMode: mode, sliceAiType: 0, sliceType: type }
-            ];
-            if (mode !== 'safe') {
-              slicePlan.push(
-                { label: '纯手绘 R-18 最新', ord: 'date_d', sliceMode: 'r18', sliceAiType: 1, sliceType: type, pairKey: 'r18_h' },
-                { label: '纯手绘 R-18 最早', ord: 'date', sliceMode: 'r18', sliceAiType: 1, sliceType: type, pairOf: 'r18_h' },
-                { label: '全量 R-18 最新', ord: 'date_d', sliceMode: 'r18', sliceAiType: 0, sliceType: type, pairKey: 'r18_a' },
-                { label: '全量 R-18 最早', ord: 'date', sliceMode: 'r18', sliceAiType: 0, sliceType: type, pairOf: 'r18_a' }
-              );
-              if (type === 'all') {
-                slicePlan.push(
-                  { label: 'R-18 漫画最新', ord: 'date_d', sliceMode: 'r18', sliceAiType: 0, sliceType: 'manga', pairKey: 'r18_m' },
-                  { label: 'R-18 漫画最早', ord: 'date', sliceMode: 'r18', sliceAiType: 0, sliceType: 'manga', pairOf: 'r18_m' }
-                );
+            const detectedGap = detectHollowDateGap();
+            let gapHigh = webOrd === 'date_d'
+              ? (pass1OldestDate || detectedGap?.gapHigh || seg1OldestDate || '')
+              : (pass2OldestDate || detectedGap?.gapHigh || '');
+            let gapLow = webOrd === 'date_d'
+              ? (pass2NewestDate || detectedGap?.gapLow || '')
+              : (pass1NewestDate || detectedGap?.gapLow || '');
+
+            const countMatchingInZone = (sl, minYmd, maxYmd) => {
+              let c = 0;
+              for (const w of accumWorks.values()) {
+                const y = String(w.createDate || '').slice(0, 10);
+                if (minYmd && y && y < minYmd) continue;
+                if (maxYmd && y && y > maxYmd) continue;
+                if (sl.sliceMode === 'r18' && !(w.xRestrict >= 1)) continue;
+                if (sl.sliceMode === 'safe' && w.xRestrict >= 1) continue;
+                if (sl.sliceAiType === 1 && w.isAi) continue;
+                if (sl.sliceType === 'manga' && w.illustType !== 1) continue;
+                c++;
               }
-            }
-            if (mode !== 'r18') {
-              slicePlan.push(
-                { label: '纯手绘全年龄最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairKey: 'safe_h' },
-                { label: '纯手绘全年龄最早', ord: 'date', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairOf: 'safe_h' }
-              );
-              if (type === 'all') {
-                slicePlan.push(
-                  { label: '全年龄漫画最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairKey: 'safe_m' },
-                  { label: '全年龄漫画最早', ord: 'date', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairOf: 'safe_m' }
-                );
-              }
-            }
+              return c;
+            };
+            const countR18Collected = () => {
+              let c = 0;
+              for (const w of accumWorks.values()) if (w.xRestrict >= 1) c++;
+              return c;
+            };
+            const isR18Complete = () =>
+              Boolean(knownBreakdown && knownBreakdown.r18 > 0 && countR18Collected() >= knownBreakdown.r18 - 35);
+
+            let r18GapClosed = false;
             const exhaustedPairs = new Set();
-            for (const sl of slicePlan) {
-              if (abortCtrl.signal.aborted || reachedDepthCap()) break;
-              if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 20) break;
-              if (sl.pairOf && exhaustedPairs.has(sl.pairOf)) continue;
+
+            const runAuthSlice = async (sl) => {
+              if (abortCtrl.signal.aborted || reachedDepthCap()) return;
+              if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 20) return;
+              if (sl.pairOf && exhaustedPairs.has(sl.pairOf)) return;
+              if (sl.sliceMode === 'r18' && (r18GapClosed || isR18Complete())) return;
+
+              // Mathematically safe fast-skip / page jump using exact in-memory counts inside already-covered zones!
+              // Pixiv returns <= 60 works/page, so starting at floor(already / 60) - 2 NEVER skips an uncovered work!
+              let pStart = 1;
+              if (sl.ord === 'date_d' && gapHigh) {
+                const alreadyInHigh = countMatchingInZone(sl, gapHigh, '');
+                if (alreadyInHigh >= 5040) return; // Entire 85-page window lies 100% inside [gapHigh, today]!
+                pStart = Math.max(1, Math.floor(alreadyInHigh / 60) - 2);
+              } else if (sl.ord === 'date' && gapLow) {
+                const alreadyInLow = countMatchingInZone(sl, '', gapLow);
+                if (alreadyInLow >= 5040) return; // Entire 85-page window lies 100% inside [min, gapLow]!
+                pStart = Math.max(1, Math.floor(alreadyInLow / 60) - 2);
+              }
+
               const slTrack = { oldest: '', newest: '', expectedTotal: 0, naturalEnd: false, ord: sl.ord };
               let slPages = 0;
               let slFails = 0;
               let slPrevFirstId = '';
               let slSameFirstHits = 0;
-              for (let p = 1; p <= 86 && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
+              let zeroPastBoundary = 0;
+
+              for (let p = pStart; p <= 85 && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
                 const pacing = getEffectivePacing();
                 const segHint = ` [全自动分片·${sl.label}]`;
                 const targetW = targetWorksLimit > 0 ? targetWorksLimit : (knownTotalPosts || accumWorks.size + 600);
@@ -5492,7 +5588,7 @@
                 progressPct.textContent = `${pct}%`;
                 progressFill.style.width = `${pct}%`;
 
-                const batchLen = Math.min(pacing.conc, 86 - p + 1);
+                const batchLen = Math.min(pacing.conc, 85 - p + 1);
                 const pBatch = [];
                 for (let k = 0; k < batchLen; k++) pBatch.push(p + k);
                 const results = await Promise.all(
@@ -5500,6 +5596,7 @@
                 );
                 let batchOk = 0;
                 let batchRaw = 0;
+                let crossedCoveredZone = false;
                 for (const { json } of results) {
                   if (!json || !json.body) continue;
                   batchOk++;
@@ -5514,6 +5611,15 @@
                   if (curFirstId) slPrevFirstId = curFirstId;
                   const ing = ingestBridgePageJson(json, slTrack, false);
                   batchRaw += ing.pageRaw;
+                  if (sl.ord === 'date' && gapHigh && ing.firstYmd && ing.firstYmd > gapHigh) {
+                    crossedCoveredZone = true;
+                    if (sl.isFullR18) r18GapClosed = true;
+                    if (ing.pageNew === 0) zeroPastBoundary++;
+                  } else if (sl.ord === 'date_d' && gapLow && ing.lastYmd && ing.lastYmd < gapLow) {
+                    crossedCoveredZone = true;
+                    if (sl.isFullR18) r18GapClosed = true;
+                    if (ing.pageNew === 0) zeroPastBoundary++;
+                  }
                 }
                 if (batchOk === 0) {
                   slFails++;
@@ -5528,26 +5634,60 @@
                 slFails = 0;
                 p += pBatch.length;
                 flushDataset(false, true);
-                if (batchRaw === 0 || slTrack.naturalEnd || slSameFirstHits >= 1) {
+                if (batchRaw === 0 || slTrack.naturalEnd || slSameFirstHits >= 1 || (crossedCoveredZone && zeroPastBoundary >= 1)) {
                   if (slTrack.naturalEnd && slPages < 80 && sl.pairKey) exhaustedPairs.add(sl.pairKey);
                   break;
                 }
                 if (pacing.delay > 0) await abortableSleep(pacing.delay);
               }
+              if (sl.updateGapLow && slTrack.newest && (!gapLow || slTrack.newest > gapLow)) gapLow = slTrack.newest;
+              if (sl.updateGapHigh && slTrack.oldest && (!gapHigh || slTrack.oldest < gapHigh)) gapHigh = slTrack.oldest;
               await checkpointToIndexedDb(true);
+            };
+
+            // Phase A-1: Opposite-end base sweep ONLY if Pass 2 did NOT already run it!
+            const oppOrd = webOrd === 'date_d' ? 'date' : 'date_d';
+            if (!pass2Ran && !(oppOrd === 'date' && gapLow) && !(oppOrd === 'date_d' && gapHigh)) {
+              await runAuthSlice({
+                label: oppOrd === 'date' ? '最早回溯段' : '最新补充段',
+                ord: oppOrd,
+                sliceMode: mode,
+                sliceAiType: 0,
+                sliceType: type,
+                updateGapLow: oppOrd === 'date',
+                updateGapHigh: oppOrd === 'date_d'
+              });
             }
 
-            // Phase B: Anonymous ecd-sliding historical sweep across ALL years from seg1OldestDate down to minStopBound!
+            // Phase A-2: Missing R-18 gap recovery (runs `全量 R-18 最早` FIRST so 100% of historical R-18 finishes in ~45P!)
+            if (mode !== 'safe' && !isR18Complete()) {
+              const r18Slices = [
+                { label: '全量 R-18 最早', ord: 'date', sliceMode: 'r18', sliceAiType: 0, sliceType: type, isFullR18: true, pairKey: 'r18_a' },
+                { label: '全量 R-18 最新', ord: 'date_d', sliceMode: 'r18', sliceAiType: 0, sliceType: type, isFullR18: true, pairOf: 'r18_a' },
+                { label: '纯手绘 R-18 最早', ord: 'date', sliceMode: 'r18', sliceAiType: 1, sliceType: type, pairKey: 'r18_h' },
+                { label: '纯手绘 R-18 最新', ord: 'date_d', sliceMode: 'r18', sliceAiType: 1, sliceType: type, pairOf: 'r18_h' }
+              ];
+              if (type === 'all') {
+                r18Slices.push(
+                  { label: 'R-18 漫画最早', ord: 'date', sliceMode: 'r18', sliceAiType: 0, sliceType: 'manga', pairKey: 'r18_m' },
+                  { label: 'R-18 漫画最新', ord: 'date_d', sliceMode: 'r18', sliceAiType: 0, sliceType: 'manga', pairOf: 'r18_m' }
+                );
+              }
+              for (const sl of r18Slices) await runAuthSlice(sl);
+            }
+
+            // Phase B: Anonymous ecd-sliding historical sweep STRICTLY across the missing gap [gapLow, gapHigh]!
             if (
               mode !== 'r18' &&
               !abortCtrl.signal.aborted &&
               !reachedDepthCap() &&
-              (knownTotalPosts === 0 || accumWorks.size < knownTotalPosts - 150)
+              (knownTotalPosts === 0 || accumWorks.size < knownTotalPosts - 100)
             ) {
-              const anchorDate = seg1OldestDate || computeOldestDate() || todayYmd;
+              const anchorDate = gapHigh || seg1OldestDate || todayYmd;
+              const anonMinBound = (gapLow && gapLow > minStopBound) ? gapLow : minStopBound;
               let anonEcd = anchorDate;
               let anonEmptySegs = 0;
-              for (let aSeg = 1; aSeg <= 360 && anonEcd && anonEcd >= minStopBound && !abortCtrl.signal.aborted && !reachedDepthCap(); aSeg++) {
+              for (let aSeg = 1; aSeg <= 360 && anonEcd && anonEcd >= anonMinBound && !abortCtrl.signal.aborted && !reachedDepthCap(); aSeg++) {
                 if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 20) break;
                 const aTrack = { oldest: '', newest: '', expectedTotal: 0, naturalEnd: false, ord: 'date_d' };
                 let aAdded = 0;
@@ -5555,7 +5695,10 @@
                 let aFails = 0;
                 let aPrevFirstId = '';
                 let aSameFirstHits = 0;
-                for (let p = 1; p <= 11 && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
+                let hitGapLow = false;
+                let skipCrowdedHigh = false;
+                // Anonymous Pixiv returns 10 distinct pages (600 works) per `ecd` window (p=11 always duplicates p=10)
+                for (let p = 1; p <= 10 && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
                   const pacing = getEffectivePacing();
                   const segHint = ` [历史日期回溯#${aSeg} 截止 ${anonEcd}]`;
                   const targetW = targetWorksLimit > 0 ? targetWorksLimit : (knownTotalPosts || accumWorks.size + 600);
@@ -5564,7 +5707,7 @@
                   progressPct.textContent = `${pct}%`;
                   progressFill.style.width = `${pct}%`;
 
-                  const batchLen = p === 1 ? 1 : Math.min(pacing.conc, 11 - p + 1);
+                  const batchLen = p === 1 ? 1 : Math.min(pacing.conc, 10 - p + 1);
                   const pBatch = [];
                   for (let k = 0; k < batchLen; k++) pBatch.push(p + k);
                   const results = await Promise.all(
@@ -5582,6 +5725,7 @@
                   );
                   let batchOk = 0;
                   let batchRaw = 0;
+                  let batchNew = 0;
                   for (const { json } of results) {
                     if (!json || !json.body) continue;
                     batchOk++;
@@ -5595,8 +5739,15 @@
                     if (curFirstId) aPrevFirstId = curFirstId;
                     const ing = ingestBridgePageJson(json, aTrack, false);
                     batchRaw += ing.pageRaw;
+                    batchNew += ing.pageNew;
                     aRaw += ing.pageRaw;
                     aAdded += ing.pageNew;
+                    if (p === 1 && ing.pageRaw > 0 && ing.pageNew === 0 && gapHigh && ing.lastYmd && ing.lastYmd >= gapHigh) {
+                      skipCrowdedHigh = true;
+                    }
+                    if (gapLow && ing.lastYmd && ing.lastYmd < gapLow && ing.pageNew === 0) {
+                      hitGapLow = true;
+                    }
                   }
                   if (batchOk === 0) {
                     aFails++;
@@ -5611,30 +5762,56 @@
                   aFails = 0;
                   p += pBatch.length;
                   flushDataset(false, true);
-                  if (batchRaw === 0 || aTrack.naturalEnd || aSameFirstHits >= 1) break;
+                  if (batchRaw === 0 || aTrack.naturalEnd || aSameFirstHits >= 1 || skipCrowdedHigh || hitGapLow) break;
                   if (pacing.delay > 0) await abortableSleep(pacing.delay);
                 }
                 if (aSeg % 5 === 0) await checkpointToIndexedDb(true);
+                if (hitGapLow || (gapLow && aTrack.oldest && aTrack.oldest < gapLow)) break;
                 if (aAdded > 0) anonEmptySegs = 0;
                 else anonEmptySegs++;
                 if (anonEmptySegs >= 25) break;
-                const cand = aTrack.oldest || '';
-                if (cand && cand < anonEcd) {
-                  anonEcd = cand;
-                } else if (aRaw > 0) {
+                if (skipCrowdedHigh) {
                   anonEcd = shiftYmd(anonEcd, -1);
                 } else {
-                  anonEcd = shiftYmd(anonEcd, -180);
+                  const cand = aTrack.oldest || '';
+                  if (cand && cand < anonEcd) {
+                    anonEcd = cand;
+                  } else if (aRaw > 0) {
+                    anonEcd = shiftYmd(anonEcd, -1);
+                  } else {
+                    anonEcd = shiftYmd(anonEcd, -180);
+                  }
                 }
                 const segPause = getEffectivePacing().segPause;
-                if (segPause > 0) await abortableSleep(Math.min(segPause, 800));
+                if (segPause > 0) await abortableSleep(Math.min(segPause, 500));
               }
               await checkpointToIndexedDb(true);
+            }
+
+            // Phase C: Safe fallback slices ONLY if Phase B still left a sizable gap (e.g., anonymous ecd unavailable)
+            if (
+              mode !== 'r18' &&
+              !abortCtrl.signal.aborted &&
+              !reachedDepthCap() &&
+              knownTotalPosts > 0 &&
+              accumWorks.size < knownTotalPosts - 250
+            ) {
+              const safeFallback = [
+                { label: '纯手绘全年龄最早', ord: 'date', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairKey: 'safe_h' },
+                { label: '纯手绘全年龄最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairOf: 'safe_h' }
+              ];
+              if (type === 'all') {
+                safeFallback.push(
+                  { label: '全年龄漫画最早', ord: 'date', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairKey: 'safe_m' },
+                  { label: '全年龄漫画最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairOf: 'safe_m' }
+                );
+              }
+              for (const sl of safeFallback) await runAuthSlice(sl);
             }
           }
         }
 
-        crawlDiagSummary = `策略:${dateFilterStrategy} 原因:${lastExitReason || 'done'} 限流:${throttleCount}次${lastFailStatus ? ` 末HTTP:${lastFailStatus}` : ''}${pass2Ran ? ' +正序补全' : ''}${pass3Ran ? ' +回溯兜底' : ''}`;
+        crawlDiagSummary = `策略:${dateFilterStrategy} 原因:${lastExitReason || 'done'} 限流:${throttleCount}次${lastFailStatus ? ` 末HTTP:${lastFailStatus}` : ''}${pass2Ran ? ' +正序补全' : ''}${pass3Ran ? ' +缺口精补' : ''}`;
         if (bridgeWorked && !handoffToOAuthAppApi) {
           hasMore = false;
         }

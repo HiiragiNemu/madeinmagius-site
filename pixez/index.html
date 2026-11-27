@@ -48,7 +48,7 @@
       root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=4.15" />
+  <link rel="stylesheet" href="./styles.css?v=4.16" />
   <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.5" />
 </head>
 <body class="call-screen-host-v7">
@@ -255,9 +255,9 @@
           <button class="t-btn t-btn--sm t-btn--danger" id="preflightClearRestartBtn" type="button">清空重采</button>
         </div>
         <div class="preflight-banner__actions hidden" id="preflightCacheHitActions">
-          <button class="t-btn t-btn--sm t-btn--primary" id="preflightUseCacheBtn" type="button">直接复用缓存</button>
-          <button class="t-btn t-btn--sm" id="preflightCacheResumeBtn" type="button">续采合并</button>
-          <button class="t-btn t-btn--sm t-btn--danger" id="preflightForceRefreshBtn" type="button">强制重新抓取</button>
+          <button class="t-btn t-btn--sm t-btn--primary" id="preflightCacheResumeBtn" type="button">续采补全</button>
+          <button class="t-btn t-btn--sm" id="preflightUseCacheBtn" type="button">仅先查看缓存</button>
+          <button class="t-btn t-btn--sm t-btn--danger" id="preflightForceRefreshBtn" type="button">清空从零重采</button>
         </div>
       </div>
 
@@ -1147,6 +1147,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.34"></script>
+  <script src="./app.js?v=4.35"></script>
 </body>
 </html>

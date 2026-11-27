@@ -3517,10 +3517,12 @@
         const forceBtn = $('preflightForceRefreshBtn');
         if (useBtn) {
           useBtn.classList.toggle('hidden', !cacheHitOpts.showUse);
+          useBtn.classList.toggle('t-btn--primary', cacheHitOpts.primaryAction === 'use');
           if (cacheHitOpts.useLabel) useBtn.textContent = cacheHitOpts.useLabel;
         }
         if (resumeBtn) {
           resumeBtn.classList.toggle('hidden', !cacheHitOpts.showResume);
+          resumeBtn.classList.toggle('t-btn--primary', cacheHitOpts.primaryAction !== 'use');
           if (cacheHitOpts.resumeLabel) resumeBtn.textContent = cacheHitOpts.resumeLabel;
         }
         if (forceBtn && cacheHitOpts.forceLabel) {
@@ -4602,24 +4604,37 @@
               overridePages: rawPagesChoice
             };
             const delta = totalPosts > 0 && cachedTotal > 0 ? totalPosts - cachedTotal : 0;
-            const deltaText =
-              sameTotalCount
-                ? `全站总数未变（${totalPosts.toLocaleString()} 作），当前已缓存 ${cachedWorksCount.toLocaleString()} 作`
-                : delta > 0
-                ? `全站总数较上次新增 +${delta.toLocaleString()} 作（${cachedTotal.toLocaleString()} → ${totalPosts.toLocaleString()}）`
-                : delta < 0
-                ? `全站总数较上次变化 ${delta.toLocaleString()} 作（${cachedTotal.toLocaleString()} → ${totalPosts.toLocaleString()}）`
-                : `上次已缓存 ${cachedWorksCount.toLocaleString()} 作`;
+            const missingAllowance = Math.max(120, Math.round(totalPosts * 0.05));
+            const isIncompleteCache = Boolean(totalPosts > 0 && cachedWorksCount < totalPosts - missingAllowance);
+            const missingWorks = Math.max(0, totalPosts - cachedWorksCount);
+            const canResume = Boolean(isAllMode || cachedRec.hasMore || isIncompleteCache || delta > 0 || cachedWorksCount < totalPosts);
+            const deltaText = isIncompleteCache
+              ? `本地缓存尚未采全：仅 ${cachedWorksCount.toLocaleString()} / ${totalPosts.toLocaleString()} 作，尚缺约 ${missingWorks.toLocaleString()} 作${delta > 0 ? `（全站另新增 +${delta.toLocaleString()} 作）` : ''}`
+              : sameTotalCount
+              ? `全站总数未变（${totalPosts.toLocaleString()} 作），当前已缓存 ${cachedWorksCount.toLocaleString()} 作`
+              : delta > 0
+              ? `全站总数较上次新增 +${delta.toLocaleString()} 作（${cachedTotal.toLocaleString()} → ${totalPosts.toLocaleString()}）`
+              : delta < 0
+              ? `全站总数较上次变化 ${delta.toLocaleString()} 作（${cachedTotal.toLocaleString()} → ${totalPosts.toLocaleString()}）`
+              : `上次已缓存 ${cachedWorksCount.toLocaleString()} 作`;
+            const bannerPrompt = isIncompleteCache
+              ? `${bannerNote} —— 检测到 [${resolvedTagForCache}] ${deltaText}。请点击右侧「续采补全」继续把剩余作品采完，或先「仅查看缓存」：`
+              : `${bannerNote} —— 检测到本地已有 [${resolvedTagForCache}] 缓存（${deltaText}），可点击「增量续采」合并新增作品，或仅查看旧缓存：`;
             showPreflightBanner(
-              `${bannerNote} —— 检测到本地已有 [${resolvedTagForCache}] 缓存（${deltaText}），可直接秒开复用、续采合并或强制重新抓取：`,
+              bannerPrompt,
               false,
               false,
               {
+                primaryAction: canResume ? 'resume' : 'use',
+                showResume: canResume,
+                resumeLabel: isIncompleteCache
+                  ? `续采补全余下 ${missingWorks.toLocaleString()} 作`
+                  : (delta > 0 ? `增量续采 (+${delta.toLocaleString()}作)` : '基于缓存续采合并'),
                 showUse: true,
-                useLabel: `直接复用缓存 (${cachedWorksCount.toLocaleString()}作)`,
-                showResume: Boolean(isAllMode || cachedRec.hasMore || cachedWorksCount < totalPosts),
-                resumeLabel: '基于缓存续采合并',
-                forceLabel: '强制重新抓取'
+                useLabel: isIncompleteCache
+                  ? `仅查看已存缓存 (${cachedWorksCount.toLocaleString()}作)`
+                  : `直接复用缓存 (${cachedWorksCount.toLocaleString()}作)`,
+                forceLabel: isIncompleteCache ? '清空从零重采' : '强制重新抓取'
               }
             );
             return;
@@ -5687,10 +5702,41 @@
           };
         };
 
+        // Top-up grab for brand-new uploads when resuming a cache whose Pixiv site total increased (e.g. +3 new works today!)
+        if (
+          resumeRec &&
+          webOrd === 'date_d' &&
+          !userStartDate &&
+          !userEndDate &&
+          knownTotalPosts > Number(resumeRec.pixivTotal || 0) &&
+          !abortCtrl.signal.aborted &&
+          !reachedDepthCap()
+        ) {
+          const topTrack = { oldest: '', newest: '', expectedTotal: 0, naturalEnd: false, ord: 'date_d' };
+          for (let tp = 1; tp <= 5 && !abortCtrl.signal.aborted && !reachedDepthCap(); tp++) {
+            const tr = await fetchOneBridgePage(tp, ' [顶部增量补新]', { ord: 'date_d', scd: '', ecd: '' });
+            if (!tr?.json?.body) break;
+            bridgeWorked = true;
+            totalPagesScanned++;
+            sessionPagesFetched++;
+            const ing = ingestBridgePageJson(tr.json, topTrack, tp === 1);
+            flushDataset(false, true);
+            if (ing.pageRaw === 0 || ing.pageNew === 0 || topTrack.naturalEnd) break;
+          }
+        }
+
         // PASS 1: Primary chronological segmented crawl (e.g. date_d: newest -> oldest)
         const p1Before = accumWorks.size;
         const p1PagesBefore = totalPagesScanned;
-        const pass1Res = await runChronoSweep(webOrd, minStopBound, maxStopBound, activeStartDate, activeEndDate, '');
+        const skipPass1AlreadyComplete = Boolean(
+          resumeRec &&
+          !initialHollowGap &&
+          knownTotalPosts > 0 &&
+          accumWorks.size >= knownTotalPosts - Math.max(120, Math.round(knownTotalPosts * 0.05))
+        );
+        const pass1Res = skipPass1AlreadyComplete
+          ? { segsDone: 0, pagesDone: 0, exitReason: 'complete_total_reached', oldest: computeOldestDate(), newest: computeNewestDate(), added: 0 }
+          : await runChronoSweep(webOrd, minStopBound, maxStopBound, activeStartDate, activeEndDate, '');
         const p1AddedDiag = accumWorks.size - p1Before;
         const p1PagesDiag = totalPagesScanned - p1PagesBefore;
         const p1ReasonDiag = pass1Res.exitReason || 'ok';
@@ -8200,25 +8246,58 @@
       const hit = state.pendingCacheHit;
       if (!hit || !hit.record) return;
       const rec = hit.record;
+      const loadedCount = (rec.artworks || []).length;
+      const totalP = Number(hit.preflightInfo?.totalPosts || rec.pixivTotal || 0);
+      const cachedTot = Number(rec.pixivTotal || 0);
+      const deltaNew = totalP > 0 && cachedTot > 0 ? Math.max(0, totalP - cachedTot) : 0;
+      const missingAllow = Math.max(120, Math.round(totalP * 0.05));
+      const isIncomplete = Boolean(totalP > 0 && loadedCount < totalP - missingAllow);
+      const missingCnt = Math.max(0, totalP - loadedCount);
       state.lockedSubTags.clear();
       state.rawDataset = {
         ...rec,
-        pixivTotal: Number(hit.preflightInfo?.totalPosts || rec.pixivTotal || 0),
+        pixivTotal: totalP,
         totalBreakdown: hit.preflightInfo?.totalBreakdown || rec.totalBreakdown || null
       };
       if (rec.danbooruMap) Object.assign(state.danbooruCache, rec.danbooruMap);
       if ($('engineSourceIndicator')) {
-        $('engineSourceIndicator').textContent = `LOCAL-CACHE · 复用 (${(rec.artworks || []).length.toLocaleString()}作)`;
+        $('engineSourceIndicator').textContent = isIncomplete
+          ? `LOCAL-CACHE · 未采全 (${loadedCount.toLocaleString()}/${totalP.toLocaleString()}作)`
+          : `LOCAL-CACHE · 复用 (${loadedCount.toLocaleString()}作)`;
         $('engineSourceIndicator').classList.remove('hidden');
       }
       recomputeAndRender();
-      showPreflightBanner(
-        `已直接复用 [${rec.primaryTag || hit.tag}] 本地缓存（${(rec.artworks || []).length.toLocaleString()} 作，0 流量秒开）。`,
-        false,
-        false,
-        { showUse: false, showResume: false, forceLabel: '强制重新抓取' }
-      );
-      showToast(`已直接复用本地缓存 (${(rec.artworks || []).length.toLocaleString()} 作)`);
+      if (isIncomplete) {
+        showPreflightBanner(
+          `已先载入 [${rec.primaryTag || hit.tag}] 本地缓存（${loadedCount.toLocaleString()} / ${totalP.toLocaleString()} 作，尚缺约 ${missingCnt.toLocaleString()} 作未采全）—— 点击右侧「继续补采余下 ${missingCnt.toLocaleString()} 作」即可直接续采补齐：`,
+          false,
+          false,
+          {
+            primaryAction: 'resume',
+            showUse: false,
+            showResume: true,
+            resumeLabel: `继续补采余下 ${missingCnt.toLocaleString()} 作`,
+            forceLabel: '清空从零重采'
+          }
+        );
+        showToast(`已载入未完成缓存 (${loadedCount.toLocaleString()}/${totalP.toLocaleString()} 作)，可随时点击横幅「继续补采」`, 4000);
+      } else {
+        showPreflightBanner(
+          deltaNew > 0
+            ? `已复用 [${rec.primaryTag || hit.tag}] 本地缓存（${loadedCount.toLocaleString()} 作，全站另有 +${deltaNew.toLocaleString()} 件新作可随时增量续采）。`
+            : `已直接复用 [${rec.primaryTag || hit.tag}] 本地缓存（${loadedCount.toLocaleString()} 作，0 流量秒开）。`,
+          false,
+          false,
+          {
+            primaryAction: deltaNew > 0 ? 'resume' : 'use',
+            showUse: false,
+            showResume: deltaNew > 0,
+            resumeLabel: `增量续采 (+${deltaNew.toLocaleString()}作)`,
+            forceLabel: '强制重新抓取'
+          }
+        );
+        showToast(`已直接复用本地缓存 (${loadedCount.toLocaleString()} 作)`);
+      }
     });
     $('preflightCacheResumeBtn')?.addEventListener('click', () => {
       const hit = state.pendingCacheHit;

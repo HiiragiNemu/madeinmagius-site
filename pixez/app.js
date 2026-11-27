@@ -144,7 +144,14 @@
     cookie: localStorage.getItem('pixez_cookie') || '',
     accessToken: localStorage.getItem('pixez_access_token_v4') || '',
     refreshToken: localStorage.getItem('pixez_refresh_token_v4') || '',
-    cacheLimitMb: Math.max(128, Math.min(2048, parseInt(localStorage.getItem('pixez_cache_limit_mb') || '1024', 10) || 1024)),
+    cacheLimitMb: (() => {
+      const raw = localStorage.getItem('pixez_cache_limit_mb');
+      if (raw === null || raw === '') return 1024;
+      const n = parseInt(raw, 10);
+      if (!Number.isFinite(n)) return 1024;
+      if (n <= 0) return 0; // 0 = unlimited (constrained only by browser IndexedDB quota)
+      return Math.max(64, Math.min(65536, n));
+    })(),
     source: SOURCE_META[localStorage.getItem('pixez_source_v43')] ? localStorage.getItem('pixez_source_v43') : 'pixiv',
     r34Key: localStorage.getItem('pixez_r34_key') || '',
     r34Uid: localStorage.getItem('pixez_r34_uid') || '',
@@ -2753,21 +2760,44 @@
   // =========================================================================
   function hidePreflightBanner() {
     state.pendingPreflight = null;
+    state.pendingCacheHit = null;
     $('preflightNoticeBar')?.classList.add('hidden');
     $('preflightConfirmActions')?.classList.add('hidden');
     $('preflightResumeActions')?.classList.add('hidden');
+    $('preflightCacheHitActions')?.classList.add('hidden');
   }
 
-  function showPreflightBanner(text, needsConfirm = false, showResume = false) {
+  function showPreflightBanner(text, needsConfirm = false, showResume = false, cacheHitOpts = null) {
     const bar = $('preflightNoticeBar');
     const textEl = $('preflightNoticeText');
     const acts = $('preflightConfirmActions');
     const resActs = $('preflightResumeActions');
+    const cacheActs = $('preflightCacheHitActions');
     if (!bar || !textEl) return;
     textEl.textContent = text;
     bar.classList.remove('hidden');
     if (acts) acts.classList.toggle('hidden', !needsConfirm);
     if (resActs) resActs.classList.toggle('hidden', !showResume);
+    if (cacheActs) {
+      const showCache = Boolean(cacheHitOpts);
+      cacheActs.classList.toggle('hidden', !showCache);
+      if (showCache) {
+        const useBtn = $('preflightUseCacheBtn');
+        const resumeBtn = $('preflightCacheResumeBtn');
+        const forceBtn = $('preflightForceRefreshBtn');
+        if (useBtn) {
+          useBtn.classList.toggle('hidden', !cacheHitOpts.showUse);
+          if (cacheHitOpts.useLabel) useBtn.textContent = cacheHitOpts.useLabel;
+        }
+        if (resumeBtn) {
+          resumeBtn.classList.toggle('hidden', !cacheHitOpts.showResume);
+          if (cacheHitOpts.resumeLabel) resumeBtn.textContent = cacheHitOpts.resumeLabel;
+        }
+        if (forceBtn && cacheHitOpts.forceLabel) {
+          forceBtn.textContent = cacheHitOpts.forceLabel;
+        }
+      }
+    }
   }
 
   const _danbooruQueriedTags = new Set();
@@ -3107,7 +3137,7 @@
         record.updatedAt = Date.now();
         const existing = await getAll();
         let totalBytes = approxBytes + existing.filter((r) => r.key !== record.key).reduce((s, r) => s + (r.bytes || 0), 0);
-        if (totalBytes > maxBytes) {
+        if (maxBytes > 0 && totalBytes > maxBytes) {
           const oldest = existing.filter((r) => r.key !== record.key).sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
           for (const old of oldest) {
             if (totalBytes <= maxBytes) break;
@@ -3138,14 +3168,28 @@
     return records;
   }
 
+  function formatCacheLimitLabel(mb) {
+    if (!mb || mb <= 0) return '不限上限';
+    if (mb >= 1024) return `${mb} MB (${(mb / 1024).toFixed(mb % 1024 === 0 ? 0 : 2)} GB)`;
+    return `${mb} MB`;
+  }
+
   async function renderCacheModal() {
     const records = (await refreshCacheBadge()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     const totalBytes = records.reduce((s, r) => s + (r.bytes || 0), 0);
     const usedMb = (totalBytes / (1024 * 1024)).toFixed(2);
     if ($('cacheUsageSummary')) {
-      $('cacheUsageSummary').textContent = `本地已缓存 ${records.length} 份数据集 · 已占用 ${usedMb} MB / ${state.cacheLimitMb} MB (${(state.cacheLimitMb / 1024).toFixed(2)} GB)`;
+      $('cacheUsageSummary').textContent = `本地已缓存 ${records.length} 份数据集 · 已占用 ${usedMb} MB / 上限 ${formatCacheLimitLabel(state.cacheLimitMb)}`;
     }
-    if ($('cacheLimitMbSelect')) $('cacheLimitMbSelect').value = String(state.cacheLimitMb);
+    const sel = $('cacheLimitMbSelect');
+    const customInp = $('cacheLimitCustomInput');
+    const presetValues = ['256', '512', '1024', '2048', '4096', '8192', '0'];
+    if (sel) {
+      sel.value = presetValues.includes(String(state.cacheLimitMb)) ? String(state.cacheLimitMb) : 'custom';
+    }
+    if (customInp) {
+      customInp.value = String(state.cacheLimitMb);
+    }
     const listEl = $('cacheRecordsList');
     if (!listEl) return;
     if (!records.length) {
@@ -3747,11 +3791,110 @@
     if (preflightInfo) {
       const totalPosts = Number(preflightInfo.totalPosts || 0);
       const estPages = Number(preflightInfo.estimatedPages || 0);
+      const resolvedTagForCache = preflightInfo.resolvedTag || parsed.tag;
       const bannerNote =
         preflightInfo.note ||
         (totalPosts > 0
-          ? `[${srcMeta.label}] 标签 [${preflightInfo.resolvedTag || parsed.tag}] 全站共 ${totalPosts.toLocaleString()} 件作品 (约 ${estPages.toLocaleString()} 页)`
-          : `[${srcMeta.label}] 已连接 [${preflightInfo.resolvedTag || parsed.tag}]`);
+          ? `[${srcMeta.label}] 标签 [${resolvedTagForCache}] 全站共 ${totalPosts.toLocaleString()} 件作品 (约 ${estPages.toLocaleString()} 页)`
+          : `[${srcMeta.label}] 已连接 [${resolvedTagForCache}]`);
+
+      // Smart Cache Reuse: check local IndexedDB for this exact tag BEFORE crawling!
+      if (!opts.freshRestart && !opts.resumeFromCache && !opts.ignoreCacheReuse) {
+        let cachedRec = await PulseCacheDB.get(makeCacheKey(source, resolvedTagForCache, mode));
+        if (!cachedRec && resolvedTagForCache.toLowerCase() !== parsed.tag.toLowerCase()) {
+          cachedRec = await PulseCacheDB.get(makeCacheKey(source, parsed.tag, mode));
+        }
+        if (cachedRec && Array.isArray(cachedRec.artworks) && cachedRec.artworks.length > 0) {
+          const recSMode = cachedRec.sMode || 's_tag';
+          const recType = cachedRec.type || 'all';
+          const recOrder = cachedRec.order || 'date_d';
+          const recDateRange = cachedRec.dateRange || '';
+          const curDateRange = isDateRangeDepth ? `${userStartDate}~${userEndDate}` : '';
+          const paramsCompatible =
+            recSMode === sMode &&
+            recType === type &&
+            recDateRange === curDateRange;
+          const baselineCompatible =
+            Boolean(cachedRec.totalBreakdown?.isSafeBaselineOnly) ===
+            Boolean(preflightInfo.totalBreakdown?.isSafeBaselineOnly);
+
+          if (paramsCompatible && baselineCompatible) {
+            const cachedWorksCount = cachedRec.artworks.length;
+            const cachedTotal = Number(cachedRec.pixivTotal || 0);
+            const sameTotalCount = totalPosts > 0 && cachedTotal > 0 && totalPosts === cachedTotal;
+            const pageSizeEst = Number(preflightInfo.pageSize || (source === 'pixiv' ? 60 : 100));
+            const requestedApproxWorks = isAllMode
+              ? totalPosts
+              : (targetWorksLimit > 0 ? targetWorksLimit : requestedMaxPages * pageSizeEst);
+            const cacheIsComplete = !cachedRec.hasMore || (totalPosts > 0 && cachedWorksCount >= totalPosts);
+            const coversRequestedDepth =
+              cacheIsComplete ||
+              (recOrder === order && cachedWorksCount >= Math.min(totalPosts || Infinity, requestedApproxWorks));
+
+            if (sameTotalCount && coversRequestedDepth) {
+              // Exact same total works count & cache covers requested depth -> automatic zero-network reuse!
+              state.lockedSubTags.clear();
+              state.rawDataset = {
+                ...cachedRec,
+                pixivTotal: totalPosts,
+                totalBreakdown: preflightInfo.totalBreakdown || cachedRec.totalBreakdown || null
+              };
+              if (cachedRec.danbooruMap) Object.assign(state.danbooruCache, cachedRec.danbooruMap);
+              if ($('engineSourceIndicator')) {
+                $('engineSourceIndicator').textContent = `LOCAL-CACHE · 秒开复用 (${cachedWorksCount.toLocaleString()}作)`;
+                $('engineSourceIndicator').classList.remove('hidden');
+              }
+              state.pendingCacheHit = {
+                tag: resolvedTagForCache,
+                source,
+                record: cachedRec,
+                preflightInfo,
+                overridePages: rawPagesChoice
+              };
+              recomputeAndRender();
+              showPreflightBanner(
+                `${bannerNote} —— 核对全站作品数与本地缓存完全一致（${totalPosts.toLocaleString()} 作，无新增），已自动复用缓存（${cachedWorksCount.toLocaleString()} 作，0 流量秒开）。`,
+                false,
+                false,
+                { showUse: false, showResume: false, forceLabel: '强制重新抓取' }
+              );
+              showToast(`作品数一致 (${totalPosts.toLocaleString()} 作)，已自动复用本地缓存`);
+              return;
+            }
+
+            // Cache exists for the same tag, but either total count changed or user now wants deeper depth -> prompt cleanly!
+            state.pendingCacheHit = {
+              tag: resolvedTagForCache,
+              source,
+              record: cachedRec,
+              preflightInfo,
+              overridePages: rawPagesChoice
+            };
+            const delta = totalPosts > 0 && cachedTotal > 0 ? totalPosts - cachedTotal : 0;
+            const deltaText =
+              sameTotalCount
+                ? `全站总数未变（${totalPosts.toLocaleString()} 作），当前已缓存 ${cachedWorksCount.toLocaleString()} 作`
+                : delta > 0
+                ? `全站总数较上次新增 +${delta.toLocaleString()} 作（${cachedTotal.toLocaleString()} → ${totalPosts.toLocaleString()}）`
+                : delta < 0
+                ? `全站总数较上次变化 ${delta.toLocaleString()} 作（${cachedTotal.toLocaleString()} → ${totalPosts.toLocaleString()}）`
+                : `上次已缓存 ${cachedWorksCount.toLocaleString()} 作`;
+            showPreflightBanner(
+              `${bannerNote} —— 检测到本地已有 [${resolvedTagForCache}] 缓存（${deltaText}），可直接秒开复用、续采合并或强制重新抓取：`,
+              false,
+              false,
+              {
+                showUse: true,
+                useLabel: `直接复用缓存 (${cachedWorksCount.toLocaleString()}作)`,
+                showResume: Boolean(isAllMode || cachedRec.hasMore || cachedWorksCount < totalPosts),
+                resumeLabel: '基于缓存续采合并',
+                forceLabel: '强制重新抓取'
+              }
+            );
+            return;
+          }
+        }
+      }
 
       const isHugeAll =
         isAllModeRaw &&
@@ -3953,6 +4096,10 @@
         source,
         primaryTag: primaryResolvedTag,
         mode,
+        sMode,
+        type,
+        order,
+        dateRange: isDateRangeDepth ? `${userStartDate}~${userEndDate}` : '',
         pixivTotal: knownTotalPosts,
         totalBreakdown: knownBreakdown,
         pagesScanned: totalPagesScanned,
@@ -3966,7 +4113,8 @@
         nativeTagCategories: accumNativeCats,
         danbooruMap: accumDanbooru
       };
-      await PulseCacheDB.putWithEviction(cacheRecord, state.cacheLimitMb * 1024 * 1024);
+      const maxBytes = state.cacheLimitMb > 0 ? state.cacheLimitMb * 1024 * 1024 : 0;
+      await PulseCacheDB.putWithEviction(cacheRecord, maxBytes);
       refreshCacheBadge();
       return cacheRecord;
     };
@@ -6404,6 +6552,57 @@
       });
     });
 
+    // Smart Cache-Hit Banner Actions (direct reuse / merge resume / force refresh)
+    $('preflightUseCacheBtn')?.addEventListener('click', () => {
+      const hit = state.pendingCacheHit;
+      if (!hit || !hit.record) return;
+      const rec = hit.record;
+      state.lockedSubTags.clear();
+      state.rawDataset = {
+        ...rec,
+        pixivTotal: Number(hit.preflightInfo?.totalPosts || rec.pixivTotal || 0),
+        totalBreakdown: hit.preflightInfo?.totalBreakdown || rec.totalBreakdown || null
+      };
+      if (rec.danbooruMap) Object.assign(state.danbooruCache, rec.danbooruMap);
+      if ($('engineSourceIndicator')) {
+        $('engineSourceIndicator').textContent = `LOCAL-CACHE · 复用 (${(rec.artworks || []).length.toLocaleString()}作)`;
+        $('engineSourceIndicator').classList.remove('hidden');
+      }
+      recomputeAndRender();
+      showPreflightBanner(
+        `已直接复用 [${rec.primaryTag || hit.tag}] 本地缓存（${(rec.artworks || []).length.toLocaleString()} 作，0 流量秒开）。`,
+        false,
+        false,
+        { showUse: false, showResume: false, forceLabel: '强制重新抓取' }
+      );
+      showToast(`已直接复用本地缓存 (${(rec.artworks || []).length.toLocaleString()} 作)`);
+    });
+    $('preflightCacheResumeBtn')?.addEventListener('click', () => {
+      const hit = state.pendingCacheHit;
+      if (!hit || !hit.record) return;
+      hidePreflightBanner();
+      executeAnalysis(hit.tag, {
+        source: hit.source,
+        overridePages: hit.overridePages || 'ALL',
+        resumeFromCache: hit.record,
+        preflightInfo: hit.preflightInfo,
+        skipConfirm: true
+      });
+    });
+    $('preflightForceRefreshBtn')?.addEventListener('click', () => {
+      const hit = state.pendingCacheHit;
+      if (!hit) return;
+      hidePreflightBanner();
+      executeAnalysis(hit.tag, {
+        source: hit.source,
+        overridePages: hit.overridePages,
+        preflightInfo: hit.preflightInfo,
+        freshRestart: true,
+        ignoreCacheReuse: true,
+        skipConfirm: true
+      });
+    });
+
     // Tag Inspector Sort, Type Filter & Load More
     $('modalArtworksSortSelect')?.addEventListener('change', () => {
       state.inspectorLimit = 36;
@@ -7133,11 +7332,38 @@
       renderCacheModal();
       showToast('已清空全部本地缓存');
     });
-    $('cacheLimitMbSelect')?.addEventListener('change', (e) => {
-      state.cacheLimitMb = Math.max(128, parseInt(e.target.value, 10) || 1024);
-      localStorage.setItem('pixez_cache_limit_mb', String(state.cacheLimitMb));
+    const applyCacheLimitMb = (rawVal) => {
+      const parsed = parseInt(String(rawVal ?? '').trim(), 10);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        showToast('请输入有效的缓存上限 MB（0 表示不限，或 64 ~ 65536）');
+        return;
+      }
+      const nextMb = parsed === 0 ? 0 : Math.max(64, Math.min(65536, parsed));
+      state.cacheLimitMb = nextMb;
+      localStorage.setItem('pixez_cache_limit_mb', String(nextMb));
       renderCacheModal();
-      showToast(`本地缓存上限已设置为 ${state.cacheLimitMb} MB`);
+      showToast(`本地缓存上限已设置为 ${formatCacheLimitLabel(nextMb)}`);
+    };
+    $('cacheLimitMbSelect')?.addEventListener('change', (e) => {
+      const v = String(e.target.value || '');
+      if (v === 'custom') {
+        const inp = $('cacheLimitCustomInput');
+        if (inp) {
+          inp.focus();
+          inp.select();
+        }
+        return;
+      }
+      applyCacheLimitMb(v);
+    });
+    $('applyCacheLimitBtn')?.addEventListener('click', () => {
+      applyCacheLimitMb($('cacheLimitCustomInput')?.value);
+    });
+    $('cacheLimitCustomInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyCacheLimitMb($('cacheLimitCustomInput')?.value);
+      }
     });
   }
 

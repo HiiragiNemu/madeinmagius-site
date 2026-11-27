@@ -254,6 +254,11 @@
           <button class="t-btn t-btn--sm t-btn--primary" id="preflightResumeBtn" type="button">接着采集</button>
           <button class="t-btn t-btn--sm t-btn--danger" id="preflightClearRestartBtn" type="button">清空重采</button>
         </div>
+        <div class="preflight-banner__actions hidden" id="preflightCacheHitActions">
+          <button class="t-btn t-btn--sm t-btn--primary" id="preflightUseCacheBtn" type="button">直接复用缓存</button>
+          <button class="t-btn t-btn--sm" id="preflightCacheResumeBtn" type="button">续采合并</button>
+          <button class="t-btn t-btn--sm t-btn--danger" id="preflightForceRefreshBtn" type="button">强制重新抓取</button>
+        </div>
       </div>
 
       <!-- Streaming Progress Bar (percentage centered inside track so right floating rail never overlaps) -->
@@ -1102,21 +1107,28 @@
     <div class="modal-window modal-window--lg">
       <div class="modal-titlebar">
         <div>
-          <h3>本地分段采集缓存管理 (最高支持 1GB / 断点续采合并)</h3>
+          <h3>本地分段采集缓存管理 (可自定义上限 / 断点续采合并)</h3>
         </div>
         <button class="btn-modal-close" id="closeCacheModalBtn" type="button">[X] 关闭</button>
       </div>
       <div class="modal-content">
         <div class="cache-summary-bar">
           <div id="cacheUsageSummary">本地缓存占用: 计算中...</div>
-          <div class="cache-limit-controls">
+          <div class="cache-limit-controls" style="flex-wrap: wrap;">
             <label>缓存上限:
               <select id="cacheLimitMbSelect" class="t-select-sm">
                 <option value="256">256 MB</option>
                 <option value="512">512 MB</option>
                 <option value="1024" selected>1024 MB (1 GB)</option>
+                <option value="2048">2048 MB (2 GB)</option>
+                <option value="4096">4096 MB (4 GB)</option>
+                <option value="8192">8192 MB (8 GB)</option>
+                <option value="0">不限上限 (0)</option>
+                <option value="custom">自定义 (MB)</option>
               </select>
             </label>
+            <input type="number" id="cacheLimitCustomInput" class="t-input-sm" min="0" max="65536" step="128" placeholder="自定义MB (0=不限)" style="width: 120px;" />
+            <button class="t-btn t-btn--sm" id="applyCacheLimitBtn" type="button">应用上限</button>
             <button class="t-btn t-btn--sm t-btn--danger" id="clearAllCacheBtn" type="button">清空全部缓存</button>
           </div>
         </div>
@@ -1135,6 +1147,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.26"></script>
+  <script src="./app.js?v=4.27"></script>
 </body>
 </html>

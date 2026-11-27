@@ -12,6 +12,8 @@
 (function () {
   'use strict';
 
+  const WEB_APP_VERSION = '4.36';
+
   const CATEGORY_META = {
     all: { label: '全部有效标签', short: '全部', colorVar: '--t-accent' },
     character: { label: '角色 / 人物', short: '角色', colorVar: '--t-cat-chr' },
@@ -7500,6 +7502,16 @@
       if (profileCard) profileCard.classList.add('hidden');
       if (statusBanner) statusBanner.classList.remove('hidden');
       $('authCurrentStatusBox').textContent = '当前状态: 未登录（免登录访客模式）— 可直接使用采样；登录后可解锁账号信息与全量日期分段。';
+    }
+
+    if ($('webVersionBadge')) {
+      const scriptEl = document.querySelector('script[src*="app.js"]');
+      const mVer = scriptEl?.getAttribute('src')?.match(/[?&]v=([0-9.]+)/);
+      const effVer = mVer ? mVer[1] : WEB_APP_VERSION;
+      $('webVersionBadge').textContent = `v${effVer}`;
+      $('webVersionBadge').title = state.bridgeDetected
+        ? `PixEz Pulse 网页端 v${effVer} · 油猴桥接 v${state.bridgeVersion || '4.1.1'}`
+        : `PixEz Pulse 网页端 v${effVer}`;
     }
 
     if ($('bridgeStatusTitle')) {

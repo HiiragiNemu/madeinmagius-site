@@ -702,6 +702,23 @@ a, a:hover, a:focus-visible {
   gap: 5px;
 }
 
+.masthead-ver-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 19px;
+  padding: 0 6px;
+  border: 1px solid var(--t-border-strong, var(--t-border));
+  background: color-mix(in srgb, var(--t-surface-raised) 85%, transparent);
+  color: var(--t-accent-strong, var(--t-text-strong));
+  font-family: var(--t-font-mono, Consolas, monospace);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: all;
+}
+
 /* Row 2: Dedicated Theme & Appearance Bar Slot (when data-theme-bar-mode="top") */
 .masthead__theme-slot {
   padding: 3px 8px;
@@ -1590,6 +1607,7 @@ a, a:hover, a:focus-visible {
   align-items: center;
   flex-wrap: wrap;
   gap: 4px;
+  padding-right: 48px;
 }
 
 .check-node {

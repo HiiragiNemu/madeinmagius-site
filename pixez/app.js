@@ -4881,7 +4881,7 @@
 
     try {
       // Direct Chrome Userscript v4.1+ Pixiv Web AJAX mode: uses user's REAL logged-in Chrome Pixiv session!
-      // Full R-18 + True AI (ai_type=0) + unlimited ecd/scd date-window segmentation past 30k-500k works!
+      // Full R-18 + True AI (ai_type=0) + self-diagnosing date-window segmentation + unattended persistence!
       // CRITICAL: ONLY run when Chrome actually has a verified Pixiv session (so Guest mode NEVER hits 0%-R18 Web AJAX!).
       if (source === 'pixiv' && state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function' && hasVerifiedChromePixivSession) {
         const encodePixivPath = (t) => encodeURIComponent(t).replace(/%2F/gi, '%252F');
@@ -4895,38 +4895,63 @@
         const maxStopBound = userEndDate || todayYmd;
         let bEndDate = activeEndDate;
         let bStartDate = activeStartDate;
-        // Keep segmented Web AJAX date spans <= 360 days so non-premium accounts satisfy Pixiv's 1-year date filter cleanly!
-        const applyBoundedWindow = (endStr, startStr) => {
+        // Self-adapting date filter mode:
+        // 'bounded_360' -> scd+ecd <=360d | 'ecd_only' -> ecd-only (or scd-only) | 'bounded_90' -> scd+ecd <=90d | 'unsupported' -> fallback slices + anon ecd sweep
+        let dateFilterStrategy = 'bounded_360';
+        const applyBoundedWindow = (endStr, startStr, strategy = dateFilterStrategy) => {
+          if (strategy === 'ecd_only') {
+            if (webOrd === 'date_d') return { start: '', end: endStr };
+            return { start: startStr, end: '' };
+          }
+          const spanDays = strategy === 'bounded_90' ? 90 : 360;
           if (webOrd === 'date_d' && endStr && !startStr) {
-            const s = shiftYmd(endStr, -360);
+            const s = shiftYmd(endStr, -spanDays);
             return { start: s && s > minStopBound ? s : minStopBound, end: endStr };
           }
           if (webOrd === 'date' && startStr && !endStr) {
-            const e = shiftYmd(startStr, 360);
+            const e = shiftYmd(startStr, spanDays);
             return { start: startStr, end: e && e < maxStopBound ? e : maxStopBound };
           }
           return { start: startStr, end: endStr };
         };
         ({ start: bStartDate, end: bEndDate } = applyBoundedWindow(bEndDate, bStartDate));
 
-        const maxSegs = isAllMode || targetWorksLimit > 0 ? 120 : 24;
+        const maxSegs = isAllMode || targetWorksLimit > 0 ? 600 : 30;
         lastEngine = 'USERSCRIPT-PIXIV-DIRECT';
         let bridgeWorked = false;
-        // Full-speed adaptive concurrency: 3 pages in parallel with 0ms idle sleep when healthy;
-        // ONLY slows down / cools down if Pixiv actually returns a 429/403/error, then auto-ramps back up!
-        let concurrency = 3;
-        let pageDelayMs = 0;
+        let handoffToOAuthAppApi = false;
+        let seg1OldestDate = '';
+        // Steady AIMD pacing + shared rate-limit gate:
+        // Starts at 2-way concurrency + 80ms pacing (120 works/RTT without triggering Pixiv's 3-way burst tripwire).
+        // On any real 429/403, pauses ONCE globally, drops permanently to 1-way learned safe pacing (no toxic 12-page oscillation!).
+        let concurrency = 2;
+        let maxSafeConcurrency = 2;
+        let pageDelayMs = 80;
+        let learnedSafeDelayMs = 80;
         let cleanPagesSinceThrottle = 0;
+        let throttleUntilTs = 0;
         let consecutiveEmptySegs = 0;
-        let consecutiveThrottledSegs = 0;
 
-        const fetchOneBridgePage = async (pageNum, segHint) => {
-          const dateQs = `${bStartDate ? `&scd=${encodeURIComponent(bStartDate)}` : ''}${bEndDate ? `&ecd=${encodeURIComponent(bEndDate)}` : ''}`;
-          const targetUrl = `https://www.pixiv.net/ajax/search/artworks/${encodePixivPath(primaryResolvedTag)}?word=${encodeURIComponent(primaryResolvedTag)}&order=${webOrd}&mode=${encodeURIComponent(mode)}&p=${pageNum}&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(type)}&ai_type=0&lang=zh${dateQs}`;
-          const backoffSec = [2, 4, 8, 14, 22, 35];
+        const fetchOneBridgePage = async (pageNum, segHint, ov = null) => {
+          const useOrd = ov?.ord || webOrd;
+          const useMode = ov?.sliceMode || mode;
+          const useAi = ov?.sliceAiType !== undefined ? ov.sliceAiType : 0;
+          const useType = ov?.sliceType || type;
+          const useWord = ov?.sliceWord || primaryResolvedTag;
+          const useAnon = Boolean(ov?.anonymous);
+          const useScd = ov ? (ov.scd || '') : bStartDate;
+          const useEcd = ov ? (ov.ecd || '') : bEndDate;
+          const dateQs = `${useScd ? `&scd=${encodeURIComponent(useScd)}` : ''}${useEcd ? `&ecd=${encodeURIComponent(useEcd)}` : ''}`;
+          const targetUrl = `https://www.pixiv.net/ajax/search/artworks/${encodePixivPath(useWord)}?word=${encodeURIComponent(useWord)}&order=${useOrd}&mode=${encodeURIComponent(useMode)}&p=${pageNum}&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(useType)}&ai_type=${useAi}&lang=zh${dateQs}`;
+          const backoffSec = [2, 5, 9, 14, 22, 35];
           for (let attempt = 0; attempt < backoffSec.length; attempt++) {
             if (abortCtrl.signal.aborted) return { json: null, throttled: false };
-            const r = await window._pixezBridgeFetch(targetUrl, { timeout: 35000 });
+            const gateWait = throttleUntilTs - Date.now();
+            if (gateWait > 50) {
+              await abortableSleep(gateWait);
+              if (abortCtrl.signal.aborted) return { json: null, throttled: false };
+            }
+            const r = await window._pixezBridgeFetch(targetUrl, { timeout: 35000, anonymous: useAnon });
             if (r && r.ok && r.json && !r.json.error && r.json.body) {
               return { json: r.json, throttled: attempt > 0 };
             }
@@ -4939,11 +4964,14 @@
               Boolean(r.json?.error);
             if (isRetryable && attempt < backoffSec.length - 1) {
               const waitS = backoffSec[attempt];
+              maxSafeConcurrency = 1;
               concurrency = 1;
-              pageDelayMs = Math.min(500, Math.max(pageDelayMs + 100, 200));
+              learnedSafeDelayMs = Math.min(550, Math.max(learnedSafeDelayMs + 100, 220));
+              pageDelayMs = learnedSafeDelayMs;
               cleanPagesSinceThrottle = 0;
+              throttleUntilTs = Math.max(throttleUntilTs, Date.now() + waitS * 1000);
               const bgTag = document.hidden ? ' [后台保活]' : '';
-              progressText.textContent = `[油猴直连 Pixiv]${segHint}${bgTag} 触发限流/波动，冷却 ${waitS}s 后自动续采第 ${pageNum} 页 (${attempt + 1}/${backoffSec.length - 1} · 已采 ${accumWorks.size.toLocaleString()} 作)...`;
+              progressText.textContent = `[油猴直连 Pixiv]${segHint}${bgTag} 触发限流/波动，冷却 ${waitS}s 后自动续采第 ${pageNum} 页 (${attempt + 1}/${backoffSec.length - 1} · 已采 ${accumWorks.size.toLocaleString()} 作 · 无需手动操作)...`;
               await abortableSleep(waitS * 1000);
               continue;
             }
@@ -4952,18 +4980,107 @@
           return { json: null, throttled: true };
         };
 
+        const ingestBridgePageJson = (json, trackSeg, updateSiteTotal = false) => {
+          const b = json.body;
+          const blk = b.illustManga || b.illust || b.manga || {};
+          const blkTotal = Number(blk.total || 0);
+          if (blkTotal > trackSeg.expectedTotal) trackSeg.expectedTotal = blkTotal;
+          if (updateSiteTotal && blkTotal > knownTotalPosts) knownTotalPosts = blkTotal;
+          if (b.tagTranslation) {
+            for (const [k, v] of Object.entries(b.tagTranslation)) {
+              const tr = v.zh || v.zh_tw || v.en || v.romaji || '';
+              if (tr) accumTrans[k] = tr;
+            }
+          }
+          const list = Array.isArray(blk.data) ? blk.data : [];
+          let pageRaw = 0;
+          let pageNew = 0;
+          let firstYmd = '';
+          let lastYmd = '';
+          if (list.length < 20) trackSeg.naturalEnd = true;
+          for (const item of list) {
+            if (!canAcceptMoreWorks()) break;
+            if (!item || !item.id || item.isAdContainer) continue;
+            pageRaw++;
+            const idStr = String(item.id);
+            const cDate = String(item.createDate || '');
+            const ymd = cDate.slice(0, 10);
+            if (ymd) {
+              if (!firstYmd) firstYmd = ymd;
+              lastYmd = ymd;
+              if (!trackSeg.oldest || ymd < trackSeg.oldest) trackSeg.oldest = ymd;
+              if (!trackSeg.newest || ymd > trackSeg.newest) trackSeg.newest = ymd;
+              if (isDateRangeDepth) {
+                if (userStartDate && ymd < userStartDate) {
+                  if ((trackSeg.ord || webOrd) === 'date_d') trackSeg.naturalEnd = true;
+                  continue;
+                }
+                if (userEndDate && ymd > userEndDate) {
+                  if ((trackSeg.ord || webOrd) === 'date') trackSeg.naturalEnd = true;
+                  continue;
+                }
+              }
+            }
+            if (accumWorks.has(idStr)) continue;
+            const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
+            accumWorks.set(idStr, {
+              id: idStr,
+              source: 'pixiv',
+              title: item.title || '无题',
+              tags,
+              userId: String(item.userId || ''),
+              userName: item.userName || '',
+              thumbUrl: item.url || '',
+              createDate: cDate,
+              pageCount: Number(item.pageCount || 1),
+              illustType: Number(item.illustType || 0),
+              xRestrict: Number(item.xRestrict || 0),
+              isAi: item.aiType === 2 || tags.some((t) => /^(AIイラスト|AI生成|AIart|NovelAI)$/i.test(t)),
+              bookmarkCount: Number(item.bookmarkCount || item.totalBookmarks || 0)
+            });
+            pageNew++;
+          }
+          return { pageRaw, pageNew, firstYmd, lastYmd, blkTotal, shortList: list.length < 20 };
+        };
+
+        const peekBridgeDateBounds = (json) => {
+          const b = json?.body;
+          const blk = b?.illustManga || b?.illust || b?.manga || {};
+          const list = Array.isArray(blk.data) ? blk.data : [];
+          let firstYmd = '';
+          let lastYmd = '';
+          let raw = 0;
+          let fresh = 0;
+          for (const item of list) {
+            if (!item || !item.id || item.isAdContainer) continue;
+            raw++;
+            const ymd = String(item.createDate || '').slice(0, 10);
+            if (ymd) {
+              if (!firstYmd) firstYmd = ymd;
+              lastYmd = ymd;
+            }
+            if (!accumWorks.has(String(item.id))) fresh++;
+          }
+          return { raw, fresh, firstYmd, lastYmd, total: Number(blk.total || 0) };
+        };
+
+        let crowdedDaySteps = 0;
         for (let seg = 1; seg <= maxSegs && !abortCtrl.signal.aborted && !reachedDepthCap(); seg++) {
-          let segOldest = '';
-          let segNewest = '';
+          const segTrack = {
+            oldest: '',
+            newest: '',
+            expectedTotal: 0,
+            naturalEnd: false,
+            ord: webOrd
+          };
           let segAdded = 0;
           let segRawTotal = 0;
           let segPagesFetched = 0;
-          let segExpectedTotal = 0;
           let segHitCeiling = false;
-          let segNaturalEnd = false;
-          let segThrottledOut = false;
           let consecutiveBatchFails = 0;
           let consecutiveZeroNewPages = 0;
+          let dateFilterIgnoredOnSeg = false;
+          let crowdedDayRetry = false;
           const segPageLimit = isAllMode || targetWorksLimit > 0 ? 1000 : Math.max(1, requestedMaxPages - totalPagesScanned);
 
           for (let p = 1; p <= segPageLimit && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
@@ -4987,8 +5104,8 @@
             progressPct.textContent = `${pct}%`;
             progressFill.style.width = `${pct}%`;
 
-            // Keep page 1 of a fresh segment single if target is tiny; otherwise fire `concurrency` (default 3) pages in parallel!
-            let batchLen = concurrency;
+            // Always probe p=1 of a dated segment (seg >= 2) as a single page so we detect crowded boundaries or ignored date filters instantly!
+            let batchLen = (p === 1 && seg >= 2) ? 1 : concurrency;
             if (targetWorksLimit > 0) {
               const remPages = Math.max(1, Math.ceil((targetWorksLimit - accumWorks.size) / 60));
               batchLen = Math.min(batchLen, remPages);
@@ -5003,6 +5120,73 @@
             let batchNew = 0;
             let anyThrottled = false;
 
+            // Self-diagnose date-window response on page 1 of seg >= 2!
+            if (p === 1 && seg >= 2 && results.length === 1 && results[0].json?.body) {
+              const peek = peekBridgeDateBounds(results[0].json);
+              const violatedBound =
+                (webOrd === 'date_d' && bEndDate && peek.firstYmd && peek.firstYmd > bEndDate) ||
+                (webOrd === 'date' && bStartDate && peek.lastYmd && peek.lastYmd < bStartDate);
+              const suspiciousEmpty =
+                peek.raw === 0 && knownTotalPosts > accumWorks.size + 120 && dateFilterStrategy === 'bounded_360';
+
+              if (violatedBound || suspiciousEmpty) {
+                // Pixiv either ignored scd+ecd or rejected scd > 1 year ago on this account -> auto-probe alternatives!
+                const probeDate = webOrd === 'date_d'
+                  ? (bEndDate ? shiftYmd(bEndDate, -1) : computeOldestDate())
+                  : (bStartDate ? shiftYmd(bStartDate, 1) : computeNewestDate());
+                let adaptedJson = null;
+
+                if (probeDate && dateFilterStrategy !== 'ecd_only') {
+                  const ecdOv = webOrd === 'date_d' ? { scd: '', ecd: probeDate } : { scd: probeDate, ecd: '' };
+                  const pr1 = await fetchOneBridgePage(1, `${segHint} [自动适配单边日期]`, ecdOv);
+                  if (pr1.json?.body) {
+                    const pk1 = peekBridgeDateBounds(pr1.json);
+                    const ok1 = pk1.raw > 0 && (webOrd === 'date_d' ? pk1.firstYmd <= probeDate : pk1.lastYmd >= probeDate);
+                    if (ok1) {
+                      dateFilterStrategy = 'ecd_only';
+                      ({ start: bStartDate, end: bEndDate } = applyBoundedWindow(
+                        webOrd === 'date_d' ? probeDate : '',
+                        webOrd === 'date' ? probeDate : '',
+                        'ecd_only'
+                      ));
+                      adaptedJson = pr1.json;
+                    }
+                  }
+                }
+                if (!adaptedJson && probeDate && dateFilterStrategy === 'bounded_360') {
+                  const w90 = applyBoundedWindow(
+                    webOrd === 'date_d' ? probeDate : '',
+                    webOrd === 'date' ? probeDate : '',
+                    'bounded_90'
+                  );
+                  const pr2 = await fetchOneBridgePage(1, `${segHint} [自动适配90天窗口]`, { scd: w90.start, ecd: w90.end });
+                  if (pr2.json?.body) {
+                    const pk2 = peekBridgeDateBounds(pr2.json);
+                    const ok2 = pk2.raw > 0 && (webOrd === 'date_d' ? pk2.firstYmd <= w90.end : pk2.lastYmd >= w90.start);
+                    if (ok2) {
+                      dateFilterStrategy = 'bounded_90';
+                      bStartDate = w90.start;
+                      bEndDate = w90.end;
+                      adaptedJson = pr2.json;
+                    }
+                  }
+                }
+                if (adaptedJson) {
+                  results[0] = { json: adaptedJson, throttled: false };
+                } else if (violatedBound) {
+                  // Confirmed: this non-premium Web session ignores scd/ecd -> break to unattended full recovery!
+                  dateFilterStrategy = 'unsupported';
+                  dateFilterIgnoredOnSeg = true;
+                  break;
+                }
+              } else if (peek.raw > 0 && peek.fresh === 0 && !violatedBound && crowdedDaySteps < 10) {
+                // Boundary day itself had >=60 works already collected -> step past boundary day cleanly!
+                crowdedDaySteps++;
+                crowdedDayRetry = true;
+                break;
+              }
+            }
+
             for (let idx = 0; idx < results.length; idx++) {
               const { json, throttled } = results[idx];
               if (throttled) anyThrottled = true;
@@ -5011,95 +5195,43 @@
               bridgeWorked = true;
               totalPagesScanned++;
               segPagesFetched++;
-              const b = json.body;
-              const blk = b.illustManga || b.illust || b.manga || {};
-              const blkTotal = Number(blk.total || 0);
-              if (blkTotal > segExpectedTotal) segExpectedTotal = blkTotal;
-              if (seg === 1 && !bStartDate && !bEndDate && blkTotal > knownTotalPosts) knownTotalPosts = blkTotal;
-              if (b.tagTranslation) {
-                for (const [k, v] of Object.entries(b.tagTranslation)) {
-                  const tr = v.zh || v.zh_tw || v.en || v.romaji || '';
-                  if (tr) accumTrans[k] = tr;
-                }
-              }
-              const list = Array.isArray(blk.data) ? blk.data : [];
-              let pageRaw = 0;
-              let pageNew = 0;
-              if (list.length < 20) segNaturalEnd = true;
-              for (const item of list) {
-                if (!canAcceptMoreWorks()) break;
-                if (!item || !item.id || item.isAdContainer) continue;
-                pageRaw++;
-                batchRaw++;
-                segRawTotal++;
-                const idStr = String(item.id);
-                const cDate = String(item.createDate || '');
-                const ymd = cDate.slice(0, 10);
-                if (ymd) {
-                  if (!segOldest || ymd < segOldest) segOldest = ymd;
-                  if (!segNewest || ymd > segNewest) segNewest = ymd;
-                  if (isDateRangeDepth) {
-                    if (userStartDate && ymd < userStartDate) {
-                      if (webOrd === 'date_d') segNaturalEnd = true;
-                      continue;
-                    }
-                    if (userEndDate && ymd > userEndDate) {
-                      if (webOrd === 'date') segNaturalEnd = true;
-                      continue;
-                    }
-                  }
-                }
-                if (accumWorks.has(idStr)) continue;
-                const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
-                accumWorks.set(idStr, {
-                  id: idStr,
-                  source: 'pixiv',
-                  title: item.title || '无题',
-                  tags,
-                  userId: String(item.userId || ''),
-                  userName: item.userName || '',
-                  thumbUrl: item.url || '',
-                  createDate: cDate,
-                  pageCount: Number(item.pageCount || 1),
-                  illustType: Number(item.illustType || 0),
-                  xRestrict: Number(item.xRestrict || 0),
-                  isAi: item.aiType === 2 || tags.some((t) => /^(AIイラスト|AI生成|AIart|NovelAI)$/i.test(t)),
-                  bookmarkCount: Number(item.bookmarkCount || item.totalBookmarks || 0)
-                });
-                pageNew++;
-                batchNew++;
-                segAdded++;
-              }
-              if (pageRaw > 0 && pageNew === 0) consecutiveZeroNewPages++;
-              else if (pageNew > 0) consecutiveZeroNewPages = 0;
+              const ing = ingestBridgePageJson(json, segTrack, seg === 1 && !bStartDate && !bEndDate);
+              batchRaw += ing.pageRaw;
+              segRawTotal += ing.pageRaw;
+              batchNew += ing.pageNew;
+              segAdded += ing.pageNew;
+              if (ing.pageRaw > 0 && ing.pageNew === 0) consecutiveZeroNewPages++;
+              else if (ing.pageNew > 0) consecutiveZeroNewPages = 0;
             }
 
             if (batchOk === 0) {
               consecutiveBatchFails++;
+              maxSafeConcurrency = 1;
               concurrency = 1;
-              pageDelayMs = 250;
+              learnedSafeDelayMs = Math.min(550, Math.max(learnedSafeDelayMs + 100, 260));
+              pageDelayMs = learnedSafeDelayMs;
               cleanPagesSinceThrottle = 0;
               await checkpointToIndexedDb(true);
-              if (consecutiveBatchFails <= 3) {
-                const waitS = consecutiveBatchFails * 12;
-                progressText.textContent = `[油猴直连 Pixiv]${segHint}${document.hidden ? ' [后台保活]' : ''} 上游冷却恢复中 ${waitS}s (重试 ${consecutiveBatchFails}/3，已保留 ${accumWorks.size.toLocaleString()} 作)...`;
+              // Unattended persistence: NEVER abort mid-crawl after 3 transient rate limits! Wait patiently and retry exact page p.
+              const maxWaitCycles = isAllMode || targetWorksLimit > 0 ? 25 : 6;
+              if (consecutiveBatchFails <= maxWaitCycles) {
+                const waitS = Math.min(60, 12 + consecutiveBatchFails * 10);
+                progressText.textContent = `[油猴直连 Pixiv]${segHint}${document.hidden ? ' [后台保活]' : ''} 上游限流冷却 ${waitS}s 后自动重试第 ${p} 页 (${consecutiveBatchFails}/${maxWaitCycles} · 已保留 ${accumWorks.size.toLocaleString()} 作 · 无需手动操作)...`;
                 await abortableSleep(waitS * 1000);
-                continue; // Retry same page p without incrementing!
+                continue; // Retry EXACT same page p without skipping any works!
               }
-              segHitCeiling = true;
-              segThrottledOut = true;
               break;
             }
 
             consecutiveBatchFails = 0;
             p += pBatch.length;
 
-            // Auto-ramp back to full speed (3-way concurrency, 0ms delay) once Pixiv is healthy!
+            // Gentle AIMD recovery: ONLY stay within learned safe ceiling (never jump back into 3-way 0ms storm!)
             if (!anyThrottled && batchOk === pBatch.length) {
               cleanPagesSinceThrottle += batchOk;
-              if (cleanPagesSinceThrottle >= 12) {
-                if (pageDelayMs > 0) pageDelayMs = 0;
-                if (concurrency < 3) concurrency++;
+              if (cleanPagesSinceThrottle >= 30) {
+                if (pageDelayMs > learnedSafeDelayMs) pageDelayMs = learnedSafeDelayMs;
+                if (concurrency < maxSafeConcurrency) concurrency++;
                 cleanPagesSinceThrottle = 0;
               }
             }
@@ -5108,17 +5240,17 @@
             if (!bridgeWorked || reachedDepthCap()) break;
 
             const stillHasMoreSiteWide = knownTotalPosts > 0 && accumWorks.size < knownTotalPosts - 50;
-            const stillHasMoreInWindow = segExpectedTotal > 0 && segRawTotal < segExpectedTotal - 60;
+            const stillHasMoreInWindow = segTrack.expectedTotal > 0 && segRawTotal < segTrack.expectedTotal - 60;
             if (batchRaw === 0) {
               if (stillHasMoreInWindow || stillHasMoreSiteWide) segHitCeiling = true;
-              else segNaturalEnd = true;
+              else segTrack.naturalEnd = true;
               break;
             }
             if (batchNew === 0 || consecutiveZeroNewPages >= 2) {
               segHitCeiling = true;
               break;
             }
-            if (segNaturalEnd) {
+            if (segTrack.naturalEnd) {
               if (stillHasMoreInWindow || stillHasMoreSiteWide) segHitCeiling = true;
               break;
             }
@@ -5126,52 +5258,57 @@
             if (pageDelayMs > 0) await abortableSleep(pageDelayMs);
           }
 
+          if (dateFilterIgnoredOnSeg) {
+            await checkpointToIndexedDb(true);
+            break;
+          }
+          if (crowdedDayRetry) {
+            if (webOrd === 'date_d' && bEndDate) {
+              const nextEnd = shiftYmd(bEndDate, -1);
+              if (!nextEnd || nextEnd < minStopBound) break;
+              ({ start: bStartDate, end: bEndDate } = applyBoundedWindow(nextEnd, ''));
+            } else if (webOrd === 'date' && bStartDate) {
+              const nextStart = shiftYmd(bStartDate, 1);
+              if (!nextStart || nextStart > maxStopBound) break;
+              ({ start: bStartDate, end: bEndDate } = applyBoundedWindow('', nextStart));
+            }
+            continue;
+          }
           if (!bridgeWorked) break;
+          if (seg === 1 && segTrack.oldest) seg1OldestDate = segTrack.oldest;
           await checkpointToIndexedDb(true);
           if (reachedDepthCap()) break;
           if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 10) break;
 
-          if (segThrottledOut && segAdded === 0) {
-            consecutiveThrottledSegs++;
-            if (consecutiveThrottledSegs >= 3) break;
-            const coolS = consecutiveThrottledSegs * 25;
-            progressText.textContent = `[油猴直连 Pixiv] 等待 Pixiv 限流窗口解除 (${coolS}s 后继续分段，已保留 ${accumWorks.size.toLocaleString()} 作)...`;
-            await abortableSleep(coolS * 1000);
-            continue;
-          }
           if (segAdded > 0) {
             consecutiveEmptySegs = 0;
-            consecutiveThrottledSegs = 0;
+            crowdedDaySteps = 0;
           } else {
             consecutiveEmptySegs++;
           }
 
-          // Check whether we genuinely reached the end of the entire tag (NOT a 25-page / 83-page window ceiling!)
           const hasUnexploredDateSpan =
             webOrd === 'date_d'
               ? Boolean(bStartDate && bStartDate > minStopBound)
               : Boolean(bEndDate && bEndDate < maxStopBound);
           const trulyExhausted =
-            segNaturalEnd &&
+            segTrack.naturalEnd &&
             !segHitCeiling &&
-            !segThrottledOut &&
             !hasUnexploredDateSpan &&
-            (segExpectedTotal === 0 || segRawTotal >= segExpectedTotal - 60) &&
+            (segTrack.expectedTotal === 0 || segRawTotal >= segTrack.expectedTotal - 60) &&
             (knownTotalPosts === 0 || accumWorks.size >= knownTotalPosts - 50);
           if (trulyExhausted) break;
-          if (consecutiveEmptySegs >= 5) break;
+          if (consecutiveEmptySegs >= 15) break;
 
-          // Slide to next <=360-day date window seamlessly!
+          // Slide to next date window seamlessly!
           if (webOrd === 'date_d') {
             let nextEnd = '';
             if (segAdded > 0) {
-              const cand = segOldest || computeOldestDate();
+              const cand = segTrack.oldest || computeOldestDate();
               nextEnd = cand && cand === bEndDate ? shiftYmd(cand, -1) : cand;
             } else if (segRawTotal > 0 && bEndDate) {
-              // All works on boundary day were already collected -> step back 1 day
               nextEnd = shiftYmd(bEndDate, -1);
             } else if (bStartDate && bStartDate > minStopBound) {
-              // This 360-day window was empty -> jump to previous 360-day window
               nextEnd = shiftYmd(bStartDate, -1);
             } else {
               const cand = computeOldestDate();
@@ -5182,7 +5319,7 @@
           } else {
             let nextStart = '';
             if (segAdded > 0) {
-              const cand = segNewest || computeNewestDate();
+              const cand = segTrack.newest || computeNewestDate();
               nextStart = cand && cand === bStartDate ? shiftYmd(cand, 1) : cand;
             } else if (segRawTotal > 0 && bStartDate) {
               nextStart = shiftYmd(bStartDate, 1);
@@ -5197,7 +5334,206 @@
           }
           if (pageDelayMs > 0) await abortableSleep(pageDelayMs);
         }
-        if (bridgeWorked) {
+
+        // UNATTENDED CONTINUATION: If Pixiv Web ignored date filters on a non-premium Chrome session,
+        // NEVER dump the user at 5,100 works to click "接着采集"! Automatically finish via OAuth App API OR Multi-Slice + Anonymous ecd Sweep!
+        if (
+          bridgeWorked &&
+          dateFilterStrategy === 'unsupported' &&
+          !abortCtrl.signal.aborted &&
+          !reachedDepthCap() &&
+          (isAllMode || targetWorksLimit > 0) &&
+          (knownTotalPosts === 0 || accumWorks.size < knownTotalPosts - 50)
+        ) {
+          const canHandoffOAuth = Boolean(state.authStatus?.loggedIn && state.authStatus?.mode === 'oauth');
+          if (canHandoffOAuth) {
+            handoffToOAuthAppApi = true;
+            activeEndDate = webOrd === 'date_d' ? (computeOldestDate() || activeEndDate) : activeEndDate;
+            activeStartDate = webOrd === 'date' ? (computeNewestDate() || activeStartDate) : activeStartDate;
+            startPage = 1;
+            showToast(`检测到网页端非会员限制日期参数，已自动无缝接管 OAuth App API 续采余下作品（已保留 ${accumWorks.size.toLocaleString()} 作）`, 4500);
+          } else {
+            // Phase A: Authenticated disjoint slices (FULL R-18 + AI, 60 works/page, zero date params needed!)
+            const oppOrd = webOrd === 'date_d' ? 'date' : 'date_d';
+            const slicePlan = [
+              { label: oppOrd === 'date' ? '最早回溯段' : '最新补充段', ord: oppOrd, sliceMode: mode, sliceAiType: 0, sliceType: type }
+            ];
+            if (mode !== 'safe') {
+              slicePlan.push(
+                { label: '纯手绘 R-18 最新', ord: 'date_d', sliceMode: 'r18', sliceAiType: 1, sliceType: type, pairKey: 'r18_h' },
+                { label: '纯手绘 R-18 最早', ord: 'date', sliceMode: 'r18', sliceAiType: 1, sliceType: type, pairOf: 'r18_h' },
+                { label: '全量 R-18 最新', ord: 'date_d', sliceMode: 'r18', sliceAiType: 0, sliceType: type, pairKey: 'r18_a' },
+                { label: '全量 R-18 最早', ord: 'date', sliceMode: 'r18', sliceAiType: 0, sliceType: type, pairOf: 'r18_a' }
+              );
+              if (type === 'all') {
+                slicePlan.push(
+                  { label: 'R-18 漫画最新', ord: 'date_d', sliceMode: 'r18', sliceAiType: 0, sliceType: 'manga', pairKey: 'r18_m' },
+                  { label: 'R-18 漫画最早', ord: 'date', sliceMode: 'r18', sliceAiType: 0, sliceType: 'manga', pairOf: 'r18_m' }
+                );
+              }
+            }
+            if (mode !== 'r18') {
+              slicePlan.push(
+                { label: '纯手绘全年龄最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairKey: 'safe_h' },
+                { label: '纯手绘全年龄最早', ord: 'date', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairOf: 'safe_h' }
+              );
+              if (type === 'all') {
+                slicePlan.push(
+                  { label: '全年龄漫画最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairKey: 'safe_m' },
+                  { label: '全年龄漫画最早', ord: 'date', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairOf: 'safe_m' }
+                );
+              }
+            }
+            const exhaustedPairs = new Set();
+            for (const sl of slicePlan) {
+              if (abortCtrl.signal.aborted || reachedDepthCap()) break;
+              if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 20) break;
+              if (sl.pairOf && exhaustedPairs.has(sl.pairOf)) continue;
+              const slTrack = { oldest: '', newest: '', expectedTotal: 0, naturalEnd: false, ord: sl.ord };
+              let slPages = 0;
+              let slZeroPages = 0;
+              let slFails = 0;
+              for (let p = 1; p <= 86 && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
+                const segHint = ` [全自动分片·${sl.label}]`;
+                const targetW = targetWorksLimit > 0 ? targetWorksLimit : (knownTotalPosts || accumWorks.size + 600);
+                const pct = Math.min(96, Math.max(4, Math.round((accumWorks.size / Math.max(1, targetW)) * 96)));
+                progressText.textContent = `[油猴直连 Pixiv]${segHint} 第 ${totalPagesScanned + 1} 页 · 已采集 ${accumWorks.size.toLocaleString()}${knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : ''} 件作品`;
+                progressPct.textContent = `${pct}%`;
+                progressFill.style.width = `${pct}%`;
+
+                const batchLen = Math.min(concurrency, 86 - p + 1);
+                const pBatch = [];
+                for (let k = 0; k < batchLen; k++) pBatch.push(p + k);
+                const results = await Promise.all(
+                  pBatch.map((pageNum) => fetchOneBridgePage(pageNum, segHint, { ...sl, scd: '', ecd: '' }))
+                );
+                let batchOk = 0;
+                let batchRaw = 0;
+                let batchNew = 0;
+                for (const { json } of results) {
+                  if (!json || !json.body) continue;
+                  batchOk++;
+                  totalPagesScanned++;
+                  slPages++;
+                  const ing = ingestBridgePageJson(json, slTrack, false);
+                  batchRaw += ing.pageRaw;
+                  batchNew += ing.pageNew;
+                  if (ing.pageRaw > 0 && ing.pageNew === 0) slZeroPages++;
+                  else if (ing.pageNew > 0) slZeroPages = 0;
+                }
+                if (batchOk === 0) {
+                  slFails++;
+                  if (slFails <= 15) {
+                    const waitS = Math.min(60, 12 + slFails * 10);
+                    progressText.textContent = `[油猴直连 Pixiv]${segHint} 限流冷却 ${waitS}s 后自动重试 (${slFails}/15 · 已保留 ${accumWorks.size.toLocaleString()} 作)...`;
+                    await abortableSleep(waitS * 1000);
+                    continue;
+                  }
+                  break;
+                }
+                slFails = 0;
+                p += pBatch.length;
+                flushDataset(false, true);
+                if (batchRaw === 0 || slTrack.naturalEnd || slZeroPages >= 4) {
+                  if (slTrack.naturalEnd && slPages < 80 && sl.pairKey) exhaustedPairs.add(sl.pairKey);
+                  break;
+                }
+                if (pageDelayMs > 0) await abortableSleep(pageDelayMs);
+              }
+              await checkpointToIndexedDb(true);
+            }
+
+            // Phase B: Anonymous ecd-sliding historical sweep for remaining All-Age historical works (proven to honor ecd back to 2007!)
+            if (
+              mode !== 'r18' &&
+              !abortCtrl.signal.aborted &&
+              !reachedDepthCap() &&
+              (knownTotalPosts === 0 || accumWorks.size < knownTotalPosts - 120)
+            ) {
+              let anonEcd = seg1OldestDate ? shiftYmd(seg1OldestDate, -1) : computeOldestDate();
+              let anonEmptySegs = 0;
+              for (let aSeg = 1; aSeg <= 260 && anonEcd && anonEcd >= minStopBound && !abortCtrl.signal.aborted && !reachedDepthCap(); aSeg++) {
+                if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 20) break;
+                const aTrack = { oldest: '', newest: '', expectedTotal: 0, naturalEnd: false, ord: 'date_d' };
+                let aAdded = 0;
+                let aRaw = 0;
+                let aZero = 0;
+                let aFails = 0;
+                for (let p = 1; p <= 11 && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
+                  const segHint = ` [历史日期回溯#${aSeg} 截止 ${anonEcd}]`;
+                  const targetW = targetWorksLimit > 0 ? targetWorksLimit : (knownTotalPosts || accumWorks.size + 600);
+                  const pct = Math.min(96, Math.max(4, Math.round((accumWorks.size / Math.max(1, targetW)) * 96)));
+                  progressText.textContent = `[油猴直连 Pixiv]${segHint} 第 ${totalPagesScanned + 1} 页 · 已采集 ${accumWorks.size.toLocaleString()}${knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : ''} 件作品`;
+                  progressPct.textContent = `${pct}%`;
+                  progressFill.style.width = `${pct}%`;
+
+                  const batchLen = p === 1 ? 1 : Math.min(concurrency, 11 - p + 1);
+                  const pBatch = [];
+                  for (let k = 0; k < batchLen; k++) pBatch.push(p + k);
+                  const results = await Promise.all(
+                    pBatch.map((pageNum) =>
+                      fetchOneBridgePage(pageNum, segHint, {
+                        ord: 'date_d',
+                        sliceMode: 'safe',
+                        sliceAiType: 0,
+                        sliceType: type,
+                        scd: '',
+                        ecd: anonEcd,
+                        anonymous: true
+                      })
+                    )
+                  );
+                  let batchOk = 0;
+                  let batchRaw = 0;
+                  let batchNew = 0;
+                  for (const { json } of results) {
+                    if (!json || !json.body) continue;
+                    batchOk++;
+                    totalPagesScanned++;
+                    const ing = ingestBridgePageJson(json, aTrack, false);
+                    batchRaw += ing.pageRaw;
+                    aRaw += ing.pageRaw;
+                    batchNew += ing.pageNew;
+                    aAdded += ing.pageNew;
+                    if (ing.pageRaw > 0 && ing.pageNew === 0) aZero++;
+                    else if (ing.pageNew > 0) aZero = 0;
+                  }
+                  if (batchOk === 0) {
+                    aFails++;
+                    if (aFails <= 15) {
+                      const waitS = Math.min(60, 12 + aFails * 10);
+                      progressText.textContent = `[油猴直连 Pixiv]${segHint} 限流冷却 ${waitS}s 后自动重试 (${aFails}/15 · 已保留 ${accumWorks.size.toLocaleString()} 作)...`;
+                      await abortableSleep(waitS * 1000);
+                      continue;
+                    }
+                    break;
+                  }
+                  aFails = 0;
+                  p += pBatch.length;
+                  flushDataset(false, true);
+                  if (batchRaw === 0 || aTrack.naturalEnd || aZero >= 2) break;
+                  if (pageDelayMs > 0) await abortableSleep(pageDelayMs);
+                }
+                if (aSeg % 5 === 0) await checkpointToIndexedDb(true);
+                if (aAdded > 0) anonEmptySegs = 0;
+                else anonEmptySegs++;
+                if (anonEmptySegs >= 12) break;
+                const cand = aTrack.oldest || '';
+                if (cand && cand < anonEcd) {
+                  anonEcd = cand;
+                } else if (aRaw > 0) {
+                  anonEcd = shiftYmd(anonEcd, -1);
+                } else {
+                  anonEcd = shiftYmd(anonEcd, -180);
+                }
+                if (pageDelayMs > 0) await abortableSleep(pageDelayMs);
+              }
+              await checkpointToIndexedDb(true);
+            }
+          }
+        }
+
+        if (bridgeWorked && !handoffToOAuthAppApi) {
           hasMore = false;
         }
       }
@@ -5449,10 +5785,11 @@
         // 1) Upstream rate-limit cooldown & cached-error page skip (HibiAPI caches 429 JSON per page!)
         if (chunkHasMore && chunkRateLimited && wantContinueBeyondSingleWindow()) {
           consecutiveRateLimits++;
-          if (consecutiveRateLimits <= 5) {
-            const waitMs = Math.min(25000, chunkRetryAfterMs * consecutiveRateLimits);
+          const maxRlRetries = isAllMode || targetWorksLimit > 0 ? 15 : 5;
+          if (consecutiveRateLimits <= maxRlRetries) {
+            const waitMs = Math.min(45000, chunkRetryAfterMs * Math.min(consecutiveRateLimits, 8));
             const waitSec = Math.round(waitMs / 1000);
-            progressText.textContent = `[${srcMeta.label}]${activePhaseLabel ? ` [${activePhaseLabel}]` : ''} 上游限流，冷却 ${waitSec}s 后自动续采第 ${chunkNextPage} 页 (重试 ${consecutiveRateLimits}/5 · 已采 ${accumWorks.size.toLocaleString()} 作)...`;
+            progressText.textContent = `[${srcMeta.label}]${activePhaseLabel ? ` [${activePhaseLabel}]` : ''} 上游限流，冷却 ${waitSec}s 后自动续采第 ${chunkNextPage} 页 (重试 ${consecutiveRateLimits}/${maxRlRetries} · 已采 ${accumWorks.size.toLocaleString()} 作 · 无需手动操作)...`;
             await abortableSleep(waitMs);
             startPage = chunkNextPage;
             cursor = chunkNextCursor;

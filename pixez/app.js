@@ -4933,34 +4933,113 @@
           return { conc: 3, delay: 0, segPause: 0 };
         };
 
-        // Detect an interior hollow date gap in resumed caches (e.g. 2011~2018 + 2020-12~2026-11 missing 2018~2020-12)
-        const detectHollowDateGap = () => {
-          const dates = [];
+        // Density-based hollow gap detector (immune to scattered R-18 or manga works bridging an All-Age hole!):
+        // Inspects monthly work counts (optionally All-Age only) to find every contiguous low-density era
+        // between dense collected eras, plus any sparse tail before the first dense era!
+        const detectDensityHollowGaps = (onlySafe = false) => {
+          const monthCounts = new Map();
+          let minMonth = '';
+          let maxMonth = '';
+          let totalChecked = 0;
           for (const w of accumWorks.values()) {
+            if (onlySafe && w.xRestrict >= 1) continue;
             const y = String(w.createDate || '').slice(0, 10);
-            if (y && /^\d{4}-\d{2}-\d{2}$/.test(y)) dates.push(y);
+            if (!y || !/^\d{4}-\d{2}-\d{2}$/.test(y)) continue;
+            const ym = y.slice(0, 7);
+            monthCounts.set(ym, (monthCounts.get(ym) || 0) + 1);
+            if (!minMonth || ym < minMonth) minMonth = ym;
+            if (!maxMonth || ym > maxMonth) maxMonth = ym;
+            totalChecked++;
           }
-          if (dates.length < 1000) return null;
-          dates.sort();
-          let bestGapDays = 0;
-          let bestLow = '';
-          let bestHigh = '';
-          for (let i = 0; i < dates.length - 1; i++) {
-            const olderCount = i + 1;
-            const newerCount = dates.length - olderCount;
-            if (olderCount < 250 || newerCount < 500) continue;
-            if (dates[i] === dates[i + 1]) continue;
-            const d1 = Date.parse(`${dates[i]}T00:00:00Z`);
-            const d2 = Date.parse(`${dates[i + 1]}T00:00:00Z`);
-            if (!Number.isFinite(d1) || !Number.isFinite(d2)) continue;
-            const gapDays = Math.round((d2 - d1) / 86400000);
-            if (gapDays > bestGapDays) {
-              bestGapDays = gapDays;
-              bestLow = dates[i];
-              bestHigh = dates[i + 1];
+          if (totalChecked < 1200 || !minMonth || !maxMonth || minMonth === maxMonth) return [];
+
+          const allMonths = [];
+          let [cy, cm] = minMonth.split('-').map(Number);
+          const [ey, em] = maxMonth.split('-').map(Number);
+          while (cy < ey || (cy === ey && cm <= em)) {
+            allMonths.push(`${String(cy).padStart(4, '0')}-${String(cm).padStart(2, '0')}`);
+            cm++;
+            if (cm > 12) { cm = 1; cy++; }
+          }
+          if (allMonths.length < 4) return [];
+
+          const nonZero = allMonths.map((m) => monthCounts.get(m) || 0).filter((c) => c > 0).sort((a, b) => a - b);
+          if (nonZero.length < 4) return [];
+          const p75 = nonZero[Math.floor(nonZero.length * 0.75)];
+          const denseMin = Math.max(25, Math.floor(p75 * 0.30));
+          const sparseMax = Math.max(18, Math.floor(p75 * 0.22));
+
+          let firstDenseIdx = -1;
+          let lastDenseIdx = -1;
+          for (let i = 0; i < allMonths.length; i++) {
+            if ((monthCounts.get(allMonths[i]) || 0) >= denseMin) {
+              if (firstDenseIdx < 0) firstDenseIdx = i;
+              lastDenseIdx = i;
             }
           }
-          return bestGapDays >= 21 ? { gapLow: bestLow, gapHigh: bestHigh, gapDays: bestGapDays } : null;
+          if (firstDenseIdx < 0) return [];
+
+          const endOfMonthYmd = (ym) => {
+            const [hy, hm] = ym.split('-').map(Number);
+            const lastDay = new Date(Date.UTC(hy, hm, 0)).getUTCDate();
+            return `${ym}-${String(lastDay).padStart(2, '0')}`;
+          };
+
+          // Record exact oldest/newest date inside each month so gap bounds align to the EXACT day (zero wasted edge days!)
+          const monthOldest = new Map();
+          const monthNewest = new Map();
+          for (const w of accumWorks.values()) {
+            if (onlySafe && w.xRestrict >= 1) continue;
+            const y = String(w.createDate || '').slice(0, 10);
+            if (!y || !/^\d{4}-\d{2}-\d{2}$/.test(y)) continue;
+            const ym = y.slice(0, 7);
+            if (!monthOldest.has(ym) || y < monthOldest.get(ym)) monthOldest.set(ym, y);
+            if (!monthNewest.has(ym) || y > monthNewest.get(ym)) monthNewest.set(ym, y);
+          }
+
+          const holes = [];
+          let i = firstDenseIdx + 1;
+          while (i < lastDenseIdx) {
+            if ((monthCounts.get(allMonths[i]) || 0) <= sparseMax) {
+              const startIdx = i;
+              while (i < lastDenseIdx && (monthCounts.get(allMonths[i]) || 0) <= sparseMax) i++;
+              const endIdx = i - 1;
+              const lowBorderYm = allMonths[Math.max(firstDenseIdx, startIdx - 1)];
+              const highBorderYm = allMonths[Math.min(lastDenseIdx, endIdx + 1)];
+              const exactLow = monthNewest.get(lowBorderYm) || `${lowBorderYm}-01`;
+              const exactHigh = monthOldest.get(highBorderYm) || endOfMonthYmd(highBorderYm);
+              holes.push({
+                gapLow: shiftYmd(exactLow, -2) || exactLow,
+                gapHigh: shiftYmd(exactHigh, 1) || exactHigh,
+                months: endIdx - startIdx + 1
+              });
+            } else {
+              i++;
+            }
+          }
+          // Also handle sparse early tail when random old works (e.g. 2011) exist well before firstDenseIdx (e.g. 2020-12)!
+          if (holes.length === 0 && firstDenseIdx >= 3) {
+            const highBorderYm = allMonths[firstDenseIdx];
+            const exactHigh = monthOldest.get(highBorderYm) || endOfMonthYmd(highBorderYm);
+            holes.push({
+              gapLow: minStopBound,
+              gapHigh: shiftYmd(exactHigh, 1) || exactHigh,
+              months: firstDenseIdx
+            });
+          }
+          holes.sort((a, b) => b.months - a.months || b.gapHigh.localeCompare(a.gapHigh));
+          return holes;
+        };
+
+        const detectHollowDateGap = () => {
+          // Check All-Age density first when mode !== 'r18' so scattered R-18/manga works NEVER hide an All-Age hole!
+          if (mode !== 'r18') {
+            const safeHoles = detectDensityHollowGaps(true);
+            if (safeHoles.length > 0) return safeHoles[0];
+          }
+          const allHoles = detectDensityHollowGaps(false);
+          if (allHoles.length > 0) return allHoles[0];
+          return null;
         };
 
         const initialHollowGap = (!userStartDate && !userEndDate) ? detectHollowDateGap() : null;
@@ -5275,9 +5354,11 @@
                     break;
                   }
                 } else if (peek.raw > 0 && peek.fresh === 0 && !violatedBound && crowdedDaySteps < 30) {
-                  // Boundary day itself had >=60 works already collected -> step past boundary day cleanly!
+                  // Boundary day(s) had >=60 works already collected -> jump straight past page 1's date span!
                   crowdedDaySteps++;
                   crowdedDayRetry = true;
+                  if (peek.lastYmd && (!segTrack.oldest || peek.lastYmd < segTrack.oldest)) segTrack.oldest = peek.lastYmd;
+                  if (peek.firstYmd && (!segTrack.newest || peek.firstYmd > segTrack.newest)) segTrack.newest = peek.firstYmd;
                   break;
                 }
               }
@@ -5366,11 +5447,13 @@
             }
             if (crowdedDayRetry) {
               if (sweepOrd === 'date_d' && bEndDate) {
-                const nextEnd = shiftYmd(bEndDate, -1);
+                const jumpCand = segTrack.oldest && segTrack.oldest < bEndDate ? segTrack.oldest : shiftYmd(bEndDate, -1);
+                const nextEnd = jumpCand;
                 if (!nextEnd || nextEnd < boundMin) { lastExitReason = 'reached_min_bound'; break; }
                 ({ start: bStartDate, end: bEndDate } = makeWindow(nextEnd, ''));
               } else if (sweepOrd === 'date' && bStartDate) {
-                const nextStart = shiftYmd(bStartDate, 1);
+                const jumpCand = segTrack.newest && segTrack.newest > bStartDate ? segTrack.newest : shiftYmd(bStartDate, 1);
+                const nextStart = jumpCand;
                 if (!nextStart || nextStart > boundMax) { lastExitReason = 'reached_max_bound'; break; }
                 ({ start: bStartDate, end: bEndDate } = makeWindow('', nextStart));
               }
@@ -5578,6 +5661,8 @@
               let slPrevFirstId = '';
               let slSameFirstHits = 0;
               let zeroPastBoundary = 0;
+              let slZeroStreak = 0;
+              let slAddedTotal = 0;
 
               for (let p = pStart; p <= 85 && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
                 const pacing = getEffectivePacing();
@@ -5596,6 +5681,7 @@
                 );
                 let batchOk = 0;
                 let batchRaw = 0;
+                let batchNew = 0;
                 let crossedCoveredZone = false;
                 for (const { json } of results) {
                   if (!json || !json.body) continue;
@@ -5611,6 +5697,8 @@
                   if (curFirstId) slPrevFirstId = curFirstId;
                   const ing = ingestBridgePageJson(json, slTrack, false);
                   batchRaw += ing.pageRaw;
+                  batchNew += ing.pageNew;
+                  slAddedTotal += ing.pageNew;
                   if (sl.ord === 'date' && gapHigh && ing.firstYmd && ing.firstYmd > gapHigh) {
                     crossedCoveredZone = true;
                     if (sl.isFullR18) r18GapClosed = true;
@@ -5632,9 +5720,12 @@
                   break;
                 }
                 slFails = 0;
+                if (batchNew === 0) slZeroStreak += batchOk;
+                else slZeroStreak = 0;
                 p += pBatch.length;
                 flushDataset(false, true);
-                if (batchRaw === 0 || slTrack.naturalEnd || slSameFirstHits >= 1 || (crossedCoveredZone && zeroPastBoundary >= 1)) {
+                const stalledFallback = Boolean(sl.isFallbackSafe && slAddedTotal === 0 && slZeroStreak >= 9);
+                if (batchRaw === 0 || slTrack.naturalEnd || slSameFirstHits >= 1 || (crossedCoveredZone && zeroPastBoundary >= 1) || stalledFallback) {
                   if (slTrack.naturalEnd && slPages < 80 && sl.pairKey) exhaustedPairs.add(sl.pairKey);
                   break;
                 }
@@ -5676,116 +5767,126 @@
               for (const sl of r18Slices) await runAuthSlice(sl);
             }
 
-            // Phase B: Anonymous ecd-sliding historical sweep STRICTLY across the missing gap [gapLow, gapHigh]!
+            // Phase B: Anonymous ecd-sliding historical sweep across EVERY missing All-Age density hole [gapLow, gapHigh]!
             if (
               mode !== 'r18' &&
               !abortCtrl.signal.aborted &&
               !reachedDepthCap() &&
               (knownTotalPosts === 0 || accumWorks.size < knownTotalPosts - 100)
             ) {
-              const anchorDate = gapHigh || seg1OldestDate || todayYmd;
-              const anonMinBound = (gapLow && gapLow > minStopBound) ? gapLow : minStopBound;
-              let anonEcd = anchorDate;
-              let anonEmptySegs = 0;
-              for (let aSeg = 1; aSeg <= 360 && anonEcd && anonEcd >= anonMinBound && !abortCtrl.signal.aborted && !reachedDepthCap(); aSeg++) {
-                if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 20) break;
-                const aTrack = { oldest: '', newest: '', expectedTotal: 0, naturalEnd: false, ord: 'date_d' };
-                let aAdded = 0;
-                let aRaw = 0;
-                let aFails = 0;
-                let aPrevFirstId = '';
-                let aSameFirstHits = 0;
-                let hitGapLow = false;
-                let skipCrowdedHigh = false;
-                // Anonymous Pixiv returns 10 distinct pages (600 works) per `ecd` window (p=11 always duplicates p=10)
-                for (let p = 1; p <= 10 && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
-                  const pacing = getEffectivePacing();
-                  const segHint = ` [历史日期回溯#${aSeg} 截止 ${anonEcd}]`;
-                  const targetW = targetWorksLimit > 0 ? targetWorksLimit : (knownTotalPosts || accumWorks.size + 600);
-                  const pct = Math.min(96, Math.max(4, Math.round((accumWorks.size / Math.max(1, targetW)) * 96)));
-                  progressText.textContent = `[油猴直连 Pixiv]${segHint} 第 ${totalPagesScanned + 1} 页 · 已采集 ${accumWorks.size.toLocaleString()}${knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : ''} 件作品`;
-                  progressPct.textContent = `${pct}%`;
-                  progressFill.style.width = `${pct}%`;
+              const safeHoles = detectDensityHollowGaps(true);
+              const sweepRanges = safeHoles.length > 0
+                ? safeHoles.map((h) => ({ high: h.gapHigh, low: h.gapLow > minStopBound ? h.gapLow : minStopBound }))
+                : [{ high: gapHigh || seg1OldestDate || todayYmd, low: (gapLow && gapLow > minStopBound) ? gapLow : minStopBound }];
 
-                  const batchLen = p === 1 ? 1 : Math.min(pacing.conc, 10 - p + 1);
-                  const pBatch = [];
-                  for (let k = 0; k < batchLen; k++) pBatch.push(p + k);
-                  const results = await Promise.all(
-                    pBatch.map((pageNum) =>
-                      fetchOneBridgePage(pageNum, segHint, {
-                        ord: 'date_d',
-                        sliceMode: 'safe',
-                        sliceAiType: 0,
-                        sliceType: type,
-                        scd: '',
-                        ecd: anonEcd,
-                        anonymous: true
-                      })
-                    )
-                  );
-                  let batchOk = 0;
-                  let batchRaw = 0;
-                  let batchNew = 0;
-                  for (const { json } of results) {
-                    if (!json || !json.body) continue;
-                    batchOk++;
-                    totalPagesScanned++;
-                    sessionPagesFetched++;
-                    const blkData = (json.body.illustManga || json.body.illust || json.body.manga || {}).data;
-                    const firstItem = Array.isArray(blkData) ? blkData.find((it) => it && it.id && !it.isAdContainer) : null;
-                    const curFirstId = firstItem ? String(firstItem.id) : '';
-                    if (curFirstId && curFirstId === aPrevFirstId) aSameFirstHits++;
-                    else aSameFirstHits = 0;
-                    if (curFirstId) aPrevFirstId = curFirstId;
-                    const ing = ingestBridgePageJson(json, aTrack, false);
-                    batchRaw += ing.pageRaw;
-                    batchNew += ing.pageNew;
-                    aRaw += ing.pageRaw;
-                    aAdded += ing.pageNew;
-                    if (p === 1 && ing.pageRaw > 0 && ing.pageNew === 0 && gapHigh && ing.lastYmd && ing.lastYmd >= gapHigh) {
-                      skipCrowdedHigh = true;
+              for (const rng of sweepRanges) {
+                if (abortCtrl.signal.aborted || reachedDepthCap()) break;
+                if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 20) break;
+                let anonEcd = rng.high;
+                const anonMinBound = rng.low;
+                let anonEmptySegs = 0;
+                for (let aSeg = 1; aSeg <= 360 && anonEcd && anonEcd >= anonMinBound && !abortCtrl.signal.aborted && !reachedDepthCap(); aSeg++) {
+                  if (knownTotalPosts > 0 && accumWorks.size >= knownTotalPosts - 20) break;
+                  const aTrack = { oldest: '', newest: '', expectedTotal: 0, naturalEnd: false, ord: 'date_d' };
+                  let aAdded = 0;
+                  let aRaw = 0;
+                  let aFails = 0;
+                  let aPrevFirstId = '';
+                  let aSameFirstHits = 0;
+                  let hitRangeLow = false;
+                  let skipCrowdedHigh = false;
+                  // Anonymous Pixiv returns 10 distinct pages (600 works) per `ecd` window (p=11 always duplicates p=10)
+                  for (let p = 1; p <= 10 && !abortCtrl.signal.aborted && !reachedDepthCap(); ) {
+                    const pacing = getEffectivePacing();
+                    const segHint = ` [历史日期回溯#${aSeg} 截止 ${anonEcd}]`;
+                    const targetW = targetWorksLimit > 0 ? targetWorksLimit : (knownTotalPosts || accumWorks.size + 600);
+                    const pct = Math.min(96, Math.max(4, Math.round((accumWorks.size / Math.max(1, targetW)) * 96)));
+                    progressText.textContent = `[油猴直连 Pixiv]${segHint} 第 ${totalPagesScanned + 1} 页 · 已采集 ${accumWorks.size.toLocaleString()}${knownTotalPosts > 0 ? ` / ${knownTotalPosts.toLocaleString()}` : ''} 件作品`;
+                    progressPct.textContent = `${pct}%`;
+                    progressFill.style.width = `${pct}%`;
+
+                    const batchLen = p === 1 ? 1 : Math.min(pacing.conc, 10 - p + 1);
+                    const pBatch = [];
+                    for (let k = 0; k < batchLen; k++) pBatch.push(p + k);
+                    const results = await Promise.all(
+                      pBatch.map((pageNum) =>
+                        fetchOneBridgePage(pageNum, segHint, {
+                          ord: 'date_d',
+                          sliceMode: 'safe',
+                          sliceAiType: 0,
+                          sliceType: type,
+                          scd: '',
+                          ecd: anonEcd,
+                          anonymous: true
+                        })
+                      )
+                    );
+                    let batchOk = 0;
+                    let batchRaw = 0;
+                    let batchNew = 0;
+                    for (const { json } of results) {
+                      if (!json || !json.body) continue;
+                      batchOk++;
+                      totalPagesScanned++;
+                      sessionPagesFetched++;
+                      const blkData = (json.body.illustManga || json.body.illust || json.body.manga || {}).data;
+                      const firstItem = Array.isArray(blkData) ? blkData.find((it) => it && it.id && !it.isAdContainer) : null;
+                      const curFirstId = firstItem ? String(firstItem.id) : '';
+                      if (curFirstId && curFirstId === aPrevFirstId) aSameFirstHits++;
+                      else aSameFirstHits = 0;
+                      if (curFirstId) aPrevFirstId = curFirstId;
+                      const ing = ingestBridgePageJson(json, aTrack, false);
+                      batchRaw += ing.pageRaw;
+                      batchNew += ing.pageNew;
+                      aRaw += ing.pageRaw;
+                      aAdded += ing.pageNew;
+                      if (p === 1 && ing.pageRaw > 0 && ing.pageNew === 0 && ing.lastYmd && ing.lastYmd >= anonEcd) {
+                        skipCrowdedHigh = true;
+                      }
+                      if (anonMinBound > minStopBound && ing.lastYmd && ing.lastYmd < anonMinBound && ing.pageNew === 0) {
+                        hitRangeLow = true;
+                      }
                     }
-                    if (gapLow && ing.lastYmd && ing.lastYmd < gapLow && ing.pageNew === 0) {
-                      hitGapLow = true;
+                    if (batchOk === 0) {
+                      aFails++;
+                      if (aFails <= 20) {
+                        const waitS = Math.min(120, 30 + aFails * 20);
+                        progressText.textContent = `[油猴直连 Pixiv]${segHint} 静默冷却 ${waitS}s 后自动重试 (${aFails}/20 · 已保留 ${accumWorks.size.toLocaleString()} 作)...`;
+                        await abortableSleep(waitS * 1000);
+                        continue;
+                      }
+                      break;
                     }
+                    aFails = 0;
+                    p += pBatch.length;
+                    flushDataset(false, true);
+                    if (batchRaw === 0 || aTrack.naturalEnd || aSameFirstHits >= 1 || skipCrowdedHigh || hitRangeLow) break;
+                    if (pacing.delay > 0) await abortableSleep(pacing.delay);
                   }
-                  if (batchOk === 0) {
-                    aFails++;
-                    if (aFails <= 20) {
-                      const waitS = Math.min(120, 30 + aFails * 20);
-                      progressText.textContent = `[油猴直连 Pixiv]${segHint} 静默冷却 ${waitS}s 后自动重试 (${aFails}/20 · 已保留 ${accumWorks.size.toLocaleString()} 作)...`;
-                      await abortableSleep(waitS * 1000);
-                      continue;
-                    }
-                    break;
-                  }
-                  aFails = 0;
-                  p += pBatch.length;
-                  flushDataset(false, true);
-                  if (batchRaw === 0 || aTrack.naturalEnd || aSameFirstHits >= 1 || skipCrowdedHigh || hitGapLow) break;
-                  if (pacing.delay > 0) await abortableSleep(pacing.delay);
-                }
-                if (aSeg % 5 === 0) await checkpointToIndexedDb(true);
-                if (hitGapLow || (gapLow && aTrack.oldest && aTrack.oldest < gapLow)) break;
-                if (aAdded > 0) anonEmptySegs = 0;
-                else anonEmptySegs++;
-                if (anonEmptySegs >= 25) break;
-                if (skipCrowdedHigh) {
-                  anonEcd = shiftYmd(anonEcd, -1);
-                } else {
-                  const cand = aTrack.oldest || '';
-                  if (cand && cand < anonEcd) {
-                    anonEcd = cand;
-                  } else if (aRaw > 0) {
-                    anonEcd = shiftYmd(anonEcd, -1);
+                  if (aSeg % 5 === 0) await checkpointToIndexedDb(true);
+                  if (hitRangeLow || (anonMinBound > minStopBound && aTrack.oldest && aTrack.oldest < anonMinBound)) break;
+                  if (aAdded > 0) anonEmptySegs = 0;
+                  else anonEmptySegs++;
+                  if (anonEmptySegs >= 25) break;
+                  if (skipCrowdedHigh) {
+                    // Already-collected dense boundary edge -> jump backward by 15 days (or 1 day if near boundary)
+                    const nextStep = aTrack.oldest && aTrack.oldest < anonEcd ? aTrack.oldest : shiftYmd(anonEcd, -7);
+                    anonEcd = nextStep;
                   } else {
-                    anonEcd = shiftYmd(anonEcd, -180);
+                    const cand = aTrack.oldest || '';
+                    if (cand && cand < anonEcd) {
+                      anonEcd = cand;
+                    } else if (aRaw > 0) {
+                      anonEcd = shiftYmd(anonEcd, -1);
+                    } else {
+                      anonEcd = shiftYmd(anonEcd, -180);
+                    }
                   }
+                  const segPause = getEffectivePacing().segPause;
+                  if (segPause > 0) await abortableSleep(Math.min(segPause, 500));
                 }
-                const segPause = getEffectivePacing().segPause;
-                if (segPause > 0) await abortableSleep(Math.min(segPause, 500));
+                await checkpointToIndexedDb(true);
               }
-              await checkpointToIndexedDb(true);
             }
 
             // Phase C: Safe fallback slices ONLY if Phase B still left a sizable gap (e.g., anonymous ecd unavailable)
@@ -5797,13 +5898,13 @@
               accumWorks.size < knownTotalPosts - 250
             ) {
               const safeFallback = [
-                { label: '纯手绘全年龄最早', ord: 'date', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairKey: 'safe_h' },
-                { label: '纯手绘全年龄最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairOf: 'safe_h' }
+                { label: '纯手绘全年龄最早', ord: 'date', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairKey: 'safe_h', isFallbackSafe: true },
+                { label: '纯手绘全年龄最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 1, sliceType: type, pairOf: 'safe_h', isFallbackSafe: true }
               ];
               if (type === 'all') {
                 safeFallback.push(
-                  { label: '全年龄漫画最早', ord: 'date', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairKey: 'safe_m' },
-                  { label: '全年龄漫画最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairOf: 'safe_m' }
+                  { label: '全年龄漫画最早', ord: 'date', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairKey: 'safe_m', isFallbackSafe: true },
+                  { label: '全年龄漫画最新', ord: 'date_d', sliceMode: 'safe', sliceAiType: 0, sliceType: 'manga', pairOf: 'safe_m', isFallbackSafe: true }
                 );
               }
               for (const sl of safeFallback) await runAuthSlice(sl);

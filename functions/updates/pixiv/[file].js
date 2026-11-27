@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.2.1',
-  versionCode: 10010310,
+  version: '2.2.2',
+  versionCode: 10010311,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55558340,
-  sha256: '86e075d61ed0c8a49d31df544514e3453472bb10be80162cefec5ea0a5756a41',
+  size: 55622688,
+  sha256: '53ad0929579fdaafcd0edcd38cd2f3230c9a1b4969e6d8e586ca49e47915a789',
   releaseNotes:
-    'PixEz Pulse v2.2.1：同步网页版 v4.30 超大标签防 500 页撞墙控速（120/280 页平滑降速 + 静默冷却 5→15→35→70→120s）、单边 ecd 严格单调步进与 JST 时区容错，以及完整保留 v2.2.0 禁自动采样、网页直连双引擎、AIMD 控速、后台 Isolate 算力与智能缓存复用。',
+    'PixEz Pulse v2.2.2：修复 App API 2020 年附近截断及旧缓存误判完整复用的问题（修正全年龄基准对比、边界日跳段、限流误标完成，新增双向正序补全与历史年份匿名回溯兜底）；同步 Web v4.31 满速 3 路 0ms 内核、中位数日期容错与缺口精准定位。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

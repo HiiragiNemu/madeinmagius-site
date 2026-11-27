@@ -8,14 +8,14 @@ const PUBLIC_APK_URL = 'https://madeinmagius-site.pages.dev/downloads/pixiv/andr
 const FALLBACK = Object.freeze({
   schema: 'madeinmagius-android-update/v1',
   packageName: EXPECTED_PACKAGE,
-  version: '2.1.9',
-  versionCode: 10010290,
+  version: '2.2.0',
+  versionCode: 10010300,
   minSdk: 23,
   apk_url: PUBLIC_APK_URL,
-  size: 55428228,
-  sha256: '866dfbe03befe62bff5c9255b6110749d8fa3b0c66d5e369f71d2c04b0a5a183',
+  size: 55551052,
+  sha256: '51cdf7bc5ebbc05df90ee129e05a273690d841e5dc1a7492c89c5ebc6491e58d',
   releaseNotes:
-    'PixEz Pulse v2.1.9：竖屏手机 UI 全面紧凑自适应（主模块栏与分类栏单行零横滑完整显示、6项采样参数改用紧凑菜单整齐排布2行无空白与白色箭头问题、顶部「我的其他工具和动态」与5套主题/功能改为双行自然展示）；5套主题实时联动覆盖整个 PixEz 所有页面与顶栏/导航栏；修复搜索结果顶栏「插画/画师/共现分析」截断；本地缓存弹窗紧缩排版并支持手动自定义上限（至 64GB 或不限）。',
+    'PixEz Pulse v2.2.0：取消搜索顶栏切入自动采样（仅填入标签，待手动确认深度后再采样）；新增网页版同款 60作/页直连引擎与精确含R-18/AI全量总数拆解（支持一键同步内置WebView Cookie，非会员遇日期限制自动无缝接管App API）；App API 与网页直连均接入全局共享限流门 + AIMD 平稳控速消除频繁22s冷却抖动；升级网页版同款整型索引 CSR 后台 Isolate 计算引擎（移除22标签截断与空画师误计）及总数一致自动0流量复用本机缓存。',
 });
 
 function githubHeaders(token, accept = 'application/vnd.github+json') {

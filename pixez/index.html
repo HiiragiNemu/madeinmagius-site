@@ -48,7 +48,7 @@
       root.style.colorScheme = (theme === 'dark' || theme === 'frost') ? 'dark' : 'light';
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=4.17" />
+  <link rel="stylesheet" href="./styles.css?v=4.18" />
   <link rel="stylesheet" href="./optics/reader-optics-v14.css?v=4.5" />
 </head>
 <body class="call-screen-host-v7">
@@ -76,7 +76,7 @@
             <span class="magi-madeinmagius-text"><span>MadeIn</span><strong>Magius</strong></span>
           </span>
         </span>
-        <span class="masthead-ver-badge" id="webVersionBadge" title="当前 PixEz Pulse 网页端运行版本">v4.36</span>
+        <span class="masthead-ver-badge" id="webVersionBadge" title="当前 PixEz Pulse 网页端运行版本">v4.37</span>
         <button class="ctrl-chip ctrl-chip--links" id="openAboutLinksBtn" type="button">我的其他工具和动态</button>
       </div>
       <div class="masthead__top-right">
@@ -229,11 +229,14 @@
 
         <!-- Row 3: Compact Filter Switches -->
         <div class="filter-switches-row" id="filterSwitchesRow">
+          <label class="check-node check-node--r18" title="采样时仅抓取 R-18 / R-18G 作品（与上方「范围=仅R-18」双向同步，采集速度提升约 4 倍）"><input type="checkbox" id="crawlOnlyR18Check" /><span>仅采R-18</span></label>
+          <label class="check-node check-node--r18" title="在已采集样本中仅统计与展示 R-18 / R-18G 作品（0 流量秒切，全量采集后可随时切换）"><input type="checkbox" id="onlyR18WorksCheck" /><span>仅看R-18作品</span></label>
+          <label class="check-node check-node--r18" title="排行榜、伴生标签与拓扑图仅保留 R-18 成人属性/XP 词条（自动过滤角色、IP 与日常全年龄词条）"><input type="checkbox" id="onlyR18TagsCheck" /><span>仅看R-18词条</span></label>
+          <label class="check-node" title="不计入 R-18 / R-18G 作品（画廊与共现统计仅计算全年龄作品）"><input type="checkbox" id="excludeR18WorksCheck" /><span>剔除R-18作品</span></label>
+          <label class="check-node" title="保留 R-18 作品参与角色/属性共现计算，仅在排行榜与拓扑图中隐藏 R-18 / R-18G 元标签"><input type="checkbox" id="hideR18TagCheck" /><span>隐藏R-18标签</span></label>
           <label class="check-node"><input type="checkbox" id="hideBookmarkTagCheck" checked /><span>隐藏*users入り</span></label>
           <label class="check-node"><input type="checkbox" id="excludeAiWorksCheck" /><span>剔除AI作品</span></label>
           <label class="check-node"><input type="checkbox" id="hideAiTagCheck" /><span>隐藏AI标签</span></label>
-          <label class="check-node" title="不计入 R-18 / R-18G 作品（画廊与共现统计仅计算全年龄作品）"><input type="checkbox" id="excludeR18WorksCheck" /><span>剔除R-18作品</span></label>
-          <label class="check-node" title="保留 R-18 作品参与角色/属性共现计算，仅在排行榜与拓扑图中隐藏 R-18 / R-18G 标签"><input type="checkbox" id="hideR18TagCheck" /><span>隐藏R-18标签</span></label>
           <label class="check-node"><input type="checkbox" id="hideMetaTagCheck" /><span>隐藏元标签</span></label>
           <label class="check-node" id="includePopularWrap"><input type="checkbox" id="includePopularCheck" checked /><span>含热门</span></label>
           <label class="threshold-node"><span>最低共现≥</span><input type="number" id="minCountInput" value="2" min="1" max="500" /></label>
@@ -328,6 +331,9 @@
             </button>
             <button class="cat-tab" data-cat-scope="attribute_xp" type="button">
               <span>属性</span><strong class="cat-tab__count" id="catCountAttribute">0</strong>
+            </button>
+            <button class="cat-tab cat-tab--r18" data-cat-scope="r18_xp" type="button" title="仅显示 R-18 成人属性/XP 词条（过滤角色、IP 与日常全年龄词条）">
+              <span>R-18词条</span><strong class="cat-tab__count" id="catCountR18Xp">0</strong>
             </button>
             <button class="cat-tab" data-cat-scope="series_ip" type="button">
               <span>作品</span><strong class="cat-tab__count" id="catCountSeries">0</strong>
@@ -795,6 +801,14 @@
             <div class="subbox-title">作品简介 / 说明:</div>
             <div class="viewer-desc-box" id="viewerDescriptionBox"></div>
           </div>
+          <div class="viewer-subbox" id="viewerCommentsWrap">
+            <div class="viewer-comments-head">
+              <span class="subbox-title">作品评论 (<span id="viewerCommentsCount">0</span>):</span>
+              <span class="viewer-comments-status" id="viewerCommentsStatus"></span>
+            </div>
+            <div class="viewer-comments-list" id="viewerCommentsBox"></div>
+            <button class="t-btn t-btn--sm hidden" id="viewerMoreCommentsBtn" type="button">加载更多评论</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1148,6 +1162,6 @@
   <script src="./optics/reader-optics-v14.js?v=4.1"></script>
   <script src="./optics/reader-glass-cache-v12.js?v=4.1"></script>
   <script src="./optics/reader-glass-v12.js?v=4.1"></script>
-  <script src="./app.js?v=4.36"></script>
+  <script src="./app.js?v=4.37"></script>
 </body>
 </html>

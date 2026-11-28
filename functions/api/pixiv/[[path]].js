@@ -1562,12 +1562,15 @@ export async function onRequest(context) {
             id: String(b.illustId || b.id),
             title: b.illustTitle || b.title || '',
             description: b.illustComment || b.description || '',
+            createDate: b.createDate || b.uploadDate || '',
+            uploadDate: b.uploadDate || '',
             userName: b.userName || '',
             userId: String(b.userId || ''),
             width: b.width || 0,
             height: b.height || 0,
             pageCount: b.pageCount || pages.length || 1,
             illustType: b.illustType || 0,
+            xRestrict: Number(b.xRestrict || 0),
             isAi: b.aiType === 2,
             bookmarkCount: b.bookmarkCount || 0,
             viewCount: b.viewCount || 0,
@@ -1621,12 +1624,14 @@ export async function onRequest(context) {
           id: String(ill.id),
           title: ill.title || '',
           description: ill.caption || '',
+          createDate: ill.create_date || '',
           userName: ill.user?.name || '',
           userId: String(ill.user?.id || ''),
           width: ill.width || 0,
           height: ill.height || 0,
           pageCount: ill.page_count || pages.length || 1,
           illustType: typeMap[ill.type] ?? 0,
+          xRestrict: Number(ill.x_restrict || 0),
           isAi: ill.illust_ai_type === 2,
           bookmarkCount: ill.total_bookmarks || 0,
           viewCount: ill.total_view || 0,
@@ -1642,6 +1647,100 @@ export async function onRequest(context) {
     }
 
     return jsonResponse({ error: true, message: '无法读取作品详情' }, 404, request);
+  }
+
+  // 5A. Artwork comments & replies (/api/pixiv/illust/comments?id=...&offset=0 or ?commentId=...&page=1)
+  if (subPath === 'illust/comments') {
+    const commentId = (url.searchParams.get('commentId') || '').trim();
+    if (commentId) {
+      const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
+      const repRace = await fetchPixivWebAjaxRace(
+        `/ajax/illusts/comments/replies?comment_id=${encodeURIComponent(commentId)}&page=${page}&lang=zh`,
+        cookie,
+        '',
+        5500
+      );
+      const rb = repRace?.data && !repRace.data.error ? repRace.data.body : null;
+      if (rb && Array.isArray(rb.comments)) {
+        const comments = rb.comments.map((c) => ({
+          id: String(c.id || ''),
+          userId: String(c.userId || ''),
+          userName: c.userName || 'Pixiv用户',
+          avatarUrl: c.img || '',
+          comment: c.comment || '',
+          stampId: c.stampId ? String(c.stampId) : '',
+          stampUrl:
+            c.stampLink ||
+            (c.stampId ? `https://s.pximg.net/common/images/stamp/generated-stamps/${c.stampId}_s.jpg?20180605` : ''),
+          commentDate: c.commentDate || '',
+          replyToUserName: c.replyToUserName || '',
+          hasReplies: false,
+        }));
+        return jsonResponse({ error: false, comments, hasNext: Boolean(rb.hasNext) }, 200, request);
+      }
+      return jsonResponse({ error: false, comments: [], hasNext: false }, 200, request);
+    }
+
+    const id = (url.searchParams.get('id') || '').trim();
+    if (!id) return jsonResponse({ error: true, message: '缺少作品 ID' }, 400, request);
+    const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
+    const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '20', 10) || 20));
+
+    const rootsRace = await fetchPixivWebAjaxRace(
+      `/ajax/illusts/comments/roots?illust_id=${encodeURIComponent(id)}&offset=${offset}&limit=${limit}&lang=zh`,
+      cookie,
+      '',
+      5500
+    );
+    const wb = rootsRace?.data && !rootsRace.data.error ? rootsRace.data.body : null;
+    if (wb && Array.isArray(wb.comments)) {
+      const comments = wb.comments.map((c) => ({
+        id: String(c.id || ''),
+        userId: String(c.userId || ''),
+        userName: c.userName || 'Pixiv用户',
+        avatarUrl: c.img || '',
+        comment: c.comment || '',
+        stampId: c.stampId ? String(c.stampId) : '',
+        stampUrl:
+          c.stampLink ||
+          (c.stampId ? `https://s.pximg.net/common/images/stamp/generated-stamps/${c.stampId}_s.jpg?20180605` : ''),
+        commentDate: c.commentDate || '',
+        hasReplies: Boolean(c.hasReplies),
+      }));
+      return jsonResponse({ error: false, comments, hasNext: Boolean(wb.hasNext), nextOffset: offset + comments.length }, 200, request);
+    }
+
+    const hibiPage = Math.floor(offset / 30) + 1;
+    const hibiCom = await fetchJsonSafe(
+      `${HIBI_BASE}/illust_comments?id=${encodeURIComponent(id)}&page=${hibiPage}`,
+      hibiHeaders(),
+      7000
+    );
+    if (hibiCom && Array.isArray(hibiCom.comments)) {
+      const comments = hibiCom.comments.map((c) => ({
+        id: String(c.id || ''),
+        userId: String(c.user?.id || ''),
+        userName: c.user?.name || 'Pixiv用户',
+        avatarUrl: c.user?.profile_image_urls?.medium || '',
+        comment: c.comment || '',
+        stampId: c.stamp?.stamp_id ? String(c.stamp.stamp_id) : '',
+        stampUrl: c.stamp?.stamp_url || '',
+        commentDate: c.date || '',
+        hasReplies: Boolean(c.has_replies),
+      }));
+      return jsonResponse(
+        {
+          error: false,
+          comments,
+          hasNext: Boolean(hibiCom.next_url),
+          nextOffset: hibiPage * 30,
+        },
+        200,
+        request
+      );
+    }
+
+    return jsonResponse({ error: false, comments: [], hasNext: false, nextOffset: offset }, 200, request);
   }
 
   // 5B. Ugoira metadata (/api/pixiv/illust/ugoira?id=...)
@@ -1816,7 +1915,9 @@ export async function onRequest(context) {
           // Strategy 0 (BEST when logged in via PixEz OAuth): Official Pixiv App API with search_ai_type=0 + end_date segmentation!
           if (accessToken) {
             engine = 'PIXIV-OAUTH-APP-API';
-            const appTarget = mapHibiSearchMode(s_mode);
+            const appWord = mode === 'r18' && !/\br-?18\b/i.test(tag) ? `${tag} R-18` : tag;
+            const exactBaseLow = mode === 'r18' && s_mode === 's_tag_full' && appWord !== tag ? tag.toLowerCase() : '';
+            const appTarget = exactBaseLow ? 'partial_match_for_tags' : mapHibiSearchMode(s_mode);
             const appSort = order === 'date' ? 'date_asc' : 'date_desc';
             const maxSteps = chunkPagesParam > 0 ? Math.min(20, chunkPagesParam) : 20;
             const totalWantedSteps = isAll ? 166 : Math.min(166, (parseInt(pagesParam, 10) || 3) * 2);
@@ -1825,7 +1926,7 @@ export async function onRequest(context) {
             for (let step = startPage; step <= endStep && !reachedEnd; step++) {
               const offset = (step - 1) * 30;
               const qs = new URLSearchParams({
-                word: tag,
+                word: appWord,
                 search_target: appTarget,
                 sort: appSort,
                 search_ai_type: '0',
@@ -1854,7 +1955,12 @@ export async function onRequest(context) {
               nextPage = step + 1;
               for (const item of appJson.illusts) {
                 const w = normalizeHibiIllust(item, translations);
-                if (w && !seenIds.has(w.id) && matchesFilters(w, mode, type)) {
+                if (
+                  w &&
+                  !seenIds.has(w.id) &&
+                  matchesFilters(w, mode, type) &&
+                  (!exactBaseLow || w.tags.some((t) => t.toLowerCase() === exactBaseLow))
+                ) {
                   seenIds.add(w.id);
                   artworks.push(w);
                 }
@@ -1895,11 +2001,13 @@ export async function onRequest(context) {
           // Handles Pixiv Rate Limit (HTTP 403/429 or JSON {"error":{"message":"Rate Limit"}}) cleanly via cooldown & resume
           // without EVER silently switching engines mid-crawl!
           if (mode !== 'safe' && !endDate && !startDate) {
-            const hibiTarget = mapHibiSearchMode(s_mode);
-            const hibiSort = order === 'date' ? 'date_asc' : 'date_desc';
-            const aiFilterParam = url.searchParams.get('aiFilter') === '1' ? '1' : '0';
             const baseTagForHibi =
               mode === 'r18' && !/\br-?18\b/i.test(tag) ? `${tag} R-18` : tag;
+            const exactHibiLow =
+              mode === 'r18' && s_mode === 's_tag_full' && baseTagForHibi !== tag ? tag.toLowerCase() : '';
+            const hibiTarget = exactHibiLow ? 'partial_match_for_tags' : mapHibiSearchMode(s_mode);
+            const hibiSort = order === 'date' ? 'date_asc' : 'date_desc';
+            const aiFilterParam = url.searchParams.get('aiFilter') === '1' ? '1' : '0';
             const hibiWord = isPopOrder
               ? `${baseTagForHibi} (10000users入り OR 5000users入り OR 1000users入り OR 500users入り)`
               : baseTagForHibi;
@@ -1980,7 +2088,9 @@ export async function onRequest(context) {
                   if (!w || seenIds.has(w.id)) continue;
                   seenIds.add(w.id);
                   raw++;
-                  if (matchesFilters(w, mode, type)) artworks.push(w);
+                  if (matchesFilters(w, mode, type) && (!exactHibiLow || w.tags.some((t) => t.toLowerCase() === exactHibiLow))) {
+                    artworks.push(w);
+                  }
                 }
                 return raw;
               };

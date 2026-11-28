@@ -12,12 +12,13 @@
 (function () {
   'use strict';
 
-  const WEB_APP_VERSION = '4.36';
+  const WEB_APP_VERSION = '4.37';
 
   const CATEGORY_META = {
     all: { label: '全部有效标签', short: '全部', colorVar: '--t-accent' },
     character: { label: '角色 / 人物', short: '角色', colorVar: '--t-cat-chr' },
     attribute_xp: { label: '服装 / 属性', short: '属性', colorVar: '--t-cat-atr' },
+    r18_xp: { label: 'R-18 成人属性词条', short: 'R-18词条', colorVar: '--t-danger' },
     series_ip: { label: '作品 / IP', short: '作品', colorVar: '--t-cat-ip' },
     meta_general: { label: '元标签 / 形式', short: '元标签', colorVar: '--t-cat-meta' },
     ai_meta: { label: 'AI 生成', short: 'AI', colorVar: '--t-cat-meta' },
@@ -239,7 +240,16 @@
       illust: null,
       pageIndex: 0,
       useOriginal: false,
-      ugoiraTimer: null
+      ugoiraTimer: null,
+      comments: {
+        illustId: '',
+        source: 'pixiv',
+        offset: 0,
+        page: 1,
+        hasNext: false,
+        loading: false,
+        items: []
+      }
     },
 
     graph: {
@@ -979,6 +989,38 @@
     return 'attribute_xp';
   }
 
+  // Hybrid R-18 / NSFW Fetish Tag Detector:
+  // 1) Excludes SFW character names, series/IP titles, bookmark milestones, AI markers, and generic meta tags
+  // 2) Matches standard JP / EN (Danbooru) / ZH adult & fetish vocabulary (works even on 100%-R-18 crawls)
+  // 3) On mixed datasets (All-Age + R-18), ALSO recognizes niche Pixiv adult slang via ground-truth R-18 purity >= 72%
+  const NSFW_TAG_JP_RE =
+    /(^r-?18g?$|^nsfw$|エロ|えっち|スケベ|淫乱|淫紋|淫語|猥褻|成人向|18禁|官能|肉欲|情事|性交|性行為|性処理|性欲|セックス|中出し|膣内射精|ぶっかけ|顔射|口内射精|フェラ|イラマ|パイズリ|手コキ|足コキ|素股|尻コキ|髪コキ|脇コキ|授乳手コキ|クンニ|シックスナイン|アナル|二穴|輪姦|乱交|強姦|レイプ|寝取|種付|ハメ撮り|ハメ|正常位|後背位|騎乗位|対面座位|背面座位|立ちバック|駅弁|松葉崩し|だいしゅきホールド|まんぐり返し|オナニー|自慰|マスターベーション|潮吹き|絶頂|アクメ|メスイキ|連続絶頂|事後|初夜|夜這い|売春|援交|風俗|ソープ|乳首|陥没乳首|チクニー|乳輪|母乳|搾乳|膨乳|陰毛|パイパン|まんこ|オマンコ|ヴァギナ|クリトリス|陰核|ちんぽ|チンポ|ペニス|巨根|包茎|ふたなり|futanari|玉袋|金玉|睾丸|子宮|断面図|精液|ザーメン|愛液|マン汁|アヘ顔|トロ顔|イキ顔|発情|欲情|催眠|洗脳|常識改変|悪堕ち|快楽堕ち|敗北|凌辱|調教|雌豚|メスブタ|肉便器|性奴隷|百合エロ|貝合わせ|全裸|半裸|^裸$|はだけ|下脱ぎ|上脱ぎ|脱衣|服ビリ|衣装破壊|露出|くぱぁ|まんすじ|マンスジ|食い込み|ハミ毛|ハミ乳|乳出し|尻出し|丸出し|ノーパン|ノーブラ|パンチラ|パンモロ|胸チラ|責め|拘束|緊縛|縛り|亀甲縛り|猿轡|ボールギャグ|首輪|触手|苗床|産卵|丸呑|異種姦|機械姦|蟲姦|獣姦|バイブ|ローター|ディルド|電マ|オナホ|貞操帯|浣腸|放尿|おしっこ|失禁|おもらし|スカトロ|妊娠|妊婦|ボテ腹|出産|マイクロビキニ|スリングショット|眼帯ビキニ|逆バニー|ランジェリー|オープンブラ|穴あき)/i;
+
+  const NSFW_TAG_EN_RE =
+    /\b(r-?18g?|nsfw|explicit|sex|vaginal|anal|oral|fellatio|blowjob|irrumatio|paizuri|titjob|handjob|footjob|thighjob|creampie|cum|semen|bukkake|facial|ejaculat\w*|orgasm|ahegao|masturbat\w*|fingering|cunnilingus|tribadism|futanari|penis|testicles|erection|pussy|vagina|clitoris|anus|asshole|nipples?|areolae?|lactation|breast_milk|pubic_hair|nude|naked|completely_naked|topless|bottomless|no_panties|no_bra|cameltoe|crotch|spread_legs|spread_pussy|presenting|exhibitionism|bondage|bdsm|bound|tied|shibari|gag|ball_gag|collar|leash|tentacles?|rape|molest\w*|mind_control|hypnosis|corruption|stomach_bulge|pregnant|impregnation|urination|pee|peeing|enema|vibrator|dildo|sex_toy|chastity_belt|lingerie|micro_bikini|slingshot_swimsuit|reverse_bunny|torn_clothes|wardrobe_malfunction|pantyshot|upskirt|grope|groping|spanking|prostitution|netorare|ntr|cuckold|gangbang|threesome|orgy|after_sex|x-ray|cross-section)\b/i;
+
+  const NSFW_TAG_ZH_RE =
+    /(中出|射精|颜射|口交|乳交|手交|足交|素股|自慰|高潮|潮吹|绝顶|精液|爱液|阴毛|白虎|乳头|乳晕|母乳|榨乳|扶她|阴茎|巨根|睾丸|子宫|断面图|全裸|半裸|赤裸|裸体|露点|走光|露内裤|真空|无内裤|无胸罩|捆绑|紧缚|拘束|口球|项圈|触手|苗床|产卵|强奸|轮奸|乱交|凌辱|调教|催眠|洗脑|恶堕|快乐堕|淫纹|肉便器|性奴|排尿|失禁|怀孕|孕妇|大肚子|情趣内衣|性爱|交尾|插入|后入|骑乘位|正常位|事后)/i;
+
+  function isR18EntryTag(tag, tr, dbTag, cat, r18Hits, totHits, poolR18Ratio, hideMetaR18) {
+    const clean = String(tag || '').trim();
+    if (!clean) return false;
+    if (cat === 'character' || cat === 'series_ip' || cat === 'bookmark_milestone' || cat === 'ai_meta') {
+      return false;
+    }
+    if (/^r-?18g?$/i.test(clean)) return !hideMetaR18;
+    if (cat === 'meta_general') return false;
+    if (NSFW_TAG_JP_RE.test(clean)) return true;
+    const dbStr = String(dbTag || '').trim();
+    if (dbStr && (NSFW_TAG_EN_RE.test(dbStr) || NSFW_TAG_EN_RE.test(dbStr.replace(/_/g, ' ')))) return true;
+    const trStr = String(tr || '').trim();
+    if (trStr && (NSFW_TAG_ZH_RE.test(trStr) || NSFW_TAG_EN_RE.test(trStr) || NSFW_TAG_JP_RE.test(trStr))) return true;
+    if (poolR18Ratio > 0 && poolR18Ratio <= 0.85 && totHits >= 2 && (r18Hits / totHits) >= 0.72) {
+      return true;
+    }
+    return false;
+  }
+
   function persistCategoryCorrections() {
     try {
       localStorage.setItem('pixez_cat_overrides', JSON.stringify(state.userCategoryOverrides));
@@ -1164,7 +1206,7 @@
       function runShard(cfg) {
         if (!ds) return { seq: cfg.seq, rows: [] };
         const {
-          seq, workerIdx, workerTotal, excludeAi, excludeR18,
+          seq, workerIdx, workerTotal, excludeAi, excludeR18, onlyR18,
           lockedTagIds, minCount, primaryTagId,
           tagVisibleMask, tagThirdAllowedMask, tagLockedMask
         } = cfg;
@@ -1180,6 +1222,7 @@
           const fl = workFlags[i];
           if (excludeAi && (fl & 1)) continue;
           if (excludeR18 && (fl & 2)) continue;
+          if (onlyR18 && !(fl & 2)) continue;
           if (lockedLen > 0) {
             const s = workTagOffsets[i];
             const e = workTagOffsets[i + 1];
@@ -1373,7 +1416,7 @@
     let syncScratch = { coCounts: null, touched: null, authorStamp: null, stampEpoch: 1 };
     function runShardSync(idx, cfg) {
       const {
-        excludeAi, excludeR18, lockedTagIds, minCount, primaryTagId,
+        excludeAi, excludeR18, onlyR18, lockedTagIds, minCount, primaryTagId,
         tagVisibleMask, tagThirdAllowedMask, tagLockedMask
       } = cfg;
       const { N, U, M, workFlags, workBookmarks, workAuthorIds, workTagOffsets, flatTagIds } = idx;
@@ -1394,6 +1437,7 @@
         const fl = workFlags[i];
         if (excludeAi && (fl & 1)) continue;
         if (excludeR18 && (fl & 2)) continue;
+        if (onlyR18 && !(fl & 2)) continue;
         if (lockedLen > 0) {
           const s = workTagOffsets[i];
           const e = workTagOffsets[i + 1];
@@ -1669,20 +1713,40 @@
         }
       }
 
+      const flatTagIds = Int32Array.from(flatTmp);
+      const U = tagTable.length;
+      const tagPoolTotal = new Int32Array(U);
+      const tagPoolR18 = new Int32Array(U);
+      let poolR18Works = 0;
+      for (let i = 0; i < N; i++) {
+        const isW18 = (workFlags[i] & 2) !== 0;
+        if (isW18) poolR18Works++;
+        const s = workTagOffsets[i];
+        const e = workTagOffsets[i + 1];
+        for (let p = s; p < e; p++) {
+          const tid = flatTagIds[p];
+          tagPoolTotal[tid]++;
+          if (isW18) tagPoolR18[tid]++;
+        }
+      }
+
       const idx = {
         version: nextDatasetVersion++,
         sig,
         N,
-        U: tagTable.length,
+        U,
         M: authorCount,
         tagToId,
         tagTable,
         primaryTagId,
+        poolR18Works,
+        tagPoolTotal,
+        tagPoolR18,
         workFlags,
         workBookmarks,
         workAuthorIds,
         workTagOffsets,
-        flatTagIds: Int32Array.from(flatTmp)
+        flatTagIds
       };
       ds._coIdx = idx;
       return idx;
@@ -1779,6 +1843,7 @@
               workerTotal: W,
               excludeAi: cfg.excludeAi,
               excludeR18: cfg.excludeR18,
+              onlyR18: cfg.onlyR18,
               lockedTagIds: cfg.lockedTagIds,
               minCount: cfg.minCount,
               primaryTagId: cfg.primaryTagId,
@@ -1820,6 +1885,8 @@
     const hideBookmarkTags = $('hideBookmarkTagCheck').checked;
     const hideAiTags = $('hideAiTagCheck').checked;
     const excludeR18Works = Boolean($('excludeR18WorksCheck')?.checked);
+    const onlyR18Works = Boolean($('onlyR18WorksCheck')?.checked) && !excludeR18Works;
+    const onlyR18Tags = Boolean($('onlyR18TagsCheck')?.checked);
     const hideR18Tags = Boolean($('hideR18TagCheck')?.checked);
     const hideMetaTags = $('hideMetaTagCheck').checked;
     const minCount = Math.max(1, parseInt($('minCountInput').value, 10) || 1);
@@ -1829,7 +1896,8 @@
 
     // Build / reuse flat integer index (0ms on checkbox/tab/sort changes!)
     const idx = CoOccurrenceEngine.buildIndex(ds, normPrimary);
-    const { N, U, tagTable, tagToId, primaryTagId, workFlags, workTagOffsets, flatTagIds } = idx;
+    const { N, U, tagTable, tagToId, primaryTagId, poolR18Works, tagPoolTotal, tagPoolR18, workFlags, workTagOffsets, flatTagIds } = idx;
+    const poolR18Ratio = N > 0 ? poolR18Works / N : 0;
 
     // Resolve lockedSubTags -> lockedTagIds & filter activeWorks synchronously so Gallery/Inspector are immediately current
     const lockedIdsArr = [];
@@ -1852,6 +1920,7 @@
         const fl = workFlags[i];
         if (excludeAiWorks && (fl & 1)) continue;
         if (excludeR18Works && (fl & 2)) continue;
+        if (onlyR18Works && !(fl & 2)) continue;
         if (lockedLen > 0) {
           const s = workTagOffsets[i];
           const e = workTagOffsets[i + 1];
@@ -1879,6 +1948,7 @@
     const transLookup = ds.translations || ds.tagTranslations || {};
     const tagCats = new Array(U);
     const tagTrans = new Array(U);
+    const tagIsR18Entry = new Uint8Array(U);
     const tagVisibleMask = new Uint8Array(U);
     const tagThirdAllowedMask = new Uint8Array(U);
     const tagLockedMask = new Uint8Array(U);
@@ -1889,6 +1959,18 @@
       tagTrans[u] = tr;
       const cat = classifyTagClient(tag, tr);
       tagCats[u] = cat;
+      const dbEntry = state.danbooruCache[tag] || (ds.danbooruMap && ds.danbooruMap[tag]) || null;
+      const isR18Ent = isR18EntryTag(
+        tag,
+        tr || (dbEntry && dbEntry.zhAlias) || '',
+        dbEntry ? dbEntry.danbooruTag : '',
+        cat,
+        tagPoolR18[u],
+        tagPoolTotal[u],
+        poolR18Ratio,
+        hideR18Tags
+      );
+      if (isR18Ent) tagIsR18Entry[u] = 1;
       const isLocked = state.lockedSubTags.has(tag);
       if (isLocked) tagLockedMask[u] = 1;
 
@@ -1898,6 +1980,7 @@
         else if (hideAiTags && cat === 'ai_meta') vis = 0;
         else if (hideR18Tags && isR18TagName(tag)) vis = 0;
         else if (hideMetaTags && (cat === 'meta_general' || cat === 'ai_meta')) vis = 0;
+        else if (onlyR18Tags && !isR18Ent) vis = 0;
       }
       tagVisibleMask[u] = vis;
 
@@ -1906,6 +1989,7 @@
       else if (hideBookmarkTags && cat === 'bookmark_milestone') thirdOk = 0;
       else if (hideAiTags && cat === 'ai_meta') thirdOk = 0;
       else if (hideR18Tags && isR18TagName(tag)) thirdOk = 0;
+      else if ((onlyR18Tags || activeScope === 'r18_xp') && !isR18Ent) thirdOk = 0;
       tagThirdAllowedMask[u] = thirdOk;
     }
 
@@ -1916,6 +2000,7 @@
         all: 0,
         character: 0,
         attribute_xp: 0,
+        r18_xp: 0,
         series_ip: 0,
         meta_general: 0,
         bookmark_milestone: 0
@@ -1928,6 +2013,7 @@
         const tag = tagTable[u];
         const cat = tagCats[u];
         const isLocked = tagLockedMask[u] === 1;
+        const isR18Ent = tagIsR18Entry[u] === 1;
         const dbInfo = state.danbooruCache[tag] || (ds.danbooruMap && ds.danbooruMap[tag]) || null;
         const thirdTags = new Array(r.tIds.length);
         for (let k = 0; k < r.tIds.length; k++) {
@@ -1939,6 +2025,7 @@
           translation: tagTrans[u] || (dbInfo && dbInfo.danbooruTag ? dbInfo.danbooruTag.replace(/_/g, ' ') : ''),
           danbooruTag: dbInfo ? dbInfo.danbooruTag : null,
           category: cat,
+          isR18Entry: isR18Ent,
           isPinnedLocked: isLocked,
           count: r.count,
           percentage: totalWorks > 0 ? Number(((r.count / totalWorks) * 100).toFixed(1)) : 0,
@@ -1949,6 +2036,7 @@
         };
 
         categoryCounts.all++;
+        if (isR18Ent) categoryCounts.r18_xp++;
         if (categoryCounts[cat] !== undefined) categoryCounts[cat]++;
         else if (cat === 'ai_meta') categoryCounts.meta_general++;
       }
@@ -1960,6 +2048,7 @@
       $('catCountAll').textContent = categoryCounts.all;
       $('catCountCharacter').textContent = categoryCounts.character;
       $('catCountAttribute').textContent = categoryCounts.attribute_xp;
+      if ($('catCountR18Xp')) $('catCountR18Xp').textContent = categoryCounts.r18_xp;
       $('catCountSeries').textContent = categoryCounts.series_ip;
       $('catCountMeta').textContent = categoryCounts.meta_general;
       $('catCountBookmark').textContent = categoryCounts.bookmark_milestone;
@@ -1968,6 +2057,9 @@
       if (activeScope !== 'all') {
         scopedList = fullList.filter((r) => {
           if (r.isPinnedLocked) return true;
+          if (activeScope === 'r18_xp') {
+            return Boolean(r.isR18Entry);
+          }
           if (activeScope === 'meta_general') {
             return r.category === 'meta_general' || r.category === 'ai_meta';
           }
@@ -2021,6 +2113,7 @@
     const cfg = {
       excludeAi: excludeAiWorks,
       excludeR18: excludeR18Works,
+      onlyR18: onlyR18Works,
       lockedTagIds,
       minCount,
       primaryTagId,
@@ -2132,6 +2225,7 @@
 
     const isR18Work = (w) => Number(w.xRestrict || 0) > 0 || (Array.isArray(w.tags) && w.tags.some((t) => /^r-?18g?$/i.test(String(t))));
     const excludeR18 = Boolean($('excludeR18WorksCheck')?.checked);
+    const onlyR18 = Boolean($('onlyR18WorksCheck')?.checked) && !excludeR18;
     const poolR18Count = allPool.filter(isR18Work).length;
     const r18WorksCount = activeWorks.filter(isR18Work).length;
     const r18Pct = activeWorks.length > 0 ? ((r18WorksCount / activeWorks.length) * 100).toFixed(1) : '0.0';
@@ -2142,6 +2236,8 @@
     if ($('statR18HumanSub')) {
       $('statR18HumanSub').textContent = excludeR18 && poolR18Count > 0
         ? `(已剔R-18 ${poolR18Count})`
+        : onlyR18 && allPool.length > r18WorksCount
+        ? `(仅看R-18 · 手绘${humanR18Pct}%)`
         : `手绘${humanR18Pct}%`;
     }
 
@@ -3146,6 +3242,262 @@
     return new Blob(chunks, { type: 'image/gif' });
   }
 
+  function formatViewerDateTime(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) {
+      const yy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return `${yy}-${mm}-${dd} ${hh}:${mi}`;
+    }
+    return s.replace('T', ' ').slice(0, 16);
+  }
+
+  function renderViewerCommentCardHtml(c, isReply = false) {
+    const author = c.userName || '用户';
+    const initial = String(author).trim().charAt(0).toUpperCase() || 'U';
+    const rawAvatar = String(c.avatarUrl || '').trim();
+    const hasRealAvatar = rawAvatar && !/no_profile/i.test(rawAvatar);
+    const avatarHtml = hasRealAvatar
+      ? `<img class="viewer-comment-avatar clean-optical-media" src="${proxyImg(rawAvatar)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
+      : `<span class="viewer-comment-initial" aria-hidden="true">${escapeHtml(initial)}</span>`;
+    const dateStr = formatViewerDateTime(c.commentDate || '');
+    const replyPrefix = c.replyToUserName ? `<span style="color:var(--t-accent);font-weight:700;">@${escapeHtml(c.replyToUserName)} </span>` : '';
+    const textHtml = c.comment
+      ? `<div class="viewer-comment-text">${replyPrefix}${escapeHtml(c.comment).replace(/\r?\n/g, '<br/>')}</div>`
+      : '';
+    const stampHtml = c.stampUrl
+      ? `<img class="viewer-comment-stamp clean-optical-media" src="${proxyImg(c.stampUrl)}" alt="stamp" loading="lazy" decoding="async" />`
+      : '';
+    const repliesBtnHtml = !isReply && c.hasReplies && c.id
+      ? `<div><button class="t-btn t-btn--sm" type="button" data-load-comment-replies="${escapeHtml(c.id)}">查看回复</button></div><div class="viewer-comment-replies hidden" id="viewerReplies_${escapeHtml(c.id)}"></div>`
+      : '';
+    return `
+      <div class="viewer-comment-item">
+        ${avatarHtml}
+        <div class="viewer-comment-body">
+          <div class="viewer-comment-meta">
+            <span class="viewer-comment-author">${escapeHtml(author)}</span>
+            ${dateStr ? `<span class="viewer-comment-date">${escapeHtml(dateStr)}</span>` : ''}
+          </div>
+          ${textHtml}
+          ${stampHtml}
+          ${repliesBtnHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadCommentReplies(commentId, btnEl) {
+    if (!commentId) return;
+    const box = $(`viewerReplies_${commentId}`);
+    if (!box) return;
+    if (!box.classList.contains('hidden') && box.children.length > 0) {
+      box.classList.add('hidden');
+      if (btnEl) btnEl.textContent = '查看回复';
+      return;
+    }
+    if (btnEl) {
+      btnEl.disabled = true;
+      btnEl.textContent = '加载回复中...';
+    }
+    try {
+      let replies = [];
+      if (state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function') {
+        const br = await window._pixezBridgeFetch(
+          `https://www.pixiv.net/ajax/illusts/comments/replies?comment_id=${encodeURIComponent(commentId)}&page=1&lang=zh`,
+          { timeout: 9000 }
+        );
+        const rb = br?.ok && br.json && !br.json.error ? br.json.body : null;
+        if (rb && Array.isArray(rb.comments)) {
+          replies = rb.comments.map((c) => ({
+            id: String(c.id || ''),
+            userId: String(c.userId || ''),
+            userName: c.userName || 'Pixiv用户',
+            avatarUrl: c.img || '',
+            comment: c.comment || '',
+            stampUrl:
+              c.stampLink ||
+              (c.stampId ? `https://s.pximg.net/common/images/stamp/generated-stamps/${c.stampId}_s.jpg?20180605` : ''),
+            commentDate: c.commentDate || '',
+            replyToUserName: c.replyToUserName || ''
+          }));
+        }
+      }
+      if (!replies.length) {
+        const resp = await apiFetch(`/api/illust/comments?commentId=${encodeURIComponent(commentId)}&page=1`, {
+          headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {}
+        });
+        const d = await resp.json().catch(() => null);
+        if (resp.ok && d && Array.isArray(d.comments)) replies = d.comments;
+      }
+      box.innerHTML = replies.length
+        ? replies.map((r) => renderViewerCommentCardHtml(r, true)).join('')
+        : `<div class="empty-placeholder">暂无回复内容</div>`;
+      box.classList.remove('hidden');
+      if (btnEl) btnEl.textContent = `收起回复 (${replies.length})`;
+    } catch (_) {
+      if (btnEl) btnEl.textContent = '查看回复';
+    } finally {
+      if (btnEl) btnEl.disabled = false;
+    }
+  }
+
+  async function loadIllustComments(illustId, source = 'pixiv', append = false) {
+    const box = $('viewerCommentsBox');
+    const cntEl = $('viewerCommentsCount');
+    const stEl = $('viewerCommentsStatus');
+    const moreBtn = $('viewerMoreCommentsBtn');
+    if (!box) return;
+
+    const cm = state.viewer.comments;
+    if (!append) {
+      cm.illustId = String(illustId || '');
+      cm.source = source || 'pixiv';
+      cm.offset = 0;
+      cm.page = 1;
+      cm.hasNext = false;
+      cm.loading = false;
+      cm.items = [];
+      box.innerHTML = `<div class="empty-placeholder">正在加载评论...</div>`;
+      if (cntEl) cntEl.textContent = '…';
+      if (stEl) stEl.textContent = '';
+      moreBtn?.classList.add('hidden');
+    }
+    if (!illustId || cm.loading) return;
+    if (source !== 'pixiv' && source !== 'danbooru') {
+      box.innerHTML = `<div class="empty-placeholder">当前站点暂不支持内嵌评论预览，可点击上方「打开原网页」查看</div>`;
+      if (cntEl) cntEl.textContent = '—';
+      return;
+    }
+
+    cm.loading = true;
+    if (moreBtn) {
+      moreBtn.disabled = true;
+      moreBtn.textContent = '正在加载更多...';
+    }
+
+    try {
+      let fetched = [];
+      let hasNext = false;
+      let nextOffset = cm.offset;
+      let viaLabel = '';
+
+      if (source === 'danbooru') {
+        const r = await fetch(
+          `https://danbooru.donmai.us/comments.json?group_by=comment&search[post_id]=${encodeURIComponent(illustId)}&limit=20&page=${cm.page}`,
+          { headers: { Accept: 'application/json' } }
+        );
+        const arr = await r.json().catch(() => []);
+        if (Array.isArray(arr)) {
+          fetched = arr
+            .filter((c) => c && !c.is_deleted)
+            .map((c) => ({
+              id: String(c.id || ''),
+              userName: c.creator_name || `User #${c.creator_id || ''}`,
+              avatarUrl: '',
+              comment: c.body || '',
+              stampUrl: '',
+              commentDate: c.created_at || '',
+              hasReplies: false
+            }));
+          hasNext = arr.length >= 20;
+          cm.page += 1;
+          viaLabel = 'Danbooru';
+        }
+      } else {
+        // Pixiv: try Chrome Userscript Bridge FIRST so logged-in R-18 artwork comments always load directly!
+        let gotFromBridge = false;
+        if (state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function') {
+          try {
+            const br = await window._pixezBridgeFetch(
+              `https://www.pixiv.net/ajax/illusts/comments/roots?illust_id=${encodeURIComponent(illustId)}&offset=${cm.offset}&limit=20&lang=zh`,
+              { timeout: 10000 }
+            );
+            const wb = br?.ok && br.json && !br.json.error ? br.json.body : null;
+            if (wb && Array.isArray(wb.comments)) {
+              gotFromBridge = true;
+              fetched = wb.comments.map((c) => ({
+                id: String(c.id || ''),
+                userId: String(c.userId || ''),
+                userName: c.userName || 'Pixiv用户',
+                avatarUrl: c.img || '',
+                comment: c.comment || '',
+                stampId: c.stampId ? String(c.stampId) : '',
+                stampUrl:
+                  c.stampLink ||
+                  (c.stampId ? `https://s.pximg.net/common/images/stamp/generated-stamps/${c.stampId}_s.jpg?20180605` : ''),
+                commentDate: c.commentDate || '',
+                hasReplies: Boolean(c.hasReplies)
+              }));
+              hasNext = Boolean(wb.hasNext);
+              nextOffset = cm.offset + fetched.length;
+              viaLabel = '直连';
+            }
+          } catch (_) {}
+        }
+        if (!gotFromBridge) {
+          const resp = await apiFetch(
+            `/api/illust/comments?id=${encodeURIComponent(illustId)}&offset=${cm.offset}&limit=20`,
+            { headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {} }
+          );
+          const d = await resp.json().catch(() => null);
+          if (resp.ok && d && Array.isArray(d.comments)) {
+            fetched = d.comments;
+            hasNext = Boolean(d.hasNext);
+            nextOffset = Number.isFinite(Number(d.nextOffset)) ? Number(d.nextOffset) : cm.offset + fetched.length;
+          }
+        }
+      }
+
+      if (String(state.viewer.illust?.id || '') !== String(illustId)) return;
+
+      const existingIds = new Set(cm.items.map((x) => x.id).filter(Boolean));
+      for (const item of fetched) {
+        if (item.id && existingIds.has(item.id)) continue;
+        if (item.id) existingIds.add(item.id);
+        cm.items.push(item);
+      }
+      cm.offset = nextOffset;
+      cm.hasNext = hasNext;
+
+      if (cntEl) cntEl.textContent = cm.hasNext ? `${cm.items.length}+` : String(cm.items.length);
+      if (stEl) stEl.textContent = viaLabel ? viaLabel : '';
+
+      if (cm.items.length === 0) {
+        box.innerHTML = `<div class="empty-placeholder">暂无评论</div>`;
+      } else {
+        box.innerHTML = cm.items.map((c) => renderViewerCommentCardHtml(c, false)).join('');
+        box.querySelectorAll('[data-load-comment-replies]').forEach((btn) => {
+          btn.addEventListener('click', () => loadCommentReplies(btn.dataset.loadCommentReplies, btn));
+        });
+      }
+      if (moreBtn) {
+        moreBtn.classList.toggle('hidden', !cm.hasNext);
+        moreBtn.disabled = false;
+        moreBtn.textContent = '加载更多评论';
+      }
+    } catch (_) {
+      if (String(state.viewer.illust?.id || '') !== String(illustId)) return;
+      if (!cm.items.length) {
+        box.innerHTML = `<div class="empty-placeholder">评论暂不可用，可点击上方「打开原网页」查看</div>`;
+        if (cntEl) cntEl.textContent = '0';
+      }
+      if (moreBtn) {
+        moreBtn.classList.add('hidden');
+        moreBtn.disabled = false;
+        moreBtn.textContent = '加载更多评论';
+      }
+    } finally {
+      cm.loading = false;
+    }
+  }
+
   async function openIllustViewer(illustId) {
     if (!illustId) return;
     stopUgoiraTimer();
@@ -3163,6 +3515,9 @@
     clearViewerDownloadButton($('viewerDownloadUgoiraZipBtn'), '下载 Ugoira 动图帧 ZIP');
     $('viewerDownloadUgoiraZipBtn')?.classList.add('hidden');
     $('viewerDownloadUgoiraGifBtn')?.classList.add('hidden');
+    if ($('viewerCommentsBox')) $('viewerCommentsBox').innerHTML = `<div class="empty-placeholder">正在加载评论...</div>`;
+    if ($('viewerCommentsCount')) $('viewerCommentsCount').textContent = '…';
+    $('viewerMoreCommentsBtn')?.classList.add('hidden');
 
     try {
       const localWork = (state.rawDataset?.artworks || []).find((w) => String(w.id) === String(illustId));
@@ -3178,6 +3533,7 @@
           externalUrl: localWork.externalUrl || '#',
           title: localWork.title || `${localWork.source} #${localWork.externalId || localWork.id}`,
           description: `来源站点: ${(SOURCE_META[localWork.source] || {}).label || localWork.source}`,
+          createDate: localWork.createDate || '',
           userName: localWork.userName || localWork.source,
           userId: localWork.userId || '',
           width: localWork.width || 0,
@@ -3195,15 +3551,77 @@
         };
       } else {
         let fetchedJson = null;
-        try {
-          const resp = await apiFetch(`/api/illust/detail?id=${encodeURIComponent(illustId)}`, {
-            headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {}
-          });
-          const rawJson = await resp.json();
-          if (resp.ok && !rawJson.error) {
-            fetchedJson = rawJson.data || rawJson;
-          }
-        } catch (_) {}
+        // 1) Try Chrome Userscript Bridge FIRST so logged-in Pixiv sessions load R-18 originals, multi-page, description & upload time directly!
+        if (state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function') {
+          try {
+            const br = await window._pixezBridgeFetch(
+              `https://www.pixiv.net/ajax/illust/${encodeURIComponent(illustId)}?lang=zh`,
+              { timeout: 10000 }
+            );
+            const b = br?.ok && br.json && !br.json.error ? br.json.body : null;
+            if (b) {
+              const singleOrig = b.urls?.original || '';
+              const singleReg = b.urls?.regular || '';
+              const singleThumb = b.urls?.thumb || b.urls?.small || '';
+              let pages = [];
+              if (Number(b.pageCount || 1) > 1 || (!singleOrig && singleReg)) {
+                const pr = await window._pixezBridgeFetch(
+                  `https://www.pixiv.net/ajax/illust/${encodeURIComponent(illustId)}/pages?lang=zh`,
+                  { timeout: 10000 }
+                );
+                if (pr?.ok && Array.isArray(pr.json?.body)) {
+                  pages = pr.json.body
+                    .map((p) => ({
+                      thumb: p.urls?.thumb_mini || p.urls?.small || singleThumb,
+                      regular: p.urls?.regular || '',
+                      large: p.urls?.regular || '',
+                      original: p.urls?.original || p.urls?.regular || ''
+                    }))
+                    .filter((p) => p.original || p.regular);
+                }
+              } else if (singleOrig || singleReg) {
+                pages = [{ thumb: singleThumb, regular: singleReg || singleOrig, large: singleReg || singleOrig, original: singleOrig || singleReg }];
+              }
+              const tags = (b.tags?.tags || []).map((t) => t.tag).filter(Boolean);
+              if (singleOrig || singleReg || pages.length > 0) {
+                fetchedJson = {
+                  id: String(b.illustId || b.id || illustId),
+                  title: b.illustTitle || b.title || '',
+                  description: b.illustComment || b.description || '',
+                  createDate: b.createDate || b.uploadDate || '',
+                  userName: b.userName || '',
+                  userId: String(b.userId || ''),
+                  width: b.width || 0,
+                  height: b.height || 0,
+                  pageCount: b.pageCount || pages.length || 1,
+                  illustType: b.illustType || 0,
+                  xRestrict: Number(b.xRestrict || 0),
+                  isAi: b.aiType === 2,
+                  bookmarkCount: b.bookmarkCount || 0,
+                  viewCount: b.viewCount || 0,
+                  thumbUrl: singleThumb,
+                  regularUrl: singleReg || pages[0]?.regular || '',
+                  originalUrl: singleOrig || pages[0]?.original || singleReg || '',
+                  tags,
+                  pages
+                };
+              }
+            }
+          } catch (_) {}
+        }
+
+        // 2) Fallback to API proxy (/api/illust/detail -> Web AJAX + HibiAPI)
+        if (!fetchedJson) {
+          try {
+            const resp = await apiFetch(`/api/illust/detail?id=${encodeURIComponent(illustId)}`, {
+              headers: state.cookie ? { 'X-Pixiv-Cookie': state.cookie } : {}
+            });
+            const rawJson = await resp.json();
+            if (resp.ok && !rawJson.error) {
+              fetchedJson = rawJson.data || rawJson;
+            }
+          } catch (_) {}
+        }
 
         const hasFetchedMedia = Boolean(
           fetchedJson &&
@@ -3213,7 +3631,10 @@
               (Array.isArray(fetchedJson.pages) && fetchedJson.pages.some((p) => p && (p.original || p.regular || p.large))))
         );
         if (fetchedJson && hasFetchedMedia) {
-          json = fetchedJson;
+          json = {
+            ...fetchedJson,
+            createDate: fetchedJson.createDate || fetchedJson.uploadDate || (localWork && localWork.createDate) || ''
+          };
         } else if (localWork && (localWork.originalUrl || localWork.regularUrl || localWork.largeUrl || localWork.thumbUrl)) {
           const fallbackReg = localWork.regularUrl || localWork.largeUrl || localWork.originalUrl || localWork.thumbUrl || '';
           const fallbackOrig = localWork.originalUrl || fallbackReg;
@@ -3222,6 +3643,7 @@
             id: String(localWork.id),
             title: (fetchedJson && fetchedJson.title) || localWork.title || `Artwork #${localWork.id}`,
             description: (fetchedJson && fetchedJson.description) || '',
+            createDate: (fetchedJson && (fetchedJson.createDate || fetchedJson.uploadDate)) || localWork.createDate || '',
             userName: (fetchedJson && fetchedJson.userName) || localWork.userName || '',
             userId: (fetchedJson && fetchedJson.userId) || localWork.userId || '',
             width: (fetchedJson && fetchedJson.width) || localWork.width || 0,
@@ -3249,18 +3671,23 @@
       state.viewer.pageIndex = 0;
       state.viewer.useOriginal = false;
 
+      const formattedTime = formatViewerDateTime(json.createDate);
       $('viewerTitle').textContent = json.title || `Artwork #${json.id}`;
+      const timeMetaPart = formattedTime ? ` // 投稿: ${formattedTime}` : '';
       const dimText = json.width && json.height ? ` // ${json.width}×${json.height}` : '';
-      $('viewerMetaSubtitle').textContent = `[${srcMeta.label}] ID: ${json.id} // ARTIST: ${json.userName || 'Unknown'}${dimText}`;
+      $('viewerMetaSubtitle').textContent = `[${srcMeta.label}] ID: ${json.id} // 画师: ${json.userName || 'Unknown'}${timeMetaPart}${dimText}`;
       $('viewerOpenPixivBtn').href = json.externalUrl || `https://www.pixiv.net/artworks/${encodeURIComponent(json.id)}`;
       $('viewerOpenPixivBtn').textContent = `在 ${srcMeta.label} 打开原网页 ↗`;
 
       $('viewerStatsBox').innerHTML = `
         <div class="ins-stat-box"><span class="ins-stat-label">${json.source === 'pixiv' ? '收藏数' : '热度/评分'}</span><strong class="ins-stat-val">★ ${Number(json.totalBookmarks ?? json.bookmarkCount ?? 0).toLocaleString()}</strong></div>
         <div class="ins-stat-box"><span class="ins-stat-label">浏览量</span><strong class="ins-stat-val">${Number(json.totalView ?? json.viewCount ?? 0).toLocaleString()}</strong></div>
-        <div class="ins-stat-box"><span class="ins-stat-label">页数 / 类型</span><strong class="ins-stat-val">${json.pageCount || 1}P / ${json.illustType === 2 ? '动图/视频' : '插画'}</strong></div>
-        <div class="ins-stat-box"><span class="ins-stat-label">AI 标记</span><strong class="ins-stat-val">${json.isAi ? 'AI 生成' : '非 AI 手绘'}</strong></div>
+        <div class="ins-stat-box"><span class="ins-stat-label">投稿时间</span><strong class="ins-stat-val">${escapeHtml(formattedTime || '未知时间')}</strong></div>
+        <div class="ins-stat-box"><span class="ins-stat-label">页数 / 类型 / AI</span><strong class="ins-stat-val">${json.pageCount || 1}P · ${json.illustType === 2 ? '动图' : '插画'} · ${json.isAi ? 'AI' : '手绘'}</strong></div>
       `;
+
+      // Fire non-blocking comments loader immediately!
+      loadIllustComments(json.id, json.source || 'pixiv', false);
 
       $('viewerTagsList').innerHTML = (json.tags || [])
         .map((t) => `<span class="third-tag-card" data-viewer-tag="${escapeHtml(t)}">#${escapeHtml(t)}</span>`)
@@ -4310,6 +4737,10 @@
     recordRecentSearch(parsed.tag, source);
     if (parsed.mode) $('modeSelect').value = parsed.mode;
     if (parsed.sMode) $('sModeSelect').value = parsed.sMode;
+    if ($('crawlOnlyR18Check') && $('modeSelect')) {
+      $('crawlOnlyR18Check').checked = $('modeSelect').value === 'r18';
+      if ($('modeSelect').value === 'r18' && $('excludeR18WorksCheck')) $('excludeR18WorksCheck').checked = false;
+    }
     syncCustomSelects();
     hideAutocomplete();
 
@@ -4783,6 +5214,16 @@
         }
       });
 
+    const sleepWithCountdown = async (totalSec, formatMsg) => {
+      const secs = Math.max(1, Math.ceil(Number(totalSec) || 1));
+      for (let rem = secs; rem >= 1 && !abortCtrl.signal.aborted; rem--) {
+        if (typeof formatMsg === 'function') {
+          progressText.textContent = formatMsg(rem);
+        }
+        await abortableSleep(1000);
+      }
+    };
+
     const buildHibiPartitionQueue = (baseTag, initialOrder, ageMode, safeBaseTotal) => {
       const q = [];
       const cleanBase = baseTag.trim();
@@ -4910,6 +5351,13 @@
       // Full R-18 + True AI (ai_type=0) + self-diagnosing bi-directional date-window engine + anti-WAF mega-crawl pacing!
       // CRITICAL: ONLY run when Chrome actually has a verified Pixiv session (so Guest mode NEVER hits 0%-R18 Web AJAX!).
       if (source === 'pixiv' && state.bridgeFetchAvailable && typeof window._pixezBridgeFetch === 'function' && hasVerifiedChromePixivSession) {
+        const sleepCountdownBridge = async (totalSec, formatMsg) => {
+          const secs = Math.max(1, Math.ceil(Number(totalSec) || 1));
+          for (let rem = secs; rem >= 1 && !abortCtrl.signal.aborted; rem--) {
+            if (typeof formatMsg === 'function') progressText.textContent = formatMsg(rem);
+            await abortableSleep(1000);
+          }
+        };
         const encodePixivPath = (t) => encodeURIComponent(t).replace(/%2F/gi, '%252F');
         const webOrd = order === 'date' ? 'date' : 'date_d';
         const shiftYmd = (d, delta) => {
@@ -5096,6 +5544,7 @@
           const useEcd = ov?.ecd || '';
           const isHealthProbe = Boolean(ov?.isHealthProbe);
           const segExpTot = Number(ov?.segExpectedTotal || 0);
+          const segSawUnder55 = Boolean(ov?.segSawUnder55);
           const dateQs = `${useScd ? `&scd=${encodeURIComponent(useScd)}` : ''}${useEcd ? `&ecd=${encodeURIComponent(useEcd)}` : ''}`;
           const targetUrl = `https://www.pixiv.net/ajax/search/artworks/${encodePixivPath(useWord)}?word=${encodeURIComponent(useWord)}&order=${useOrd}&mode=${encodeURIComponent(useMode)}&p=${pageNum}&s_mode=${encodeURIComponent(sMode)}&type=${encodeURIComponent(useType)}&ai_type=${useAi}&lang=zh${dateQs}`;
           // True sliding-window-friendly quiet cooldown (stops poking Pixiv every 2s so WAF bucket actually drains!)
@@ -5118,31 +5567,42 @@
               const expR18 = Number(knownBreakdown?.totalR18 || knownBreakdown?.r18 || 0);
               const expSafe = Number(knownBreakdown?.totalSafe || knownBreakdown?.safe || 0);
               const maxValidP = useAnon ? 10 : 85;
-              // Detect Pixiv's SILENT HTTP-200 soft-throttle:
-              // 1) Server reports total > (p-1)*60 (or segment already proved total > (p-1)*60) yet returns empty data[]
-              // 2) Undated logged-in p<=80 returns empty data[] despite preflight confirming thousands of works
-              // 3) Logged-in mode=all undated silently downgraded to guest-only totalSafe
-              let isSilentEmptyThrottle =
-                (bTot > 0 && dList.length === 0 && pageNum <= maxValidP && (pageNum - 1) * 60 < bTot) ||
-                (!useAnon && segExpTot > 0 && dList.length === 0 && pageNum <= 85 && (pageNum - 1) * 60 < segExpTot) ||
-                (!useAnon && !useScd && !useEcd && dList.length === 0 && pageNum <= 80 &&
-                  ((useMode === 'r18' && expR18 > pageNum * 60) || (useMode !== 'r18' && knownTotalPosts > pageNum * 60))) ||
-                (!useAnon && useMode === 'all' && !useScd && !useEcd && expR18 > 200 && expSafe > 0 && bTot > 0 &&
-                  Math.abs(bTot - expSafe) <= 60 && knownTotalPosts - bTot > 200);
+              const prevOffset = (pageNum - 1) * 60;
+              // Exclude Pixiv's ~2-12% deleted/muted/MyPixiv ghost-index tail when a short page (<55 items) was already seen,
+              // and verify ambiguous 88%-100% tail pages with 1 undated health probe instead of triggering a false 90s cooldown!
+              const safeBTotCutoff = pageNum <= 2 ? bTot : Math.max(0, Math.floor(bTot * 0.88) - 60);
+              const safeSegCutoff = pageNum <= 2 ? segExpTot : Math.max(0, Math.floor(segExpTot * 0.88) - 60);
+              const inAmbiguousGhostTail =
+                !useAnon &&
+                !segSawUnder55 &&
+                dList.length === 0 &&
+                pageNum > 2 &&
+                pageNum <= maxValidP &&
+                ((bTot > 0 && prevOffset >= safeBTotCutoff && prevOffset < bTot) ||
+                  (segExpTot > 0 && prevOffset >= safeSegCutoff && prevOffset < segExpTot));
 
-              // 4) Dated logged-in p=1 returns { total: 0, data: [] } while site still has hundreds of uncollected works:
-              //    Send 1 lightweight undated health probe to distinguish a genuinely empty year / date-cutoff
-              //    from an ACCOUNT-WIDE logged-in silent soft-throttle (which returns empty even on undated p=1)!
-              if (
-                !isSilentEmptyThrottle &&
+              let isSilentEmptyThrottle =
+                !segSawUnder55 &&
+                ((bTot > 0 && dList.length === 0 && pageNum <= maxValidP && prevOffset < safeBTotCutoff) ||
+                  (!useAnon && segExpTot > 0 && dList.length === 0 && pageNum <= 85 && prevOffset < safeSegCutoff) ||
+                  (!useAnon && !useScd && !useEcd && bTot === 0 && useAi === 0 && useType === type && dList.length === 0 && pageNum <= 80 &&
+                    ((useMode === 'r18' && Math.floor(expR18 * 0.88) - 60 > prevOffset) ||
+                      (useMode !== 'r18' && Math.floor(knownTotalPosts * 0.88) - 60 > prevOffset))) ||
+                  (!useAnon && useMode === 'all' && !useScd && !useEcd && expR18 > 200 && expSafe > 0 && bTot > 0 &&
+                    Math.abs(bTot - expSafe) <= 60 && knownTotalPosts - bTot > 200));
+
+              // Send 1 lightweight undated health probe when:
+              // (a) Dated logged-in p=1 returns { total: 0, data: [] } while site still has hundreds of uncollected works, OR
+              // (b) Segment hit the 88%-100% ghost-index tail right after a full 60-item page (`inAmbiguousGhostTail`)!
+              const needDatedZeroProbe =
                 !useAnon &&
                 (useScd || useEcd) &&
                 pageNum === 1 &&
                 bTot === 0 &&
                 dList.length === 0 &&
                 knownTotalPosts > accumWorks.size + 250 &&
-                (attempt > 0 || (sessionPagesFetched - lastHealthOkPage >= 15 && Date.now() - lastHealthOkTs >= 15000))
-              ) {
+                (attempt > 0 || (sessionPagesFetched - lastHealthOkPage >= 15 && Date.now() - lastHealthOkTs >= 15000));
+              if (!isSilentEmptyThrottle && (needDatedZeroProbe || (inAmbiguousGhostTail && attempt === 0))) {
                 const hp = await fetchOneBridgePage(1, segHint, {
                   ord: 'date_d',
                   sliceMode: useMode,
@@ -5180,9 +5640,10 @@
                 pageDelayMs = learnedSafeDelayMs;
                 cleanPagesSinceThrottle = 0;
                 throttleUntilTs = Math.max(throttleUntilTs, Date.now() + waitS * 1000);
-                const bgTag = document.hidden ? ' [后台保活]' : '';
-                progressText.textContent = `[油猴直连 Pixiv]${segHint}${bgTag} 检测到登录态隐性空页限流，静默冷却 ${waitS}s 后自动重试第 ${pageNum} 页 (${attempt + 1}/${backoffSec.length - 1} · 已采 ${accumWorks.size.toLocaleString()} 作)...`;
-                await abortableSleep(waitS * 1000);
+                await sleepCountdownBridge(waitS, (rem) => {
+                  const bgTag = document.hidden ? ' [后台保活]' : '';
+                  return `[油猴直连 Pixiv]${segHint}${bgTag} 检测到登录态隐性空页限流，静默冷却剩余 ${rem}s/${waitS}s 后自动重试第 ${pageNum} 页 (${attempt + 1}/${backoffSec.length - 1} · 已采 ${accumWorks.size.toLocaleString()} 作)...`;
+                });
                 continue;
               }
               return { json: null, throttled: true, softExhausted: true, status: r.status || 200 };
@@ -5206,9 +5667,10 @@
               pageDelayMs = learnedSafeDelayMs;
               cleanPagesSinceThrottle = 0;
               throttleUntilTs = Math.max(throttleUntilTs, Date.now() + waitS * 1000);
-              const bgTag = document.hidden ? ' [后台保活]' : '';
-              progressText.textContent = `[油猴直连 Pixiv]${segHint}${bgTag} 上游限流(HTTP ${st || 'ERR'})，静默冷却 ${waitS}s 后自动续采第 ${pageNum} 页 (${attempt + 1}/${backoffSec.length - 1} · 已采 ${accumWorks.size.toLocaleString()} 作 · 无需手动操作)...`;
-              await abortableSleep(waitS * 1000);
+              await sleepCountdownBridge(waitS, (rem) => {
+                const bgTag = document.hidden ? ' [后台保活]' : '';
+                return `[油猴直连 Pixiv]${segHint}${bgTag} 上游限流(HTTP ${st || 'ERR'})，静默冷却剩余 ${rem}s/${waitS}s 后自动续采第 ${pageNum} 页 (${attempt + 1}/${backoffSec.length - 1} · 已采 ${accumWorks.size.toLocaleString()} 作 · 无需手动操作)...`;
+              });
               continue;
             }
             return { json: null, throttled: isRetryable, status: st };
@@ -5236,11 +5698,14 @@
           // Only mark naturalEnd on empty list OR 2 consecutive short (<20) pages (prevents a single sparse/deleted page from aborting seg 1 early!)
           if (list.length === 0) {
             trackSeg.naturalEnd = true;
-          } else if (list.length < 20) {
-            trackSeg.shortStreak = (trackSeg.shortStreak || 0) + 1;
-            if (trackSeg.shortStreak >= 2 || (blkTotal > 0 && blkTotal < 120)) trackSeg.naturalEnd = true;
           } else {
-            trackSeg.shortStreak = 0;
+            trackSeg.sawUnder55 = list.length < 55;
+            if (list.length < 20) {
+              trackSeg.shortStreak = (trackSeg.shortStreak || 0) + 1;
+              if (trackSeg.shortStreak >= 2 || (blkTotal > 0 && blkTotal < 120)) trackSeg.naturalEnd = true;
+            } else {
+              trackSeg.shortStreak = 0;
+            }
           }
           for (const item of list) {
             if (!canAcceptMoreWorks()) break;
@@ -5267,6 +5732,10 @@
             }
             if (accumWorks.has(idStr)) continue;
             const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
+            const itemXRestrict = Number(item.xRestrict || 0);
+            const itemIsR18 = itemXRestrict > 0 || tags.some((t) => /^r-?18g?$/i.test(String(t)));
+            if ((trackSeg.sliceMode || mode) === 'r18' && !itemIsR18) continue;
+            if ((trackSeg.sliceMode || mode) === 'safe' && itemIsR18) continue;
             accumWorks.set(idStr, {
               id: idStr,
               source: 'pixiv',
@@ -5354,8 +5823,10 @@
               oldest: '',
               newest: '',
               expectedTotal: 0,
+              sawUnder55: false,
               naturalEnd: false,
-              ord: sweepOrd
+              ord: sweepOrd,
+              sliceMode: effSweepMode
             };
             let segAdded = 0;
             let segRawTotal = 0;
@@ -5412,7 +5883,8 @@
                     sliceMode: effSweepMode,
                     scd: bStartDate,
                     ecd: bEndDate,
-                    segExpectedTotal: segTrack.expectedTotal
+                    segExpectedTotal: segTrack.expectedTotal,
+                    segSawUnder55: Boolean(segTrack.sawUnder55)
                   })
                 )
               );
@@ -5542,8 +6014,9 @@
                 const maxWaitCycles = isAllMode || targetWorksLimit > 0 ? 40 : 6;
                 if (consecutiveBatchFails <= maxWaitCycles) {
                   const waitS = Math.min(120, 25 + consecutiveBatchFails * 20);
-                  progressText.textContent = `[油猴直连 Pixiv]${segHint}${document.hidden ? ' [后台保活]' : ''} 上游限流(HTTP ${lastFailStatus || 'SOFT'})，静默冷却 ${waitS}s 后自动重试第 ${p} 页 (${consecutiveBatchFails}/${maxWaitCycles} · 已保留 ${accumWorks.size.toLocaleString()} 作 · 无需手动操作)...`;
-                  await abortableSleep(waitS * 1000);
+                  await sleepCountdownBridge(waitS, (rem) =>
+                    `[油猴直连 Pixiv]${segHint}${document.hidden ? ' [后台保活]' : ''} 上游限流(HTTP ${lastFailStatus || 'SOFT'})，静默冷却剩余 ${rem}s/${waitS}s 后自动重试第 ${p} 页 (${consecutiveBatchFails}/${maxWaitCycles} · 已保留 ${accumWorks.size.toLocaleString()} 作 · 无需手动操作)...`
+                  );
                   continue;
                 }
                 segFailedOut = true;
@@ -5927,8 +6400,9 @@
                   slFails++;
                   if (slFails <= 20) {
                     const waitS = Math.min(120, 25 + slFails * 20);
-                    progressText.textContent = `[油猴直连 Pixiv]${segHint} 静默冷却 ${waitS}s 后自动重试 (${slFails}/20 · 已保留 ${accumWorks.size.toLocaleString()} 作)...`;
-                    await abortableSleep(waitS * 1000);
+                    await sleepCountdownBridge(waitS, (rem) =>
+                      `[油猴直连 Pixiv]${segHint} 静默冷却剩余 ${rem}s/${waitS}s 后自动重试 (${slFails}/20 · 已保留 ${accumWorks.size.toLocaleString()} 作)...`
+                    );
                     continue;
                   }
                   break;
@@ -6079,8 +6553,9 @@
                       aFails++;
                       if (aFails <= 20) {
                         const waitS = Math.min(120, 25 + aFails * 20);
-                        progressText.textContent = `[油猴直连 Pixiv]${segHint} 静默冷却 ${waitS}s 后自动重试 (${aFails}/20 · 已保留 ${accumWorks.size.toLocaleString()} 作)...`;
-                        await abortableSleep(waitS * 1000);
+                        await sleepCountdownBridge(waitS, (rem) =>
+                          `[油猴直连 Pixiv]${segHint} 静默冷却剩余 ${rem}s/${waitS}s 后自动重试 (${aFails}/20 · 已保留 ${accumWorks.size.toLocaleString()} 作)...`
+                        );
                         continue;
                       }
                       break;
@@ -6397,9 +6872,10 @@
           const maxRlRetries = isAllMode || targetWorksLimit > 0 ? 15 : 5;
           if (consecutiveRateLimits <= maxRlRetries) {
             const waitMs = Math.min(45000, chunkRetryAfterMs * Math.min(consecutiveRateLimits, 8));
-            const waitSec = Math.round(waitMs / 1000);
-            progressText.textContent = `[${srcMeta.label}]${activePhaseLabel ? ` [${activePhaseLabel}]` : ''} 上游限流，冷却 ${waitSec}s 后自动续采第 ${chunkNextPage} 页 (重试 ${consecutiveRateLimits}/${maxRlRetries} · 已采 ${accumWorks.size.toLocaleString()} 作 · 无需手动操作)...`;
-            await abortableSleep(waitMs);
+            const waitSec = Math.max(1, Math.round(waitMs / 1000));
+            await sleepWithCountdown(waitSec, (rem) =>
+              `[${srcMeta.label}]${activePhaseLabel ? ` [${activePhaseLabel}]` : ''} 上游限流，冷却剩余 ${rem}s/${waitSec}s 后自动续采第 ${chunkNextPage} 页 (重试 ${consecutiveRateLimits}/${maxRlRetries} · 已采 ${accumWorks.size.toLocaleString()} 作 · 无需手动操作)...`
+            );
             startPage = chunkNextPage;
             cursor = chunkNextCursor;
           } else if (lastEngine === 'HIBI-APP-API' && chunkNextPage < 167 && consecutiveSkippedPages < 4) {
@@ -8422,8 +8898,51 @@
     $('callDisplayScroll')?.addEventListener('scroll', () => hideAutocomplete(), { passive: true });
     window.addEventListener('resize', () => hideAutocomplete(), { passive: true });
 
-    // Filter Checkboxes & Controls
-    ['hideBookmarkTagCheck', 'excludeAiWorksCheck', 'hideAiTagCheck', 'excludeR18WorksCheck', 'hideR18TagCheck', 'hideMetaTagCheck', 'minCountInput', 'tableSortSelect'].forEach((id) => {
+    // Filter Checkboxes & Controls (including R-18 Crawl / R-18 Works / R-18 Tags switches!)
+    if ($('crawlOnlyR18Check') && $('modeSelect')) {
+      $('crawlOnlyR18Check').checked = $('modeSelect').value === 'r18';
+      $('crawlOnlyR18Check').addEventListener('change', (e) => {
+        const wantR18 = Boolean(e.target.checked);
+        $('modeSelect').value = wantR18 ? 'r18' : ($('modeSelect').value === 'r18' ? 'all' : $('modeSelect').value);
+        if (wantR18 && $('excludeR18WorksCheck')) {
+          $('excludeR18WorksCheck').checked = false;
+        }
+        syncCustomSelects();
+        hidePreflightBanner();
+        if (wantR18) {
+          showToast(
+            state.rawDataset
+              ? '已开启「仅采R-18」：点击「开始采样」将只抓 R-18 作品（若想直接筛选当前已采样本，请勾选「仅看R-18作品」）'
+              : '已开启「仅采R-18」（范围已同步设为「仅R-18」），点击「开始采样」将只采集 R-18 作品',
+            3800
+          );
+        } else {
+          showToast('已恢复「全部年龄」采样范围');
+        }
+      });
+      $('modeSelect').addEventListener('change', () => {
+        const isR18Mode = $('modeSelect').value === 'r18';
+        $('crawlOnlyR18Check').checked = isR18Mode;
+        if (isR18Mode && $('excludeR18WorksCheck')) {
+          $('excludeR18WorksCheck').checked = false;
+          if (state.rawDataset) recomputeAndRender();
+        }
+        hidePreflightBanner();
+      });
+    }
+    $('onlyR18WorksCheck')?.addEventListener('change', (e) => {
+      if (e.target.checked && $('excludeR18WorksCheck')) {
+        $('excludeR18WorksCheck').checked = false;
+      }
+      recomputeAndRender();
+    });
+    $('excludeR18WorksCheck')?.addEventListener('change', (e) => {
+      if (e.target.checked && $('onlyR18WorksCheck')) {
+        $('onlyR18WorksCheck').checked = false;
+      }
+      recomputeAndRender();
+    });
+    ['hideBookmarkTagCheck', 'excludeAiWorksCheck', 'hideAiTagCheck', 'onlyR18TagsCheck', 'hideR18TagCheck', 'hideMetaTagCheck', 'minCountInput', 'tableSortSelect'].forEach((id) => {
       if ($(id)) $(id).addEventListener('change', recomputeAndRender);
     });
     $('tableFilterInput').addEventListener('input', () => renderTable(state.computedCoTags));
@@ -8530,6 +9049,12 @@
       if (!ill) return;
       const u = ill.regularUrl || ill.thumbUrl;
       if (u) window.open(`https://saucenao.com/search.php?url=${encodeURIComponent(u)}`, '_blank');
+    });
+    $('viewerMoreCommentsBtn')?.addEventListener('click', () => {
+      const cm = state.viewer.comments;
+      if (cm && cm.illustId && cm.hasNext && !cm.loading) {
+        loadIllustComments(cm.illustId, cm.source || 'pixiv', true);
+      }
     });
 
     // Topology Graph Events (rAF-coalesced for smooth 60 FPS interaction on 50k+ works!)

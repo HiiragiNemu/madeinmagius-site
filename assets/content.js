@@ -1,4 +1,4 @@
-import magirecoRelease from './magireco-release167.js';
+import magirecoRelease from './magireco-release168.js';
 // Static GitHub Pages has no Functions. Keep static files local, but route
 // release metadata and files to the existing Cloudflare download service.
 export function serviceUrl(path, page = typeof location === 'undefined' ? null : location) {

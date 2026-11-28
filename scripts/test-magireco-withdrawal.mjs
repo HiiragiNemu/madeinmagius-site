@@ -8,7 +8,7 @@ import * as android from '../functions/downloads/magireco/android.js';
 import * as pinned from '../functions/downloads/pinned/[project]/[version].js';
 import * as legacy from '../functions/downloads/legacy/[[path]].js';
 import pinnedAssets from '../data/pinned-assets.js';
-import release167 from '../assets/magireco-release167.js';
+import release168 from '../assets/magireco-release168.js';
 import {createMagirecoSnapshot} from './update-magireco-snapshot.mjs';
 import {readPublishedBundle,prepareSnapshotUpdate} from './sync-magireco-release.mjs';
 let checks=0,networkRequests=0;
@@ -36,9 +36,9 @@ for(const [key,asset] of Object.entries(pinnedAssets)){
  eq(r.status,200,key);eq(r.headers.get('content-length'),String(asset.size));eq(r.headers.get('x-release-digest'),asset.digest);
 }
 for(const value of [null,{state:'loading'},{state:'error'},{state:'ready',version:'1.4.4',download:'https://old.invalid/current.apk'}]){
- const html=renderContent('home','magireco-private-server',{magireco:value});ok(html.includes('正式客户端 1.6.7'));ok(!html.includes('本项目停止公开分发'));ok(!html.includes('old.invalid'));ok(html.includes(release167.download));ok(html.includes(release167.corresponding_source.url));eq((html.match(/<a\b/g)||[]).length,2);ok(!html.includes('magireco-direct-downloads-20261029.html'));
+ const html=renderContent('home','magireco-private-server',{magireco:value});ok(html.includes('正式客户端 1.6.8'));ok(!html.includes('本项目停止公开分发'));ok(!html.includes('old.invalid'));ok(html.includes(release168.download));ok(html.includes(release168.corresponding_source.url));eq((html.match(/<a\b/g)||[]).length,2);ok(!html.includes('magireco-direct-downloads-20261029.html'));
 }
-let offers=[];eq(await loadMagirecoReleaseData({fetcher:globalThis.fetch,onUpdate:v=>offers.push(v)}),{...release167,state:'ready'});eq(offers,[{...release167,state:'ready'}]);
+let offers=[];eq(await loadMagirecoReleaseData({fetcher:globalThis.fetch,onUpdate:v=>offers.push(v)}),{...release168,state:'ready'});eq(offers,[{...release168,state:'ready'}]);
 for(const name of ['magireco-release.json','magireco-release.signed.json']){await access(new URL('../data/'+name,import.meta.url));checks++;}
 eq((await readdir(new URL('../assets/',import.meta.url))).filter(x=>x.startsWith('magireco-source')&&x.endsWith('.html')),[]);
 const direct=await readFile(new URL('../assets/magireco-direct-downloads-20261029.html',import.meta.url),'utf8');
